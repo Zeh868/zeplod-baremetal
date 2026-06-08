@@ -9,3 +9,4 @@ function(bm_add_test TEST_NAME TEST_SRC)
 endfunction()
 
 bm_add_test(test_skeleton test_skeleton.c)
+bm_add_test(test_ultra test_ultra.c)
