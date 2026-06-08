@@ -172,3 +172,61 @@ int bm_event_publish_event(const bm_event_t *event) {
     bm_hal_critical_exit(s);
     return BM_OK;
 }
+
+static int _queue_pop_highest_prio(bm_event_t *out) {
+    bm_irq_state_t s = bm_hal_critical_enter();
+    if (_queue_read == _queue_write) {
+        bm_hal_critical_exit(s);
+        return BM_ERR_WOULD_BLOCK;
+    }
+
+    uint32_t mask = BM_CONFIG_EVENT_QUEUE_SIZE - 1;
+    uint32_t best_idx = 0;
+    uint8_t best_prio = 0xFF;
+    bool found = false;
+
+    for (uint32_t i = _queue_read; i != _queue_write; i = (i + 1) & mask) {
+        bm_event_t *ev = &_event_queue[i & mask].event;
+        if (ev->priority < best_prio) {
+            best_prio = ev->priority;
+            best_idx = i;
+            found = true;
+        }
+    }
+
+    if (!found) {
+        bm_hal_critical_exit(s);
+        return BM_ERR_WOULD_BLOCK;
+    }
+
+    uint32_t r = _queue_read & mask;
+    uint32_t b = best_idx & mask;
+    bm_queue_item_t tmp = _event_queue[b];
+    _event_queue[b] = _event_queue[r];
+    _event_queue[r] = tmp;
+
+    *out = _event_queue[r].event;
+    _queue_read = (_queue_read + 1) & mask;
+
+    bm_hal_critical_exit(s);
+    return BM_OK;
+}
+
+int bm_event_process(uint32_t max_events) {
+    uint32_t processed = 0;
+    for (uint32_t i = 0; i < max_events; i++) {
+        bm_event_t ev;
+        int rc = _queue_pop_highest_prio(&ev);
+        if (rc != BM_OK) break;
+
+        bm_subscriber_t *sub = _event_types[ev.type].head;
+        while (sub) {
+            if (sub->cb) {
+                sub->cb(&ev, sub->user_data);
+            }
+            sub = sub->next;
+        }
+        processed++;
+    }
+    return (int)processed;
+}
