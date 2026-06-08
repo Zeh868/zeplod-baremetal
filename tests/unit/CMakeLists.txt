@@ -7,3 +7,5 @@ function(bm_add_test TEST_NAME TEST_SRC)
     )
     add_test(NAME ${TEST_NAME} COMMAND ${TEST_NAME})
 endfunction()
+
+bm_add_test(test_skeleton test_skeleton.c)
