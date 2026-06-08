@@ -1,0 +1,15 @@
+#ifndef BM_CONFIG_H
+#define BM_CONFIG_H
+
+#define BM_CONFIG_MAX_EVENT_TYPES           16
+#define BM_CONFIG_MAX_EVENT_SUBSCRIBERS     32
+#define BM_CONFIG_MAX_EVENTS_PER_LOOP       8
+#define BM_CONFIG_EVENT_PRIORITIES          4
+#define BM_CONFIG_MAX_MODULES               8
+#define BM_CONFIG_MEMPOOL_MAX_POOLS         4
+#define BM_CONFIG_CHANNEL_MAX_CHANNELS      4
+#define BM_CONFIG_SHELL_BUF_SIZE            64
+#define BM_CONFIG_ULTRA_MAX_EVENT_DATA_SIZE 8
+#define BM_CONFIG_ULTRA_QUEUE_DEPTH         8
+
+#endif
