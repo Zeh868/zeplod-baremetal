@@ -1,6 +1,6 @@
 function(bm_add_test TEST_NAME TEST_SRC)
     add_executable(${TEST_NAME} ${TEST_SRC})
-    target_link_libraries(${TEST_NAME} PRIVATE unity bm_hal_native)
+    target_link_libraries(${TEST_NAME} PRIVATE unity bm_core bm_hal_native)
     target_include_directories(${TEST_NAME} PRIVATE
         ${CMAKE_SOURCE_DIR}/include
         ${CMAKE_SOURCE_DIR}/tests/unit/unity
@@ -10,3 +10,4 @@ endfunction()
 
 bm_add_test(test_skeleton test_skeleton.c)
 bm_add_test(test_ultra test_ultra.c)
+bm_add_test(test_mempool test_mempool.c)

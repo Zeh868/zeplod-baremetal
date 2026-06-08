@@ -16,18 +16,20 @@ option(BM_ENABLE_SHELL "Enable bm-shell (deferred)" OFF)
 option(BM_ENABLE_WDG "Enable bm-wdg" ON)
 
 set(BM_CORE_SRCS
-    src/core/bm_event.c
     src/core/bm_mempool.c
     src/core/bm_critical.c
 )
 
-if(BM_ENABLE_WDG)
+if(BM_ENABLE_WDG AND EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/src/core/bm_wdg.c)
     list(APPEND BM_CORE_SRCS src/core/bm_wdg.c)
 endif()
 
-if(BM_ENABLE_MODULE)
+if(BM_ENABLE_MODULE AND EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/src/module/bm_module.c)
     list(APPEND BM_CORE_SRCS src/module/bm_module.c)
 endif()
+
+add_library(bm_core STATIC ${BM_CORE_SRCS})
+target_include_directories(bm_core PUBLIC ${CMAKE_SOURCE_DIR}/include)
 
 # Tests
 option(BM_BUILD_TESTS "Build unit tests" ON)
