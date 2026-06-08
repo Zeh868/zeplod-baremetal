@@ -12,3 +12,25 @@ __attribute__((weak)) bm_irq_state_t bm_hal_critical_enter(void) {
 __attribute__((weak)) void bm_hal_critical_exit(bm_irq_state_t state) {
     _irq_state = state;
 }
+
+#include "bm_core.h"
+
+uint32_t bm_atomic_load(bm_atomic_t *v) {
+    bm_irq_state_t s = bm_hal_critical_enter();
+    uint32_t val = *v;
+    bm_hal_critical_exit(s);
+    return val;
+}
+
+void bm_atomic_store(bm_atomic_t *v, uint32_t val) {
+    bm_irq_state_t s = bm_hal_critical_enter();
+    *v = val;
+    bm_hal_critical_exit(s);
+}
+
+uint32_t bm_atomic_inc(bm_atomic_t *v) {
+    bm_irq_state_t s = bm_hal_critical_enter();
+    uint32_t val = (*v)++;
+    bm_hal_critical_exit(s);
+    return val;
+}
