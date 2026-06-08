@@ -18,6 +18,7 @@ option(BM_ENABLE_WDG "Enable bm-wdg" ON)
 set(BM_CORE_SRCS
     src/core/bm_mempool.c
     src/core/bm_critical.c
+    src/core/bm_event.c
 )
 
 if(BM_ENABLE_WDG AND EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/src/core/bm_wdg.c)
