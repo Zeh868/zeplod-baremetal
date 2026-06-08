@@ -15,8 +15,10 @@ build_tests_hw/
 CMakeCache.txt
 CMakeFiles/
 cmake_install.cmake
-Makefile
 compile_commands.json
+
+# Allow top-level Makefile (baremetal framework build system)
+!/Makefile
 
 # IDE
 
