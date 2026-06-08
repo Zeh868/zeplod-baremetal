@@ -12,4 +12,7 @@ bm_add_test(test_skeleton test_skeleton.c)
 bm_add_test(test_ultra test_ultra.c)
 bm_add_test(test_mempool test_mempool.c)
 bm_add_test(test_event test_event.c)
-bm_add_test(test_module test_module.c)
+
+if(BM_ENABLE_MODULE)
+    bm_add_test(test_module test_module.c)
+endif()
