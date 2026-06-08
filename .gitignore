@@ -66,5 +66,6 @@ docs/zh-CN/90-学习资源/
 Testing/
 
 ideas/
-docs/plan
-docs/design
+# docs/plan and docs/design are part of the project deliverables
+# docs/plan
+# docs/design
