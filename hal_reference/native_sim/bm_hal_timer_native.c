@@ -10,7 +10,11 @@ int bm_hal_timer_init(uint32_t freq_hz) {
 
 uint32_t bm_hal_timer_get_ticks(void) {
     struct timespec ts;
+    #ifdef _WIN32
+    timespec_get(&ts, TIME_UTC);
+    #else
     clock_gettime(CLOCK_MONOTONIC, &ts);
+    #endif
     uint64_t ms = (uint64_t)ts.tv_sec * 1000 + ts.tv_nsec / 1000000;
     return (uint32_t)(ms * tick_freq / 1000);
 }
