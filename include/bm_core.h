@@ -53,4 +53,17 @@ typedef struct {
 void *bm_mempool_alloc(bm_mempool_t *pool);
 void bm_mempool_free(bm_mempool_t *pool, void *obj);
 
+/* Event system API */
+int bm_event_register_type(bm_event_type_t type, const char *name);
+int bm_event_subscribe(bm_event_type_t type, bm_event_callback_t cb,
+                       void *user_data, bm_event_subscriber_id_t *id);
+int bm_event_unsubscribe(bm_event_type_t type, bm_event_subscriber_id_t id);
+int bm_event_publish_copy(bm_event_type_t type, bm_event_priority_t prio,
+                          const void *data, size_t len);
+int bm_event_publish_copy_from_isr(bm_event_type_t type, bm_event_priority_t prio,
+                                   const void *data, size_t len);
+int bm_event_publish_event(const bm_event_t *event);
+int bm_event_publish_event_from_isr(const bm_event_t *event);
+int bm_event_process(uint32_t max_events);
+
 #endif /* BM_CORE_H */
