@@ -105,3 +105,70 @@ int bm_event_unsubscribe(bm_event_type_t type, bm_event_subscriber_id_t id) {
     bm_hal_critical_exit(s);
     return BM_ERR_NOT_FOUND;
 }
+
+static int _queue_push_copy(const bm_event_t *event, const void *data, size_t len) {
+    bm_irq_state_t s = bm_hal_critical_enter();
+    uint32_t mask = BM_CONFIG_EVENT_QUEUE_SIZE - 1;
+    uint32_t next = (_queue_write + 1) & mask;
+    if (next == _queue_read) {
+        bm_hal_critical_exit(s);
+        return BM_ERR_OVERFLOW;
+    }
+
+    bm_queue_item_t *item = &_event_queue[_queue_write & mask];
+    item->event = *event;
+
+    if (data && len > 0) {
+        if (len <= sizeof(item->inline_data)) {
+            memcpy(item->inline_data, data, len);
+            item->event.data = item->inline_data;
+        } else {
+            bm_hal_critical_exit(s);
+            return BM_ERR_NO_MEM;
+        }
+    } else {
+        item->event.data = NULL;
+        item->event.data_len = 0;
+    }
+
+    _queue_write = next;
+    bm_hal_critical_exit(s);
+    return BM_OK;
+}
+
+int bm_event_publish_copy(bm_event_type_t type, bm_event_priority_t prio,
+                          const void *data, size_t len) {
+    if (type >= BM_CONFIG_MAX_EVENT_TYPES) {
+        return BM_ERR_INVALID;
+    }
+    bm_event_t ev = {
+        .type = type,
+        .priority = prio,
+        .data = NULL,
+        .data_len = len,
+        .source_id = 0
+    };
+    return _queue_push_copy(&ev, data, len);
+}
+
+int bm_event_publish_copy_from_isr(bm_event_type_t type, bm_event_priority_t prio,
+                                   const void *data, size_t len) {
+    return bm_event_publish_copy(type, prio, data, len);
+}
+
+int bm_event_publish_event(const bm_event_t *event) {
+    if (!event || event->type >= BM_CONFIG_MAX_EVENT_TYPES) {
+        return BM_ERR_INVALID;
+    }
+    bm_irq_state_t s = bm_hal_critical_enter();
+    uint32_t mask = BM_CONFIG_EVENT_QUEUE_SIZE - 1;
+    uint32_t next = (_queue_write + 1) & mask;
+    if (next == _queue_read) {
+        bm_hal_critical_exit(s);
+        return BM_ERR_OVERFLOW;
+    }
+    _event_queue[_queue_write & mask].event = *event;
+    _queue_write = next;
+    bm_hal_critical_exit(s);
+    return BM_OK;
+}
