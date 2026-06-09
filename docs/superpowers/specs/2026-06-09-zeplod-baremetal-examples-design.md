@@ -25,16 +25,22 @@ examples/
 │
 ├── ultra_blink/              # Example 1: bm-ultra 最简
 │   ├── CMakeLists.txt
+│   ├── Makefile              # 纯 Makefile 备选
+│   ├── PROJECT_SOURCES.md    # Keil/IAR 手动导入指南
 │   ├── bm_config.h
 │   └── main.c
 │
 ├── core_sensor/              # Example 2: bm-core + bm-module + mempool
 │   ├── CMakeLists.txt
+│   ├── Makefile
+│   ├── PROJECT_SOURCES.md
 │   ├── bm_config.h
 │   └── main.c
 │
 └── full_system/              # Example 3: 全栈（含 wdg、错误处理、事件风暴）
     ├── CMakeLists.txt
+    ├── Makefile
+    ├── PROJECT_SOURCES.md
     ├── bm_config.h
     └── main.c
 ```
@@ -92,7 +98,10 @@ set(ZEPLOD_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../.."
 #define BM_CONFIG_ULTRA_MAX_EVENT_DATA_SIZE 4
 ```
 
-### 4.5 验证输出
+### 4.5 验证输出与终止条件
+
+**终止条件**: 3 次 `EVENT_TICK` + 1 次 `EVENT_BUTTON_PRESS` 处理完毕后输出 `EXAMPLE_ULTRA: PASS`，随后进入 `while(1)` 空转。
+
 ```
 Zeplod Example: ultra_blink
 LED: ON
@@ -100,7 +109,6 @@ LED: OFF
 LED: ON
 BUTTON: pressed
 LED: OFF
-...
 EXAMPLE_ULTRA: PASS
 ```
 
@@ -113,11 +121,11 @@ EXAMPLE_ULTRA: PASS
 
 ### 5.2 业务逻辑
 - **模块划分**:
-  | 模块 | 优先级 | init | start | stop | deinit |
-  |------|--------|------|-------|------|--------|
-  | `sensor_mod` | 2 | ✅ | ✅ | ✅ | ✅ |
-  | `display_mod` | 1 | ✅ | ✅ | — | — |
-  | `logger_mod` | 0 | ✅ | ✅ | — | — |
+  | 模块 | 模块优先级 | init | start | stop | deinit | 说明 |
+  |------|-----------|------|-------|------|--------|------|
+  | `display_mod` | 0 | ✅ | ✅ | — | — | 打印温度，**负责 `mempool_free`** |
+  | `logger_mod` | 1 | ✅ | ✅ | — | — | 打印 `[LOG]` |
+  | `sensor_mod` | 2 | ✅ | ✅ | ✅ | ✅ | 发布事件 |
 
 - **数据流**:
   1. `sensor_mod.start()` 启动后，每 2 秒生成一个 `sensor_data_t`：
@@ -135,16 +143,20 @@ EXAMPLE_ULTRA: PASS
      *d = reading;
      bm_event_t ev = {
          .type = EVENT_TEMP,
-         .priority = BM_EVENT_PRIO_NORMAL, /* 1 */
+         .priority = 1, /* NORMAL: 0=HIGH, 1=NORMAL, 2=LOW */
          .data = d,
          .data_len = sizeof(*d)
      };
      bm_event_publish_event(&ev);
      ```
-  3. `logger_mod` 订阅 `EVENT_TEMP`，优先级 `0`（HIGH），打印 `[LOG] temp=XX`。
-  4. `display_mod` 订阅 `EVENT_TEMP`，优先级 `1`（NORMAL），打印 `Temp: XX C, Hum: YY %`。
-  5. `bm_event_process(4)` 按优先级扫描出队，确保 `[LOG]` 始终先于 `Temp:` 出现。
-  6. 事件处理完毕后，`display_mod` 负责 `bm_mempool_free(&sensor_pool, ev->data)`。
+  3. `display_mod` 与 `logger_mod` 均在 `init()` 中订阅 `EVENT_TEMP`。
+     - 模块按 priority 升序 init → `display_mod(0)` 先 init 并订阅 → `logger_mod(1)` 后 init 并订阅。
+     - 订阅链表为 LIFO（后订阅的先执行）→ **`logger_mod` 先执行**，`display_mod` 后执行。
+  4. `logger_mod` 回调打印 `[LOG] temp=XX`；`display_mod` 回调打印 `Temp: XX C, Hum: YY %`。
+  5. `bm_event_process(4)` 按事件优先级扫描出队（此处仅一种事件类型，出队顺序即入队顺序）。
+  6. `display_mod` 后执行，**负责 `bm_mempool_free(&sensor_pool, ev->data)`**。
+
+> **关键澄清**: 事件优先级（`ev.priority`）控制的是**不同事件类型之间的出队顺序**；同一事件类型的多个订阅者之间无优先级，按 LIFO 顺序执行。
 
 ### 5.3 模块生命周期
 ```c
@@ -165,21 +177,26 @@ bm_module_deinit_all(); // 逆序 deinit
 #define BM_CONFIG_MEMPOOL_MAX_POOLS         2
 ```
 
-### 5.5 验证输出
+### 5.5 验证输出与终止条件
+
+**终止条件**: 2 次 `EVENT_TEMP` 完整处理（sensor → publish → process → logger 回调 → display 回调 → mempool free）后输出 `EXAMPLE_CORE: PASS`。
+
 ```
 Zeplod Example: core_sensor
-[mod] sensor_mod init ok
 [mod] display_mod init ok
 [mod] logger_mod init ok
+[mod] sensor_mod init ok
 [mod] all modules started
 [LOG] temp=23, hum=45
 Temp: 23 C, Hum: 45 %
 [LOG] temp=24, hum=46
 Temp: 24 C, Hum: 46 %
-...
 EXAMPLE_CORE: PASS
 ```
-**关键验证点**: `[LOG]` 行必须始终紧邻出现在 `Temp:` 行之前。
+
+**关键验证点**:
+1. `[LOG]` 行始终紧邻出现在 `Temp:` 行之前（验证 LIFO 订阅者顺序：logger 后订阅、先执行）。
+2. `Temp:` 行出现后无崩溃（验证 display_mod 正确执行了 `mempool_free`）。
 
 ---
 
@@ -200,8 +217,8 @@ EXAMPLE_CORE: PASS
 - **数据流**:
   1. `sensor_mod` 正常发布 `EVENT_TEMP`（同 core_sensor，使用 mempool）。
   2. **错误注入**（`#define ENABLE_FAULT_TEST 1`）:
-     - `sensor_mod.start()` 有 20% 概率返回 `BM_ERR_BUSY`。
-     - 运行中，`sensor_mod` 有 10% 概率发布 `EVENT_SENSOR_FAULT`（优先级 `0`）。
+     - `sensor_mod.start()` 首次调用返回 `BM_ERR_BUSY`，重试后成功（确定性，便于 CI 验证错误处理路径）。
+     - 运行中，第 5 个 sensor 周期触发一次 `EVENT_SENSOR_FAULT`（优先级 `0`）。
      - `fault_mod` 订阅该事件，打印 `FAULT: sensor error, code=X`。
   3. `comm_mod` 订阅 `EVENT_TEMP`，发送前发布 `EVENT_COMM_READY`（优先级 `0`）。
   4. **看门狗**:
@@ -224,7 +241,10 @@ EXAMPLE_CORE: PASS
 #define BM_CONFIG_MAX_WDG_MODULES           4
 ```
 
-### 6.4 验证输出
+### 6.4 验证输出与终止条件
+
+**终止条件**: Storm test 通过 + 至少 1 次 WDG feed + 至少 1 次 fault 处理完毕后输出 `EXAMPLE_FULL: PASS`，随后进入 `while(1)`。
+
 ```
 Zeplod Example: full_system
 [mod] sensor_mod init ok
@@ -235,13 +255,11 @@ Zeplod Example: full_system
 [mod] retry sensor_mod start ok
 [mod] all modules started
 [WDG] registered: sensor, comm, display
-[LOG] temp=22, hum=44
+Temp: 22 C, Hum: 44 %
 [COMM] ready
 [COMM] frame sent
-Temp: 22 C, Hum: 44 %
 FAULT: sensor error, code=3
 STORM: order OK
-...
 EXAMPLE_FULL: PASS
 ```
 
@@ -267,9 +285,8 @@ EXAMPLE_FULL: PASS
 功能：
 1. 遍历 `ultra_blink`, `core_sensor`, `full_system`。
 2. 对每个示例执行 cmake 构建。
-3. QEMU 运行 5 秒后 `kill`。
-4. 捕获串口输出并 `grep "EXAMPLE_.*: PASS"`。
-5. 汇总报告：
+3. QEMU 运行，通过 `timeout` 等待 `EXAMPLE_.*: PASS` 魔法字符串出现（超时 10s）。
+4. 汇总报告：
    ```
    ultra_blink  ... PASS
    core_sensor  ... PASS
@@ -299,75 +316,96 @@ examples/
 
 ### 8.2 Makefile 示例
 
-每个示例的 `Makefile` 复用框架顶层 `Makefile` 逻辑：
+> **前置条件**：当前根目录 `Makefile` 仅为源文件清单（`echo` 模式），需先扩展为可实际编译（或提供 `examples/common/Makefile.baremetal.mk` 共享片段）。本 Makefile 示例展示的是「示例独立编译」的最终目标结构。
+
+**ultra_blink**（不链接 core `.c`）：
 
 ```makefile
 # 指向框架根目录（用户拷贝后只需改这一行）
 ZEPLOD_ROOT := $(realpath ../..)
 
-include $(ZEPLOD_ROOT)/Makefile
+CC      := arm-none-eabi-gcc
+CFLAGS  := -mcpu=cortex-m0 -mthumb -Os -std=c99 \
+           -I$(ZEPLOD_ROOT)/include -I. -include bm_config.h
+LDFLAGS := -T$(ZEPLOD_ROOT)/hal_reference/qemu_cortex_m0/linker.ld -nostartfiles
 
-# 追加本示例的源文件与配置
-BM_SRCS += main.c
-CFLAGS  += -I. -include bm_config.h
+SRCS := main.c \
+        $(ZEPLOD_ROOT)/hal_reference/qemu_cortex_m0/startup_qemu_cm0.s \
+        $(ZEPLOD_ROOT)/hal_reference/qemu_cortex_m0/bm_hal_uart_qemu.c
 
 TARGET := ultra_blink.elf
 
 all: $(TARGET)
-$(TARGET): $(BM_SRCS)
-	$(CC) $(CFLAGS) $(BM_SRCS) $(LDFLAGS) -o $@
+$(TARGET): $(SRCS)
+	$(CC) $(CFLAGS) $(SRCS) $(LDFLAGS) -o $@
 ```
 
-### 8.3 Keil / IAR 导入指南 (`PROJECT_SOURCES.md`)
+**core_sensor / full_system** 在此基础上追加 `bm_event.c`、`bm_mempool.c` 等（详见 `PROJECT_SOURCES.md`）。
 
-每个示例的 `PROJECT_SOURCES.md` 明确列出：
+### 8.3 GCC/QEMU 路径导入指南 (`PROJECT_SOURCES.md`)
+
+每个示例的 `PROJECT_SOURCES.md` 面向 **GCC + QEMU** 场景（Keil/IAR 真机移植细节见 §8.4）：
 
 ```markdown
-## Keil / IAR 手动导入步骤
+## 手动导入步骤（GCC / QEMU）
 
-### 1. 源文件（Project → Add Existing Files）
+### 1. 源文件
 | 文件 | 说明 |
 |------|------|
 | `main.c` | 本示例入口 |
-| `../../src/core/bm_critical.c` | 临界区 |
-| `../../src/core/bm_event.c` | 事件系统 |
-| `../../src/core/bm_mempool.c` | 内存池 |
+| `../../src/core/bm_critical.c` | 临界区（core/full 需要） |
+| `../../src/core/bm_event.c` | 事件系统（core/full 需要） |
+| `../../src/core/bm_mempool.c` | 内存池（core/full 需要） |
+| `../../src/module/bm_module.c` | 模块生命周期（core/full 需要） |
+| `../../src/core/bm_wdg.c` | 看门狗（full 需要） |
 | `../../hal_reference/qemu_cortex_m0/startup_qemu_cm0.s` | 启动文件 |
 | `../../hal_reference/qemu_cortex_m0/bm_hal_uart_qemu.c` | UART HAL |
-| ... | 根据层级递增（详见下方"按层级选择"） |
+| `../../hal_reference/qemu_cortex_m0/bm_hal_timer_qemu.c` | Timer HAL（可选） |
+| `../../hal_reference/qemu_cortex_m0/bm_hal_wdg_qemu.c` | WDG HAL（可选） |
 
-### 2. 头文件路径（C/C++ → Include Paths）
+### 2. 头文件路径
 - `../../include`
 - `.` (本目录，用于 `bm_config.h`)
 
 ### 3. 编译器选项
 - C standard: C99
-- Define: 无（`bm_config.h` 已通过 `-include` 或 `#include` 引入）
+- 其他：`-mcpu=cortex-m0 -mthumb -Os`
 
-### 4. 链接器设置
-- 使用默认分散加载文件，或指定 `../../hal_reference/qemu_cortex_m0/linker.ld`
+### 4. 链接器设置（GCC）
+- 指定 `../../hal_reference/qemu_cortex_m0/linker.ld`
 
 ### 按层级选择源文件
-- **ultra_blink**: 仅需 `bm_ultra.h`（头文件库，无 .c），加 HAL 启动文件。
-- **core_sensor**: 增加 `bm_event.c`, `bm_mempool.c`, `bm_critical.c`, `bm_module.c`。
-- **full_system**: 再增加 `bm_wdg.c`。
+- **ultra_blink**: 仅需 `bm_ultra.h`（头文件库，无 .c），加 `startup_qemu_cm0.s` + `bm_hal_uart_qemu.c`。
+- **core_sensor**: 追加 `bm_critical.c`, `bm_event.c`, `bm_mempool.c`, `bm_module.c`。
+- **full_system**: 再追加 `bm_wdg.c`。
 ```
 
-### 8.4 框架级集成文档
+### 8.4 Keil / IAR 真机移植指南
 
-在框架根目录提供通用指南：
+> **交付物**：当前 `docs/porting/` 仅含 `.gitkeep`，实施阶段需新建以下文档。
 
-- `docs/porting/keil-integration.md`
-  - 如何新建 Keil 工程并添加 zeplod-baremetal
-  - 如何根据 `BM_ENABLE_MODULE` / `BM_ENABLE_WDG` 等开关增减源文件
-  - `bm_config.h` 的放置建议（工程根目录，优先于框架默认配置）
+**`docs/porting/keil-integration.md`**：
+- 如何新建 Keil 工程并添加 zeplod-baremetal
+- 如何根据 `BM_ENABLE_MODULE` / `BM_ENABLE_WDG` 等开关增减源文件
+- `bm_config.h` 的放置建议（工程根目录，优先于框架默认配置）
+- **链接器差异**：Keil 使用 `.sct` (Scatter) 文件，而非 GCC 的 `.ld`。如需精确控制内存布局，需将 `linker.ld` 的 `MEMORY/SECTIONS` 语义手工转为 `.sct`，或直接使用 Keil 默认分散加载并调整 RAM/FLASH 范围。
 
-- `docs/porting/iar-integration.md`
-  - 与 Keil 指南结构对称，针对 IAR 的选项做说明（如 `--c99`, 链接器配置 `.icf` vs `.ld`）
+**`docs/porting/iar-integration.md`**：
+- 与 Keil 指南结构对称
+- **链接器差异**：IAR 使用 `.icf` 文件，语法与 GCC `.ld` 不同。建议先使用 IAR 默认 linker configuration，再按需调整 RAM/FLASH 范围。
+- 编译器选项备注：`--c99` 或 `-e`（取决于 IAR 版本）
 
 ### 8.5 辅助脚本 `tools/list_sources.py`
 
 功能：根据当前 CMake 配置开关，自动生成源文件清单。
+
+**配置开关 → 示例 对照表**：
+
+| 示例 | `--enable-module` | `--enable-wdg` | 生成的源文件 |
+|------|-------------------|----------------|-------------|
+| `ultra_blink` | `OFF` | `OFF` | 仅 HAL + startup |
+| `core_sensor` | `ON` | `OFF` | + `bm_critical.c` `bm_event.c` `bm_mempool.c` `bm_module.c` |
+| `full_system` | `ON` | `ON` | 再 + `bm_wdg.c` |
 
 ```bash
 # 生成适合 Keil 导入的源文件列表
@@ -390,6 +428,8 @@ python tools/list_sources.py --format=keil --enable-module=ON --enable-wdg=ON
 - [x] **Placeholder scan**: 无 TBD/TODO；无 "add appropriate error handling"。
 - [x] **Type consistency**: `bm_event_priority_t` 值越小优先级越高，与框架实现一致。
 - [x] **API 语义一致**: `bm_event_publish_event` 的生命周期由调用方/消费方保证（core_sensor 中 display_mod 负责 free）。
+- [x] **订阅者顺序**: 框架 `bm_event_subscribe()` 为 LIFO 链表插入，无订阅者优先级；spec 中 core_sensor 的模块 priority 分配（display=0, logger=1）确保了 logger 后订阅、先执行。
 - [x] **边界条件**: core_sensor 的 9B 数据明确超过 `publish_copy` 8B 内联上限，强制触发 mempool 路径。
 - [x] **工具链兼容**: 所有示例提供 CMake + Makefile + Keil/IAR 导入指南三种入口。
 - [x] **第三方库定位**: 示例目录结构支持 `cp -r` 后独立使用，不依赖框架根构建系统。
+- [x] **确定性验证**: full_system 的 fault/storm 为计数器触发，非概率随机，CI 可稳定复现。
