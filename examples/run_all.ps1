@@ -26,6 +26,13 @@ try {
         Remove-Job $job
 
         Set-Location $ScriptDir
+
+        # Print captured QEMU output so user can see main() logs
+        Write-Host "--- QEMU output for $ex ---"
+        $output | Select-Object -First 30 | ForEach-Object { Write-Host $_ }
+        if ($output.Count -gt 30) { Write-Host "... (truncated)" }
+        Write-Host "--- end of $ex output ---"
+
         if ($output -match 'EXAMPLE_.*PASS') {
             Write-Host "$ex ... PASS"
         } else {
