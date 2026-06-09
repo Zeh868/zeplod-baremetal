@@ -58,7 +58,7 @@ copywriting/
 
 src/proprietary/
 .claude/
-
+*.err
 build*
 /superpowers/
 review/
