@@ -19,7 +19,7 @@ $(TARGET): $(SRCS)
 	$(CC) $(CFLAGS) $(SRCS) $(LDFLAGS) -o $@
 
 qemu: $(TARGET)
-	qemu-system-arm -machine microbit -cpu cortex-m0 -kernel $(TARGET) -nographic -serial stdio
+	qemu-system-arm -machine microbit -cpu cortex-m0 -kernel $(TARGET) --semihosting -nographic -serial stdio
 
 clean:
 	rm -f $(TARGET)
