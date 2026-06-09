@@ -1,0 +1,8 @@
+#ifndef BM_CONFIG_H
+#define BM_CONFIG_H
+
+#define BM_CONFIG_ULTRA_MAX_EVENT_TYPES     4
+#define BM_CONFIG_ULTRA_QUEUE_DEPTH         8
+#define BM_CONFIG_ULTRA_MAX_EVENT_DATA_SIZE 4
+
+#endif
