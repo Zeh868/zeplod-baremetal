@@ -279,10 +279,117 @@ EXAMPLE_FULL: PASS
 
 ---
 
-## 8. 自检清单
+## 8. 第三方库集成支持（Keil / IAR / Makefile）
+
+框架定位为第三方库，示例本身即是"集成模板"。每个示例必须提供三种构建方式的入口。
+
+### 8.1 目录结构更新
+
+```
+examples/
+├── ultra_blink/
+│   ├── CMakeLists.txt          # 方式1: CMake (主推)
+│   ├── Makefile                # 方式2: 纯 Makefile
+│   ├── PROJECT_SOURCES.md      # 方式3: Keil/IAR 手动导入指南
+│   ├── bm_config.h
+│   └── main.c
+```
+
+`core_sensor/` 与 `full_system/` 结构相同。
+
+### 8.2 Makefile 示例
+
+每个示例的 `Makefile` 复用框架顶层 `Makefile` 逻辑：
+
+```makefile
+# 指向框架根目录（用户拷贝后只需改这一行）
+ZEPLOD_ROOT := $(realpath ../..)
+
+include $(ZEPLOD_ROOT)/Makefile
+
+# 追加本示例的源文件与配置
+BM_SRCS += main.c
+CFLAGS  += -I. -include bm_config.h
+
+TARGET := ultra_blink.elf
+
+all: $(TARGET)
+$(TARGET): $(BM_SRCS)
+	$(CC) $(CFLAGS) $(BM_SRCS) $(LDFLAGS) -o $@
+```
+
+### 8.3 Keil / IAR 导入指南 (`PROJECT_SOURCES.md`)
+
+每个示例的 `PROJECT_SOURCES.md` 明确列出：
+
+```markdown
+## Keil / IAR 手动导入步骤
+
+### 1. 源文件（Project → Add Existing Files）
+| 文件 | 说明 |
+|------|------|
+| `main.c` | 本示例入口 |
+| `../../src/core/bm_critical.c` | 临界区 |
+| `../../src/core/bm_event.c` | 事件系统 |
+| `../../src/core/bm_mempool.c` | 内存池 |
+| `../../hal_reference/qemu_cortex_m0/startup_qemu_cm0.s` | 启动文件 |
+| `../../hal_reference/qemu_cortex_m0/bm_hal_uart_qemu.c` | UART HAL |
+| ... | 根据层级递增（详见下方"按层级选择"） |
+
+### 2. 头文件路径（C/C++ → Include Paths）
+- `../../include`
+- `.` (本目录，用于 `bm_config.h`)
+
+### 3. 编译器选项
+- C standard: C99
+- Define: 无（`bm_config.h` 已通过 `-include` 或 `#include` 引入）
+
+### 4. 链接器设置
+- 使用默认分散加载文件，或指定 `../../hal_reference/qemu_cortex_m0/linker.ld`
+
+### 按层级选择源文件
+- **ultra_blink**: 仅需 `bm_ultra.h`（头文件库，无 .c），加 HAL 启动文件。
+- **core_sensor**: 增加 `bm_event.c`, `bm_mempool.c`, `bm_critical.c`, `bm_module.c`。
+- **full_system**: 再增加 `bm_wdg.c`。
+```
+
+### 8.4 框架级集成文档
+
+在框架根目录提供通用指南：
+
+- `docs/porting/keil-integration.md`
+  - 如何新建 Keil 工程并添加 zeplod-baremetal
+  - 如何根据 `BM_ENABLE_MODULE` / `BM_ENABLE_WDG` 等开关增减源文件
+  - `bm_config.h` 的放置建议（工程根目录，优先于框架默认配置）
+
+- `docs/porting/iar-integration.md`
+  - 与 Keil 指南结构对称，针对 IAR 的选项做说明（如 `--c99`, 链接器配置 `.icf` vs `.ld`）
+
+### 8.5 辅助脚本 `tools/list_sources.py`
+
+功能：根据当前 CMake 配置开关，自动生成源文件清单。
+
+```bash
+# 生成适合 Keil 导入的源文件列表
+python tools/list_sources.py --format=keil --enable-module=ON --enable-wdg=ON
+
+# 输出示例:
+# ../../src/core/bm_critical.c
+# ../../src/core/bm_event.c
+# ../../src/core/bm_mempool.c
+# ../../src/module/bm_module.c
+# ../../src/core/bm_wdg.c
+```
+
+支持格式：`keil`（相对路径列表）、`iar`、`makefile`（变量赋值形式）。
+
+---
+
+## 9. 自检清单
 
 - [x] **Placeholder scan**: 无 TBD/TODO；无 "add appropriate error handling"。
 - [x] **Type consistency**: `bm_event_priority_t` 值越小优先级越高，与框架实现一致。
 - [x] **API 语义一致**: `bm_event_publish_event` 的生命周期由调用方/消费方保证（core_sensor 中 display_mod 负责 free）。
 - [x] **边界条件**: core_sensor 的 9B 数据明确超过 `publish_copy` 8B 内联上限，强制触发 mempool 路径。
-- [x] **工具链兼容**: 所有示例使用同一套 `qemu_cortex_m0` HAL，避免重复实现。
+- [x] **工具链兼容**: 所有示例提供 CMake + Makefile + Keil/IAR 导入指南三种入口。
+- [x] **第三方库定位**: 示例目录结构支持 `cp -r` 后独立使用，不依赖框架根构建系统。
