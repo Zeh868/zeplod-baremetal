@@ -14,9 +14,6 @@ typedef struct {
 
 BM_MEMPOOL_DEFINE(sensor_pool, sensor_data_t, 4);
 
-/* CMSIS SystemInit stub required by startup assembly */
-void SystemInit(void) {}
-
 static int sensor_init(void) {
     const char *msg = "[mod] sensor_mod init ok\n";
     bm_hal_uart_send((const uint8_t *)msg, strlen(msg));

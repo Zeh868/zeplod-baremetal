@@ -7,6 +7,7 @@ LDFLAGS := -T$(ZEPLOD_ROOT)/hal_reference/qemu_cortex_m0/linker.ld -nostartfiles
 
 SRCS := main.c \
         $(ZEPLOD_ROOT)/hal_reference/qemu_cortex_m0/startup_qemu_cm0.s \
+        $(ZEPLOD_ROOT)/hal_reference/qemu_cortex_m0/crt0_qemu.c \
         $(ZEPLOD_ROOT)/hal_reference/qemu_cortex_m0/bm_hal_uart_qemu.c
 
 TARGET := ultra_blink.elf

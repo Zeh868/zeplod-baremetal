@@ -48,6 +48,7 @@ add_executable(qemu_smoke_cm0.elf
     test_qemu_smoke.c
     ${BM_CORE_SRCS}
     ${QEMU_CM0_HAL_SRCS}
+    ${BM_ROOT}/hal_reference/qemu_cortex_m0/crt0_qemu.c
 )
 
 target_link_options(qemu_smoke_cm0.elf PRIVATE
