@@ -1,5 +1,8 @@
 #include "bm_hal_timer.h"
 
+/* CMSIS SystemInit stub required by startup assembly */
+void SystemInit(void) {}
+
 #define SYSTICK_BASE  0xE000E010
 #define SYSTICK_CTRL  (*(volatile uint32_t *)(SYSTICK_BASE + 0x00))
 #define SYSTICK_LOAD  (*(volatile uint32_t *)(SYSTICK_BASE + 0x04))

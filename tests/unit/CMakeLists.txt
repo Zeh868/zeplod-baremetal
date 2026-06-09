@@ -16,3 +16,11 @@ bm_add_test(test_event test_event.c)
 if(BM_ENABLE_MODULE)
     bm_add_test(test_module test_module.c)
 endif()
+
+if(BM_ENABLE_CHANNEL)
+    bm_add_test(test_channel test_channel.c)
+endif()
+
+if(BM_ENABLE_SHELL)
+    bm_add_test(test_shell test_shell.c)
+endif()

@@ -29,16 +29,30 @@ EXPECTED_APIS = {
     "bm_wdg_register": "int bm_wdg_register(const char *name)",
     "bm_wdg_feed": "void bm_wdg_feed(void)",
     "bm_wdg_feed_module": "void bm_wdg_feed_module(const char *name)",
+    # Channel (M8)
+    "bm_channel_reset": "void bm_channel_reset(bm_channel_t *ch)",
+    "bm_channel_send": "int bm_channel_send(bm_channel_t *ch, const void *data)",
+    "bm_channel_recv": "int bm_channel_recv(bm_channel_t *ch, void *data)",
+    "bm_channel_count": "uint32_t bm_channel_count(const bm_channel_t *ch)",
+    # Shell (M9)
+    "bm_shell_init": "void bm_shell_init(bm_shell_t *shell)",
+    "bm_shell_register": "int bm_shell_register(bm_shell_t *shell, const char *name, bm_shell_cmd_fn_t fn, const char *help)",
+    "bm_shell_feed": "void bm_shell_feed(bm_shell_t *shell, char c)",
+    "bm_shell_poll": "void bm_shell_poll(bm_shell_t *shell)",
+    "bm_shell_exec": "int bm_shell_exec(bm_shell_t *shell, char *line)",
+    "bm_shell_puts": "void bm_shell_puts(const char *s)",
 }
+
 
 def extract_apis(header_dir):
     apis = {}
     for hdr in Path(header_dir).glob("*.h"):
-        text = hdr.read_text()
+        text = hdr.read_text(encoding="utf-8")
         for name, expected in EXPECTED_APIS.items():
             if name in text:
                 apis[name] = expected
     return apis
+
 
 def main():
     found = extract_apis("include")
@@ -46,9 +60,11 @@ def main():
     extra = set(found.keys()) - set(EXPECTED_APIS.keys())
 
     ok = True
+    print("Baremetal API Alignment Check")
+    print("=" * 40)
     for name in sorted(EXPECTED_APIS.keys()):
-        status = "✅" if name in found else "❌ MISSING"
-        print(f"{status} {name}")
+        status = "OK  " if name in found else "MISS"
+        print(f"  [{status}] {name}")
         if name not in found:
             ok = False
 
@@ -62,7 +78,14 @@ def main():
         for e in sorted(extra):
             print(f"  - {e}")
 
+    print()
+    if ok:
+        print("All expected APIs present.")
+    else:
+        print(f"FAIL: {len(missing)} API(s) missing.")
+
     sys.exit(0 if ok else 1)
+
 
 if __name__ == "__main__":
     main()

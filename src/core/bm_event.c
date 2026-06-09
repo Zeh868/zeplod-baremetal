@@ -32,7 +32,7 @@ typedef struct {
 
 typedef struct {
     bm_event_t  event;
-    uint8_t     inline_data[8]; /* publish_copy ≤8B inline */
+    uint8_t     inline_data[8]; /* publish_copy <=8B inline */
 } bm_queue_item_t;
 
 static bm_event_type_slot_t _event_types[BM_CONFIG_MAX_EVENT_TYPES];
@@ -171,6 +171,11 @@ int bm_event_publish_event(const bm_event_t *event) {
     _queue_write = next;
     bm_hal_critical_exit(s);
     return BM_OK;
+}
+
+int bm_event_publish_event_from_isr(const bm_event_t *event) {
+    /* 裸机单核下，critical section 关中断即可保证 ISR 安全 */
+    return bm_event_publish_event(event);
 }
 
 static int _queue_pop_highest_prio(bm_event_t *out) {

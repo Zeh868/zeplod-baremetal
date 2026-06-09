@@ -29,6 +29,14 @@ if(BM_ENABLE_MODULE AND EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/src/module/bm_module.
     list(APPEND BM_CORE_SRCS src/module/bm_module.c)
 endif()
 
+if(BM_ENABLE_CHANNEL AND EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/src/channel/bm_channel.c)
+    list(APPEND BM_CORE_SRCS src/channel/bm_channel.c)
+endif()
+
+if(BM_ENABLE_SHELL AND EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/src/shell/bm_shell.c)
+    list(APPEND BM_CORE_SRCS src/shell/bm_shell.c)
+endif()
+
 add_library(bm_core STATIC ${BM_CORE_SRCS})
 target_include_directories(bm_core PUBLIC ${CMAKE_SOURCE_DIR}/include)
 
