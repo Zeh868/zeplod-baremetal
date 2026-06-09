@@ -28,6 +28,9 @@ BM_ULTRA_CALLBACK_TABLE_DEFINE(
     BM_ULTRA_CB(EVENT_BUTTON_PRESS, on_button)
 );
 
+/* CMSIS SystemInit stub required by startup assembly */
+void SystemInit(void) {}
+
 static void delay_cycles(uint32_t n) {
     for (volatile uint32_t i = 0; i < n; i++) {}
 }
