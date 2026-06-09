@@ -60,7 +60,7 @@ src/proprietary/
 .claude/
 
 build*
-superpowers/
+/superpowers/
 review/
 docs/zh-CN/90-学习资源/
 Testing/
