@@ -34,7 +34,7 @@ typedef void (*bm_ultra_callback_t)(const void *data, uint8_t len);
  *   };
  */
 #define BM_ULTRA_CALLBACK_TABLE_DEFINE(...) \
-    static const bm_ultra_callback_t _bm_ultra_callbacks[BM_CONFIG_ULTRA_MAX_EVENT_TYPES] = { __VA_ARGS__ }
+    const bm_ultra_callback_t _bm_ultra_callbacks[BM_CONFIG_ULTRA_MAX_EVENT_TYPES] = { __VA_ARGS__ }
 
 #define BM_ULTRA_CB(event_type, callback) \
     [event_type] = callback
