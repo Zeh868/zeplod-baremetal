@@ -58,7 +58,7 @@ set(ZEPLOD_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../.."
 
 后续所有框架路径均通过 `${ZEPLOD_ROOT}` 引用：
 - 头文件：`${ZEPLOD_ROOT}/include`
-- 核心源文件：`${ZEPLOD_ROOT}/src/core/bm_*.c`
+- 核心源文件：`${ZEPLOD_ROOT}/src/core/bm_*.c`（按层级选择，详见 §8.3）
 - 模块源文件：`${ZEPLOD_ROOT}/src/module/bm_module.c`
 - HAL 启动文件：`${ZEPLOD_ROOT}/hal_reference/qemu_cortex_m0/startup_qemu_cm0.s`
 - 链接脚本：`${ZEPLOD_ROOT}/hal_reference/qemu_cortex_m0/linker.ld`
@@ -203,30 +203,35 @@ EXAMPLE_CORE: PASS
 ## 6. Example 3: full_system
 
 ### 6.1 目标
-覆盖除 bm-ultra 外的全部核心 API：模块错误处理、看门狗、多优先级事件风暴。
+覆盖 bm-core 全部核心 API：模块错误处理、看门狗、多优先级事件风暴。
 
 ### 6.2 业务逻辑
 - **模块划分**:
   | 模块 | 优先级 | init | start | stop | deinit | 特殊行为 |
   |------|--------|------|-------|------|--------|----------|
-  | `sensor_mod` | 2 | ✅ | ✅ (20% 失败率) | ✅ | ✅ | 偶发 `BM_ERR_BUSY` |
-  | `comm_mod` | 1 | ✅ | ✅ | ✅ | ✅ | 发布 `EVENT_COMM_READY` (prio 0) |
-  | `display_mod` | 3 | ✅ | ✅ | — | — | 订阅 EVENT_TEMP |
-  | `fault_mod` | 0 | ✅ | ✅ | — | — | 订阅 EVENT_SENSOR_FAULT |
+  | `fault_mod` | 0 | ✅ | ✅ | — | — | 订阅 `EVENT_SENSOR_FAULT` |
+  | `comm_mod` | 1 | ✅ | ✅ | ✅ | ✅ | 订阅 `EVENT_TEMP`（不读取数据，仅触发发送） |
+  | `sensor_mod` | 2 | ✅ | ✅ (首次失败，重试成功) | ✅ | ✅ | 发布 `EVENT_TEMP`（mempool） |
+  | `display_mod` | 3 | ✅ | ✅ | — | — | 订阅 `EVENT_TEMP`（读取数据并 `mempool_free`） |
 
 - **数据流**:
   1. `sensor_mod` 正常发布 `EVENT_TEMP`（同 core_sensor，使用 mempool）。
   2. **错误注入**（`#define ENABLE_FAULT_TEST 1`）:
-     - `sensor_mod.start()` 首次调用返回 `BM_ERR_BUSY`，重试后成功（确定性，便于 CI 验证错误处理路径）。
+     - `sensor_mod.start()` 首次调用返回 `BM_ERR_BUSY`。
+     - `main()` 检测到 `bm_module_start_all()` 返回错误后，对 `sensor_mod` 单独调用 `sensor_mod.start()` 重试，第二次成功。
      - 运行中，第 5 个 sensor 周期触发一次 `EVENT_SENSOR_FAULT`（优先级 `0`）。
      - `fault_mod` 订阅该事件，打印 `FAULT: sensor error, code=X`。
-  3. `comm_mod` 订阅 `EVENT_TEMP`，发送前发布 `EVENT_COMM_READY`（优先级 `0`）。
+  3. `comm_mod` 与 `display_mod` 均订阅 `EVENT_TEMP`：
+     - init 顺序升序：`comm_mod(1)` 先 init 并订阅 → `display_mod(3)` 后 init 并订阅。
+     - LIFO 执行：`display_mod` 后订阅、**先执行**，读取 `ev->data` 打印温度，然后 `bm_mempool_free(&sensor_pool, ev->data)`。
+     - `comm_mod` **后执行**，仅触发发送流程（不访问 `ev->data`，因为此时可能已被 display_mod free）。
+     - `comm_mod` 发送前发布 `EVENT_COMM_READY`（优先级 `0`）。
   4. **看门狗**:
      - `main()` 中注册 3 个模块：`bm_wdg_register("sensor")`, `bm_wdg_register("comm")`, `bm_wdg_register("display")`。
      - 主循环中每个模块喂自己：`bm_wdg_feed_module("sensor")` 等。
      - 最后 `bm_wdg_feed()` 喂硬件狗。
   5. **事件风暴**（`#define ENABLE_STORM_TEST 1`）:
-     - 主循环一次性发布 5 个事件，优先级分别为 `0, 1, 2, 3, 1`。
+     - 主循环一次性发布 5 个**不同事件类型**的事件，优先级分别为 `0, 1, 2, 3, 1`。
      - 验证 `_queue_pop_highest_prio` 出队顺序严格为 `0, 1, 1, 2, 3`。
      - 输出 `STORM: order OK`。
 
@@ -247,10 +252,10 @@ EXAMPLE_CORE: PASS
 
 ```
 Zeplod Example: full_system
-[mod] sensor_mod init ok
-[mod] comm_mod init ok
-[mod] display_mod init ok
 [mod] fault_mod init ok
+[mod] comm_mod init ok
+[mod] sensor_mod init ok
+[mod] display_mod init ok
 [WARN] sensor_mod start failed, rc=-5
 [mod] retry sensor_mod start ok
 [mod] all modules started
@@ -276,13 +281,14 @@ EXAMPLE_FULL: PASS
    cd examples/ultra_blink
    cmake -B build -DCMAKE_TOOLCHAIN_FILE=../../cmake/toolchain-arm-none-eabi.cmake .
    cmake --build build
-   qemu-system-arm -M microbit -kernel build/ultra_blink.elf -nographic
+   qemu-system-arm -machine microbit -cpu cortex-m0 -kernel build/ultra_blink.elf -nographic -serial stdio
    ```
 4. 预期输出片段（与上文验证输出一致）。
 5. "如何拷贝示例到自己的项目"说明（修改 `ZEPLOD_ROOT`）。
 
-### 7.2 `examples/run_all.sh`
-功能：
+### 7.2 `examples/run_all.sh` / `run_all.bat`
+
+**`run_all.sh`**（POSIX）：
 1. 遍历 `ultra_blink`, `core_sensor`, `full_system`。
 2. 对每个示例执行 cmake 构建。
 3. QEMU 运行，通过 `timeout` 等待 `EXAMPLE_.*: PASS` 魔法字符串出现（超时 10s）。
@@ -293,6 +299,9 @@ EXAMPLE_FULL: PASS
    full_system  ... PASS
    All examples passed.
    ```
+
+**`run_all.bat`**（Windows）：
+功能与 `run_all.sh` 对称，使用 `timeout /t` 和 `findstr` 替代 `timeout` 和 `grep`。
 
 ---
 
@@ -430,6 +439,7 @@ python tools/list_sources.py --format=keil --enable-module=ON --enable-wdg=ON
 - [x] **API 语义一致**: `bm_event_publish_event` 的生命周期由调用方/消费方保证（core_sensor 中 display_mod 负责 free）。
 - [x] **订阅者顺序**: 框架 `bm_event_subscribe()` 为 LIFO 链表插入，无订阅者优先级；spec 中 core_sensor 的模块 priority 分配（display=0, logger=1）确保了 logger 后订阅、先执行。
 - [x] **边界条件**: core_sensor 的 9B 数据明确超过 `publish_copy` 8B 内联上限，强制触发 mempool 路径。
+- [x] **多订阅者 mempool 责任**: full_system 中 display_mod 后订阅、先执行，负责读取并 `mempool_free`；comm_mod 后执行，不访问 `ev->data`。
 - [x] **工具链兼容**: 所有示例提供 CMake + Makefile + Keil/IAR 导入指南三种入口。
 - [x] **第三方库定位**: 示例目录结构支持 `cp -r` 后独立使用，不依赖框架根构建系统。
 - [x] **确定性验证**: full_system 的 fault/storm 为计数器触发，非概率随机，CI 可稳定复现。
