@@ -12,6 +12,7 @@ int bm_hal_timer_init(uint32_t freq_hz) {
 
 void bm_hal_timer_stop(void) {
     _tick_cb = NULL;
+    _ticks = 0u;
 }
 
 uint32_t bm_hal_timer_get_ticks(void) { return _ticks; }

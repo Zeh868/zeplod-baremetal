@@ -62,11 +62,31 @@ void test_resource_coordinated_shared(void) {
                       bm_resource_check_conflicts(claims, counts, 2u));
 }
 
+void test_resource_shared_read_vs_coordinated_conflict(void) {
+    static const bm_resource_claim_t read_claim[] = {
+        { BM_RESOURCE_TIMER, 9u, BM_RESOURCE_SHARED_READ, 3u, "read" },
+    };
+    static const bm_resource_claim_t owner_claim[] = {
+        { BM_RESOURCE_TIMER, 9u, BM_RESOURCE_OWNER, 3u, "owner" },
+    };
+    static const bm_resource_claim_t coord_claim[] = {
+        { BM_RESOURCE_TIMER, 9u, BM_RESOURCE_SHARED_COORDINATED, 4u, "coord" },
+    };
+    const bm_resource_claim_t *claims[] = {
+        owner_claim, read_claim, coord_claim
+    };
+    uint32_t counts[] = { 1u, 1u, 1u };
+
+    TEST_ASSERT_EQUAL(BM_ERR_BUSY,
+                      bm_resource_check_conflicts(claims, counts, 3u));
+}
+
 int main(void) {
     UNITY_BEGIN();
     RUN_TEST(test_resource_exclusive_conflict);
     RUN_TEST(test_resource_owner_reader_allowed);
     RUN_TEST(test_resource_reader_without_owner_fails);
     RUN_TEST(test_resource_coordinated_shared);
+    RUN_TEST(test_resource_shared_read_vs_coordinated_conflict);
     return UNITY_END();
 }

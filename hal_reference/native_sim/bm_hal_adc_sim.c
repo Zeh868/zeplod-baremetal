@@ -1,6 +1,6 @@
 #include "bm_hal_adc.h"
 
-#define BM_SIM_ADC_RANKS      4u
+#define BM_SIM_ADC_RANKS      16u
 #define BM_SIM_ADC_INSTANCES  2u
 
 struct bm_hal_adc {

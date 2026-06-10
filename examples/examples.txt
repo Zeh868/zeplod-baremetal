@@ -2,3 +2,7 @@ ultra_blink
 core_sensor
 full_system
 interrupt_demo
+hrt_servo_stub
+hrt_bms_coulomb
+multi_axis_sync
+multi_channel_bms

@@ -42,17 +42,17 @@ static void hrt_dispatch(void) {
         if (slot->pub.trigger != BM_HRT_TRIGGER_TIMER) {
             continue;
         }
-        if ((int32_t)(now - slot->next_tick) < 0) {
-            continue;
-        }
-        if ((uint32_t)(now - slot->next_tick) >= slot->period_ticks) {
-            bm_hrt_deadline_missed_hook(&slot->pub);
-            slot->next_tick = now + slot->period_ticks;
-        } else {
-            slot->next_tick += slot->period_ticks;
+        while (slot->period_ticks > 0u &&
+               (int32_t)(now - slot->next_tick) >= 0) {
+            if ((uint32_t)(now - slot->next_tick) >= slot->period_ticks) {
+                bm_hrt_deadline_missed_hook(&slot->pub);
+                slot->next_tick = now + slot->period_ticks;
+                break;
+            }
             if (slot->pub.callback) {
                 slot->pub.callback(slot->pub.context);
             }
+            slot->next_tick += slot->period_ticks;
         }
     }
 }
@@ -70,6 +70,9 @@ static int validate_slot(const bm_hrt_slot_t *slot) {
     }
     if (slot->period_us == 0u ||
         (slot->period_us % BM_CONFIG_HRT_TICK_US) != 0u) {
+        return BM_ERR_INVALID;
+    }
+    if ((slot->period_us / BM_CONFIG_HRT_TICK_US) == 0u) {
         return BM_ERR_INVALID;
     }
     return BM_OK;
@@ -107,17 +110,25 @@ int bm_hrt_init(const bm_hrt_slot_t *slots, uint32_t slot_count) {
 }
 
 int bm_hrt_start(void) {
-    if (g_slot_count == 0u) {
-        return BM_ERR_NOT_INIT;
-    }
     if (g_started) {
         return BM_ERR_ALREADY;
     }
+    if (g_slot_count == 0u) {
+        return BM_OK;
+    }
 
-    bm_hal_timer_set_callback(hrt_timer_isr);
     if (bm_hal_timer_init(hrt_tick_hz()) != 0) {
-        bm_hal_timer_set_callback(NULL);
         return BM_ERR_INVALID;
+    }
+    bm_hal_timer_set_callback(hrt_timer_isr);
+
+    {
+        uint32_t now = bm_hal_timer_get_ticks();
+        uint32_t i;
+
+        for (i = 0u; i < g_slot_count; ++i) {
+            g_slots[i].next_tick = now + g_slots[i].period_ticks;
+        }
     }
 
     g_started = 1;

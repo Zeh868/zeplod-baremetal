@@ -1,0 +1,83 @@
+name: CI
+
+on:
+  push:
+    branches: [main, feature/**]
+  pull_request:
+
+jobs:
+  unit-default:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure default build
+        run: cmake -B build -DBM_ENABLE_CHANNEL=ON
+      - name: Build
+        run: cmake --build build --config Debug
+      - name: Test
+        run: ctest --test-dir build -C Debug --output-on-failure
+
+  unit-hybrid:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure hybrid build
+        run: >
+          cmake -B build-hybrid
+          -DBM_ENABLE_CHANNEL=ON
+          -DBM_ENABLE_HRT=ON
+          -DBM_ENABLE_TICKER=ON
+          -DBM_ENABLE_CTRL_INST=ON
+          -DBM_ENABLE_SYNC=ON
+      - name: Build
+        run: cmake --build build-hybrid --config Debug
+      - name: Test
+        run: ctest --test-dir build-hybrid -C Debug --output-on-failure
+
+  cmake-matrix:
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - args: "-DBM_ENABLE_HRT=ON"
+          - args: "-DBM_ENABLE_TICKER=ON"
+          - args: "-DBM_ENABLE_HRT=ON -DBM_ENABLE_TICKER=ON -DBM_ENABLE_CTRL_INST=ON"
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure
+        run: cmake -B build-matrix ${{ matrix.args }}
+      - name: Build
+        run: cmake --build build-matrix --config Debug
+
+  cmake-invalid:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Expect configure failure
+        shell: pwsh
+        run: |
+          cmake -B build-bad -DBM_ENABLE_CTRL_INST=ON -DBM_ENABLE_HRT=OFF
+          if ($LASTEXITCODE -eq 0) { exit 1 }
+
+  native-examples:
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        example:
+          - hrt_servo_stub
+          - hrt_bms_coulomb
+          - multi_axis_sync
+          - multi_channel_bms
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and run native_sim example
+        shell: pwsh
+        run: |
+          cmake -S examples/${{ matrix.example }} -B build-ex/${{ matrix.example }} -DNATIVE_SIM_BUILD=ON
+          cmake --build build-ex/${{ matrix.example }} --config Debug
+          $exe = Get-ChildItem -Path build-ex/${{ matrix.example }} -Recurse -Filter "${{ matrix.example }}.exe" | Select-Object -First 1
+          $out = & $exe.FullName 2>&1 | Out-String
+          Write-Host $out
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if ($out -notmatch ': PASS') { Write-Error 'Example did not report PASS'; exit 1 }

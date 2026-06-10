@@ -24,7 +24,7 @@ typedef struct {
     const bm_ctrl_slot_t *slot;
 } bm_ctrl_binding_t;
 
-static bm_ctrl_inst_t const *g_instances[BM_CONFIG_MAX_CTRL_INSTANCES];
+static const bm_ctrl_inst_t *g_instances[BM_CONFIG_MAX_CTRL_INSTANCES];
 static uint32_t g_instance_count;
 static bm_ctrl_binding_t g_bindings[BM_CONFIG_MAX_CTRL_SLOTS];
 static uint32_t g_binding_count;
@@ -38,7 +38,12 @@ static void bm_ctrl_run_binding(void *context) {
 }
 
 static void ctrl_clear_runtime(void) {
-    memset(g_instances, 0, sizeof(g_instances));
+    {
+        uint32_t n;
+        for (n = 0u; n < BM_CONFIG_MAX_CTRL_INSTANCES; ++n) {
+            g_instances[n] = NULL;
+        }
+    }
     g_instance_count = 0u;
     memset(g_bindings, 0, sizeof(g_bindings));
     g_binding_count = 0u;
@@ -75,7 +80,13 @@ static void ctrl_rollback_inits(void) {
 static int validate_instance(const bm_ctrl_inst_t *inst) {
     uint32_t s;
 
-    if (!inst || !inst->ops || !inst->slots || inst->slot_count == 0u) {
+    if (!inst || !inst->ops) {
+        return BM_ERR_INVALID;
+    }
+    if (inst->slot_count > 0u && !inst->slots) {
+        return BM_ERR_INVALID;
+    }
+    if (inst->slot_count == 0u && inst->slots != NULL) {
         return BM_ERR_INVALID;
     }
     if (!inst->ops->init || !inst->ops->start || !inst->ops->safe_stop) {
@@ -282,6 +293,10 @@ int bm_ctrl_start_all(const bm_ctrl_inst_t *const *instances, uint32_t count) {
         }
         rc = instances[i]->ops->start(instances[i]);
         if (rc != BM_OK) {
+            while (i > 0u) {
+                --i;
+                instances[i]->ops->safe_stop(instances[i]);
+            }
             return rc;
         }
     }

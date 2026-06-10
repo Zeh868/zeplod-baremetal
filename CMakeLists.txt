@@ -12,6 +12,8 @@ option(BM_ENABLE_HRT "Enable bm-hrt" OFF)
 option(BM_ENABLE_TICKER "Enable bm-ticker" OFF)
 option(BM_ENABLE_CTRL_INST "Enable multi-instance control layer" OFF)
 option(BM_ENABLE_SYNC "Enable sync domain" OFF)
+option(BM_SYNC_HAL_NATIVE "Link native_sim sync HAL into bm_ctrl_inst" OFF)
+option(BM_SYNC_HAL_QEMU "Link QEMU sync HAL into bm_ctrl_inst" OFF)
 option(BM_BUILD_TESTS "Build unit tests" ON)
 
 if(BM_ENABLE_CTRL_INST AND NOT BM_ENABLE_HRT)
@@ -98,10 +100,16 @@ if(BM_ENABLE_CTRL_INST)
     add_library(bm_ctrl_inst STATIC src/ctrl/bm_ctrl_inst.c)
     target_link_libraries(bm_ctrl_inst PUBLIC bm_hrt bm_core bm_resource)
     if(BM_ENABLE_SYNC)
-        target_sources(bm_ctrl_inst PRIVATE
-            src/ctrl/bm_sync.c
-            hal_reference/native_sim/bm_sync_hal_native.c
-        )
+        target_sources(bm_ctrl_inst PRIVATE src/ctrl/bm_sync.c)
+        if(BM_SYNC_HAL_NATIVE OR BM_BUILD_TESTS)
+            target_sources(bm_ctrl_inst PRIVATE
+                hal_reference/native_sim/bm_sync_hal_native.c)
+        elseif(BM_SYNC_HAL_QEMU)
+            target_sources(bm_ctrl_inst PRIVATE
+                hal_reference/qemu_cortex_m0/bm_sync_hal_qemu.c)
+        else()
+            target_sources(bm_ctrl_inst PRIVATE src/ctrl/bm_sync_hal_stub.c)
+        endif()
     endif()
     target_link_libraries(bm_framework INTERFACE bm_ctrl_inst)
 endif()

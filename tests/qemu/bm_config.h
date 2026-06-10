@@ -1,0 +1,14 @@
+#ifndef BM_CONFIG_H
+#define BM_CONFIG_H
+
+#define BM_CONFIG_MAX_EVENT_TYPES           16
+#define BM_CONFIG_MAX_EVENT_SUBSCRIBERS     16
+#define BM_CONFIG_EVENT_QUEUE_SIZE          16
+#define BM_CONFIG_EVENT_PRIORITIES          4
+#define BM_CONFIG_EVENT_INLINE_DATA_SIZE     8
+
+#define BM_CONFIG_ENABLE_PRIORITY_MASK      0
+#define BM_CONFIG_HRT_TICK_US               1000
+#define BM_CONFIG_HRT_MAX_SLOTS             4
+
+#endif /* BM_CONFIG_H */

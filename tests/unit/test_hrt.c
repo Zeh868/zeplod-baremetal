@@ -75,11 +75,27 @@ void test_hrt_stop_clears_callback(void) {
     TEST_ASSERT_EQUAL(0u, g_slot_a);
 }
 
+void test_hrt_start_ok_with_no_timer_slots(void) {
+    TEST_ASSERT_EQUAL(BM_OK, bm_hrt_start());
+    bm_hrt_stop();
+}
+
+void test_hrt_rejects_slot_overflow(void) {
+    static const bm_hrt_slot_t slot = {
+        1000u, BM_HRT_TRIGGER_TIMER, slot_a_cb, NULL, "a"
+    };
+
+    TEST_ASSERT_EQUAL(BM_ERR_OVERFLOW,
+                      bm_hrt_init(&slot, BM_CONFIG_HRT_MAX_SLOTS + 1u));
+}
+
 int main(void) {
     UNITY_BEGIN();
     RUN_TEST(test_hrt_schedules_multiple_slots);
     RUN_TEST(test_hrt_deadline_miss);
     RUN_TEST(test_hrt_rejects_invalid_period);
     RUN_TEST(test_hrt_stop_clears_callback);
+    RUN_TEST(test_hrt_start_ok_with_no_timer_slots);
+    RUN_TEST(test_hrt_rejects_slot_overflow);
     return UNITY_END();
 }

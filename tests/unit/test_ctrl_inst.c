@@ -115,6 +115,16 @@ void test_ctrl_hardware_bind_fires_step(void) {
     bm_ctrl_safe_stop_all(instances, 1u);
 }
 
+void test_ctrl_hardware_only_hrt_start_ok(void) {
+    const bm_ctrl_inst_t *const instances[] = { &hw_inst };
+
+    TEST_ASSERT_EQUAL(BM_OK, bm_ctrl_init_all(instances, 1u));
+    TEST_ASSERT_EQUAL(BM_OK, bm_hrt_start());
+    bm_hal_adc_sim_fire_complete(&BM_HAL_ADC_SIM0);
+    TEST_ASSERT_EQUAL(1u, g_hw_step_count);
+    bm_ctrl_safe_stop_all(instances, 1u);
+}
+
 void test_ctrl_find_instance(void) {
     const bm_ctrl_inst_t *const instances[] = { &sched_inst, &hw_inst };
 
@@ -126,6 +136,7 @@ int main(void) {
     UNITY_BEGIN();
     RUN_TEST(test_ctrl_init_and_scheduled_slot);
     RUN_TEST(test_ctrl_hardware_bind_fires_step);
+    RUN_TEST(test_ctrl_hardware_only_hrt_start_ok);
     RUN_TEST(test_ctrl_find_instance);
     return UNITY_END();
 }

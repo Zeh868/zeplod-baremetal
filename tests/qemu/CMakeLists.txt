@@ -24,6 +24,7 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 # Source root (two levels up from tests/qemu/)
 set(BM_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/../..)
 
+include_directories(BEFORE ${CMAKE_CURRENT_SOURCE_DIR})
 include_directories(${BM_ROOT}/include)
 
 # Core library sources
@@ -40,8 +41,13 @@ set(BM_CORE_SRCS
 set(QEMU_CM0_HAL_SRCS
     ${BM_ROOT}/hal_reference/qemu_cortex_m0/bm_hal_uart_qemu.c
     ${BM_ROOT}/hal_reference/qemu_cortex_m0/bm_hal_timer_qemu.c
+    ${BM_ROOT}/hal_reference/qemu_cortex_m0/bm_hal_critical_qemu.c
     ${BM_ROOT}/hal_reference/qemu_cortex_m0/bm_hal_wdg_qemu.c
     ${BM_ROOT}/hal_reference/qemu_cortex_m0/startup_qemu_cm0.s
+)
+
+set(BM_HYBRID_SRCS
+    ${BM_ROOT}/src/hrt/bm_hrt.c
 )
 
 add_executable(qemu_smoke_cm0.elf
@@ -51,7 +57,21 @@ add_executable(qemu_smoke_cm0.elf
     ${BM_ROOT}/hal_reference/qemu_cortex_m0/crt0_qemu.c
 )
 
+add_executable(qemu_hybrid_smoke_cm0.elf
+    test_hybrid_smoke.c
+    ${BM_CORE_SRCS}
+    ${BM_HYBRID_SRCS}
+    ${QEMU_CM0_HAL_SRCS}
+    ${BM_ROOT}/hal_reference/qemu_cortex_m0/crt0_qemu.c
+)
+
 target_link_options(qemu_smoke_cm0.elf PRIVATE
+    -T${BM_ROOT}/hal_reference/qemu_cortex_m0/linker.ld
+    -nostartfiles
+    -Wl,--gc-sections
+)
+
+target_link_options(qemu_hybrid_smoke_cm0.elf PRIVATE
     -T${BM_ROOT}/hal_reference/qemu_cortex_m0/linker.ld
     -nostartfiles
     -Wl,--gc-sections
@@ -67,11 +87,23 @@ if(QEMU_ARM)
             -machine microbit
             -cpu cortex-m0
             -kernel $<TARGET_FILE:qemu_smoke_cm0.elf>
-            -nographic
-            -serial stdio
+            --semihosting
+            -display none
         DEPENDS qemu_smoke_cm0.elf
         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
         COMMENT "Running Cortex-M0 smoke test in QEMU"
+    )
+
+    add_custom_target(run-hybrid-smoke-cm0
+        COMMAND ${QEMU_ARM}
+            -machine microbit
+            -cpu cortex-m0
+            -kernel $<TARGET_FILE:qemu_hybrid_smoke_cm0.elf>
+            --semihosting
+            -display none
+        DEPENDS qemu_hybrid_smoke_cm0.elf
+        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+        COMMENT "Running hybrid HRT smoke test in QEMU"
     )
 else()
     message(WARNING "qemu-system-arm not found; run-smoke-cm0 target unavailable")
