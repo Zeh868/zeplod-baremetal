@@ -1,0 +1,11 @@
+#ifndef BM_CONFIG_H
+#define BM_CONFIG_H
+
+#define BM_CONFIG_MAX_EVENT_TYPES           8
+#define BM_CONFIG_MAX_EVENT_SUBSCRIBERS     16
+#define BM_CONFIG_EVENT_QUEUE_SIZE          16
+#define BM_CONFIG_EVENT_PRIORITIES          4
+#define BM_CONFIG_MAX_MODULES               4
+#define BM_CONFIG_MEMPOOL_MAX_POOLS         2
+
+#endif

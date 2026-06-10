@@ -4,7 +4,7 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
-EXAMPLES=(ultra_blink core_sensor full_system)
+EXAMPLES=(ultra_blink core_sensor full_system interrupt_demo)
 FAILED=()
 
 for ex in "${EXAMPLES[@]}"; do
