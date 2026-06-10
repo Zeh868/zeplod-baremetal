@@ -1,53 +1,67 @@
 # Zeplod Baremetal Examples
 
-三个渐进式示例，演示从 `bm-ultra` 到 `bm-core` 全栈的用法。
+这里包含四个逐步扩展的示例：
 
-## 示例关系
+| 示例 | 重点 |
+|---|---|
+| `ultra_blink` | 头文件版 `bm-ultra` 事件队列 |
+| `core_sensor` | 事件、内存池和模块生命周期 |
+| `full_system` | 多模块、事件优先级和看门狗 |
+| `interrupt_demo` | SysTick、外设中断和 ISR 发布事件 |
 
+## 目录约定
+
+```text
+examples/
+  common/                 # 示例共享的轻量输出工具
+  cmake/                  # QEMU 示例的共享 CMake 逻辑
+  examples.txt            # 运行脚本使用的示例清单
+  qemu_example.mk         # 共享 Makefile 规则
+  <example>/
+    main.c                # 只保留应用流程和框架用法
+    bm_config.h           # 该示例的资源配置
+    CMakeLists.txt        # 声明组件和 HAL，避免复制构建细节
 ```
-ultra_blink  →  core_sensor  →  full_system
-(bm-ultra)      (bm-core+module)  (core+module+wdg)
-```
 
-## 前置要求
+平台寄存器代码不应放进 `main.c`。例如 `interrupt_demo` 将 nRF51 TIMER1
+实现隔离在 `interrupt_timer.c`，便于替换为真实目标平台。
+
+## 构建与运行
+
+需要：
 
 - `arm-none-eabi-gcc`
 - `qemu-system-arm`
 - CMake 3.20+
+- Windows: `mingw32-make`; Linux/macOS: `make`
 
-## 构建与运行
+运行全部示例：
 
-### ultra_blink（bm-ultra 最简）
-
-```bash
-cd ultra_blink
-cmake -G "Unix Makefiles" -B build -DCMAKE_TOOLCHAIN_FILE=../../cmake/toolchain-arm-none-eabi.cmake .
-cmake --build build
-qemu-system-arm -machine microbit -cpu cortex-m0 -kernel build/ultra_blink.elf --semihosting -nographic -serial stdio
+```powershell
+.\run_all.ps1
 ```
 
-### core_sensor（事件 + 内存池 + 模块）
-
 ```bash
-cd core_sensor
-cmake -G "Unix Makefiles" -B build -DCMAKE_TOOLCHAIN_FILE=../../cmake/toolchain-arm-none-eabi.cmake .
-cmake --build build
-qemu-system-arm -machine microbit -cpu cortex-m0 -kernel build/core_sensor.elf --semihosting -nographic -serial stdio
+./run_all.sh
 ```
 
-### full_system（全栈）
+运行单个示例：
 
-```bash
-cd full_system
-cmake -G "Unix Makefiles" -B build -DCMAKE_TOOLCHAIN_FILE=../../cmake/toolchain-arm-none-eabi.cmake .
-cmake --build build
-qemu-system-arm -machine microbit -cpu cortex-m0 -kernel build/full_system.elf --semihosting -nographic -serial stdio
+```powershell
+.\run_single.ps1 core_sensor
 ```
 
-## 拷贝到自己的项目
+```bash
+./run_single.sh core_sensor
+```
 
-每个示例目录是自包含的。复制后修改 `CMakeLists.txt` / `Makefile` 中的 `ZEPLOD_ROOT` 路径即可。
+构建产物统一放在 `examples/build/windows/` 或 `examples/build/unix/`。
+每个示例成功后会输出
+`EXAMPLE_...: PASS`。
 
-## 验证输出
+## 设计要点
 
-每个示例最终输出 `EXAMPLE_XXX: PASS`。
+- 异步事件优先使用 `bm_event_publish_copy()`，避免把短生命周期栈指针放入队列。
+- 内存池对象在事件复制完成后由发布方立即释放，订阅者只读数据。
+- 示例共享工具只处理展示性细节，不封装框架 API，以免掩盖核心用法。
+- 硬件移植所需文件见 [PORTING.md](PORTING.md)。

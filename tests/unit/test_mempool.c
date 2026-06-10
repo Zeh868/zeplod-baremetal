@@ -1,6 +1,8 @@
 #include "unity.h"
 #include "bm_core.h"
 
+#include <string.h>
+
 typedef struct { uint32_t a; uint8_t b; } test_obj_t;
 
 void setUp(void) {}

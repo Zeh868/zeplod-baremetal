@@ -1,4 +1,4 @@
-/* CRT0 for QEMU Cortex-M0 — copy .data and zero .bss before main() */
+/* Copy .data and zero .bss before main(). */
 #include <stdint.h>
 
 extern uint32_t _sidata;

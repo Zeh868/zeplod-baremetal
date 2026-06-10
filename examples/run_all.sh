@@ -1,35 +1,40 @@
-#!/bin/bash
-set -e
+#!/usr/bin/env bash
+set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-cd "$SCRIPT_DIR"
-
-EXAMPLES=(ultra_blink core_sensor full_system interrupt_demo)
+ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+BUILD_ROOT="$SCRIPT_DIR/build/unix"
+TOOLCHAIN="$ROOT_DIR/cmake/toolchain-arm-none-eabi.cmake"
 FAILED=()
 
-for ex in "${EXAMPLES[@]}"; do
-    echo "=== Building $ex ==="
-    cd "$ex"
-    cmake -G "Unix Makefiles" -B build -DCMAKE_TOOLCHAIN_FILE=../../cmake/toolchain-arm-none-eabi.cmake . >/dev/null 2>&1
-    cmake --build build >/dev/null 2>&1
+while IFS= read -r example; do
+    [[ -z "$example" || "$example" == \#* ]] && continue
+    source_dir="$SCRIPT_DIR/$example"
+    build_dir="$BUILD_ROOT/$example"
 
-    echo "=== Running $ex in QEMU ==="
-    timeout 10s qemu-system-arm -machine microbit -cpu cortex-m0 \
-        -kernel "build/${ex}.elf" --semihosting -nographic -serial stdio > /tmp/${ex}.log 2>&1 || true
+    echo "=== Building $example ==="
+    cmake -G "Unix Makefiles" -S "$source_dir" -B "$build_dir" \
+        -DCMAKE_TOOLCHAIN_FILE="$TOOLCHAIN"
+    cmake --build "$build_dir"
 
-    if grep -q "EXAMPLE_.*: PASS" /tmp/${ex}.log; then
-        echo "$ex ... PASS"
+    echo "=== Running $example in QEMU ==="
+    log_file="$build_dir/qemu.log"
+    timeout 8s qemu-system-arm -machine microbit -cpu cortex-m0 \
+        -kernel "$build_dir/$example.elf" --semihosting -display none \
+        >"$log_file" 2>&1 || true
+    head -n 30 "$log_file"
+
+    if grep -q "EXAMPLE_.*: PASS" "$log_file"; then
+        echo "$example ... PASS"
     else
-        echo "$ex ... FAIL"
-        FAILED+=("$ex")
+        echo "$example ... FAIL"
+        FAILED+=("$example")
     fi
-    cd ..
-done
+done < "$SCRIPT_DIR/examples.txt"
 
-if [ ${#FAILED[@]} -eq 0 ]; then
-    echo "All examples passed."
-    exit 0
-else
-    echo "Failed: ${FAILED[*]}"
+if ((${#FAILED[@]} > 0)); then
+    echo "Failed examples: ${FAILED[*]}"
     exit 1
 fi
+
+echo "All examples passed."

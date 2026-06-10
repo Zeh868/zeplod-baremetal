@@ -1,30 +1,26 @@
-#!/bin/bash
-set -e
+#!/usr/bin/env bash
+set -euo pipefail
 
-EXAMPLE="$1"
-if [ -z "$EXAMPLE" ]; then
+if (($# != 1)); then
     echo "Usage: $0 <example_name>"
     exit 1
 fi
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ROOT_DIR="$SCRIPT_DIR/.."
+ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+EXAMPLE="$1"
+SOURCE_DIR="$SCRIPT_DIR/$EXAMPLE"
+BUILD_DIR="$SCRIPT_DIR/build/unix/$EXAMPLE"
 
-EXAMPLE_DIR="$SCRIPT_DIR/$EXAMPLE"
-if [ ! -d "$EXAMPLE_DIR" ]; then
-    echo "Example '$EXAMPLE' not found"
+if ! grep -Fxq "$EXAMPLE" "$SCRIPT_DIR/examples.txt" || [[ ! -d "$SOURCE_DIR" ]]; then
+    echo "Unknown example '$EXAMPLE'"
     exit 1
 fi
 
-cd "$EXAMPLE_DIR"
+cmake -G "Unix Makefiles" -S "$SOURCE_DIR" -B "$BUILD_DIR" \
+    -DCMAKE_TOOLCHAIN_FILE="$ROOT_DIR/cmake/toolchain-arm-none-eabi.cmake"
+cmake --build "$BUILD_DIR"
 
-echo "=== Building $EXAMPLE ==="
-cmake -G "Unix Makefiles" -B build -DCMAKE_TOOLCHAIN_FILE="$ROOT_DIR/cmake/toolchain-arm-none-eabi.cmake" . >/dev/null 2>&1
-cmake --build build >/dev/null 2>&1
-
-echo "=== Running $EXAMPLE in QEMU (interactive) ==="
-echo "Press Ctrl+A then X to quit QEMU"
-echo ""
-
+echo "Press Ctrl+C to stop."
 qemu-system-arm -machine microbit -cpu cortex-m0 \
-    -kernel "build/${EXAMPLE}.elf" --semihosting -nographic -serial stdio
+    -kernel "$BUILD_DIR/$EXAMPLE.elf" --semihosting -display none

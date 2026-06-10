@@ -1,6 +1,8 @@
 #include "unity.h"
 #include "bm_shell.h"
 
+#include <stdio.h>
+
 static int g_cmd_count = 0;
 static int g_last_argc = 0;
 static char *g_last_argv[4] = {0};

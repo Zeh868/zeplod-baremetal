@@ -1,35 +1,28 @@
-param([Parameter(Mandatory=$true)][string]$Example)
+param([Parameter(Mandatory = $true)][string]$Example)
 
 $ErrorActionPreference = 'Stop'
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Definition
-$RootDir = Join-Path $ScriptDir '..'
+$RootDir = Split-Path -Parent $ScriptDir
+$SourceDir = Join-Path $ScriptDir $Example
+$BuildDir = Join-Path (Join-Path (Join-Path $ScriptDir 'build') 'windows') $Example
+$Toolchain = (Join-Path $RootDir 'cmake/toolchain-arm-none-eabi.cmake').Replace('\', '/')
+$KnownExamples = Get-Content (Join-Path $ScriptDir 'examples.txt')
 
-function Invoke-External {
-    param([scriptblock]$Command)
-    $prev = $ErrorActionPreference
-    $ErrorActionPreference = 'Continue'
-    & $Command 2>&1 | Out-Null
-    $code = $LASTEXITCODE
-    $ErrorActionPreference = $prev
-    if ($code -ne 0) { exit $code }
-}
-
-$ExampleDir = Join-Path $ScriptDir $Example
-if (-not (Test-Path $ExampleDir)) {
-    Write-Error "Example '$Example' not found in $ScriptDir"
+if ($Example -notin $KnownExamples -or -not (Test-Path $SourceDir)) {
+    Write-Error "Unknown example '$Example'"
     exit 1
 }
 
-Set-Location $ExampleDir
-
 Write-Host "=== Building $Example ==="
-$toolchain = (Join-Path $RootDir 'cmake/toolchain-arm-none-eabi.cmake') -replace '\\', '/'
-Invoke-External { cmake -G 'Unix Makefiles' -B build "-DCMAKE_TOOLCHAIN_FILE=$toolchain" . }
-Invoke-External { cmake --build build }
+& cmake -G 'MinGW Makefiles' -S $SourceDir -B $BuildDir `
+    "-DCMAKE_TOOLCHAIN_FILE=$Toolchain"
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-Write-Host "=== Running $Example in QEMU (interactive) ==="
-Write-Host "Press Ctrl+C to quit QEMU"
-Write-Host ""
+& cmake --build $BuildDir
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-$elfPath = Join-Path (Get-Location) "build\$Example.elf"
-qemu-system-arm -machine microbit -cpu cortex-m0 -kernel $elfPath --semihosting -display none
+Write-Host "=== Running $Example in QEMU ==="
+Write-Host 'Press Ctrl+C to stop.'
+$Elf = Join-Path $BuildDir "$Example.elf"
+& qemu-system-arm -machine microbit -cpu cortex-m0 -kernel $Elf `
+    --semihosting -display none

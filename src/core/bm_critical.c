@@ -4,7 +4,7 @@
 /* Default implementation for native_sim: use a global flag */
 static volatile bm_irq_state_t _irq_state = 0;
 
-#if defined(_MSC_VER)
+#if defined(_MSC_VER) || defined(_WIN32)
 #define BM_WEAK
 #else
 #define BM_WEAK __attribute__((weak))

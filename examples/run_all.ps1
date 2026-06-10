@@ -1,71 +1,56 @@
 $ErrorActionPreference = 'Stop'
-$Examples = @('ultra_blink', 'core_sensor', 'full_system', 'interrupt_demo')
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Definition
-$RootDir = Join-Path $ScriptDir '..'
+$RootDir = Split-Path -Parent $ScriptDir
+$BuildRoot = Join-Path (Join-Path $ScriptDir 'build') 'windows'
+$Toolchain = (Join-Path $RootDir 'cmake/toolchain-arm-none-eabi.cmake').Replace('\', '/')
+$Examples = Get-Content (Join-Path $ScriptDir 'examples.txt') |
+    Where-Object { $_ -and -not $_.StartsWith('#') }
 $Failed = @()
 
-function Invoke-External {
-    param([scriptblock]$Command)
-    $prev = $ErrorActionPreference
-    $ErrorActionPreference = 'Continue'
-    & $Command 2>&1 | Out-Null
-    $code = $LASTEXITCODE
-    $ErrorActionPreference = $prev
-    return $code
-}
+foreach ($Example in $Examples) {
+    $SourceDir = Join-Path $ScriptDir $Example
+    $BuildDir = Join-Path $BuildRoot $Example
+    Write-Host "=== Building $Example ==="
 
-Push-Location $ScriptDir
+    & cmake -G 'MinGW Makefiles' -S $SourceDir -B $BuildDir `
+        "-DCMAKE_TOOLCHAIN_FILE=$Toolchain"
+    if ($LASTEXITCODE -ne 0) { throw "CMake configure failed for $Example" }
 
-try {
-    foreach ($ex in $Examples) {
-        Write-Host "=== Building $ex ==="
-        Set-Location $ex
-        $toolchain = (Join-Path $RootDir 'cmake/toolchain-arm-none-eabi.cmake') -replace '\\', '/'
-        if ((Invoke-External { cmake -G 'Unix Makefiles' -B build "-DCMAKE_TOOLCHAIN_FILE=$toolchain" . }) -ne 0) {
-            throw "cmake configure failed for $ex"
-        }
-        if ((Invoke-External { cmake --build build }) -ne 0) {
-            throw "cmake build failed for $ex"
-        }
+    & cmake --build $BuildDir
+    if ($LASTEXITCODE -ne 0) { throw "Build failed for $Example" }
 
-        Write-Host "=== Running $ex in QEMU ==="
-        $elfPath = Join-Path (Get-Location) "build\$ex.elf"
-        $job = Start-Job -ScriptBlock {
-            param($elf)
-            qemu-system-arm -machine microbit -cpu cortex-m0 -kernel $elf --semihosting -display none 2>&1
-        } -ArgumentList $elfPath
+    Write-Host "=== Running $Example in QEMU ==="
+    $Elf = Join-Path $BuildDir "$Example.elf"
+    $Stdout = Join-Path $BuildDir 'qemu.stdout'
+    $Stderr = Join-Path $BuildDir 'qemu.stderr'
+    Remove-Item $Stdout, $Stderr -ErrorAction SilentlyContinue
 
-        $null = Wait-Job $job -Timeout 8
-        Stop-Job $job -ErrorAction SilentlyContinue
-        $prev = $ErrorActionPreference
-        $ErrorActionPreference = 'Continue'
-        $output = Receive-Job $job 2>&1
-        $ErrorActionPreference = $prev
-        Remove-Job $job -Force -ErrorAction SilentlyContinue
-
-        Set-Location $ScriptDir
-
-        # Print captured QEMU output so user can see main() logs
-        Write-Host "--- QEMU output for $ex ---"
-        $output | Select-Object -First 30 | ForEach-Object { Write-Host $_ }
-        if ($output.Count -gt 30) { Write-Host "... (truncated)" }
-        Write-Host "--- end of $ex output ---"
-
-        if ($output -match 'EXAMPLE_.*PASS') {
-            Write-Host "$ex ... PASS"
-        } else {
-            Write-Host "$ex ... FAIL"
-            $Failed += $ex
-        }
+    $Arguments = "-machine microbit -cpu cortex-m0 -kernel `"$Elf`" " +
+        '--semihosting -display none'
+    $Process = Start-Process qemu-system-arm -ArgumentList $Arguments `
+        -PassThru -WindowStyle Hidden `
+        -RedirectStandardOutput $Stdout -RedirectStandardError $Stderr
+    Start-Sleep -Seconds 8
+    if (-not $Process.HasExited) {
+        Stop-Process -Id $Process.Id -Force
     }
 
-    if ($Failed.Count -eq 0) {
-        Write-Host "All examples passed."
-        exit 0
+    $Output = (Get-Content $Stdout, $Stderr -ErrorAction SilentlyContinue) -join "`n"
+    ($Output -split "`n" | Select-Object -First 30) | ForEach-Object {
+        Write-Host $_
+    }
+
+    if ($Output -match 'EXAMPLE_.*: PASS') {
+        Write-Host "$Example ... PASS"
     } else {
-        Write-Host "Failed: $($Failed -join ' ')"
-        exit 1
+        Write-Host "$Example ... FAIL"
+        $Failed += $Example
     }
-} finally {
-    Pop-Location
 }
+
+if ($Failed.Count -gt 0) {
+    Write-Error "Failed examples: $($Failed -join ', ')"
+    exit 1
+}
+
+Write-Host 'All examples passed.'

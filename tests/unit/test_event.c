@@ -1,6 +1,8 @@
 #include "unity.h"
 #include "bm_core.h"
 
+#include <string.h>
+
 static int g_count = 0;
 static bm_event_t g_last_event;
 static uint16_t g_last_data = 0;
