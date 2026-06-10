@@ -1,12 +1,12 @@
 #include "bm_mempool.h"
-#include "bm_hal_critical.h"
+#include "bm_critical_wrap.h"
 
 void *bm_mempool_alloc(bm_mempool_t *pool) {
     if (!pool || !pool->bitmap || !pool->pool || pool->obj_size == 0) {
         return NULL;
     }
 
-    bm_irq_state_t s = bm_hal_critical_enter();
+    bm_irq_state_t s = BM_CRITICAL_ENTER();
     for (uint32_t w = 0; w < pool->bitmap_words; w++) {
         if (pool->bitmap[w] != 0xFFFFFFFFU) {
             for (int b = 0; b < 32; b++) {
@@ -14,13 +14,13 @@ void *bm_mempool_alloc(bm_mempool_t *pool) {
                     uint32_t idx = w * 32 + b;
                     if (idx >= pool->count) break;
                     pool->bitmap[w] |= (1U << b);
-                    bm_hal_critical_exit(s);
+                    BM_CRITICAL_EXIT(s);
                     return (uint8_t *)pool->pool + idx * pool->obj_size;
                 }
             }
         }
     }
-    bm_hal_critical_exit(s);
+    BM_CRITICAL_EXIT(s);
     return NULL;
 }
 
@@ -43,7 +43,7 @@ void bm_mempool_free(bm_mempool_t *pool, void *obj) {
     uint32_t idx = (uint32_t)(offset / pool->obj_size);
     if (idx >= pool->count) return;
 
-    bm_irq_state_t s = bm_hal_critical_enter();
+    bm_irq_state_t s = BM_CRITICAL_ENTER();
     pool->bitmap[idx / 32] &= ~(1U << (idx % 32));
-    bm_hal_critical_exit(s);
+    BM_CRITICAL_EXIT(s);
 }

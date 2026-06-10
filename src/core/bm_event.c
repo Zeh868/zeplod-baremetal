@@ -1,5 +1,5 @@
 #include "bm_event.h"
-#include "bm_hal_critical.h"
+#include "bm_critical_wrap.h"
 #include <stdbool.h>
 #include <string.h>
 
@@ -61,23 +61,23 @@ static void _queue_item_copy(bm_queue_item_t *dst, const bm_queue_item_t *src) {
 }
 
 void bm_event_reset(void) {
-    bm_irq_state_t s = bm_hal_critical_enter();
+    bm_irq_state_t s = BM_CRITICAL_ENTER();
     memset(_event_types, 0, sizeof(_event_types));
     memset(_subscribers, 0, sizeof(_subscribers));
     memset(_event_queue, 0, sizeof(_event_queue));
     _queue_write = 0;
     _queue_read = 0;
     _next_subscriber_id = 1;
-    bm_hal_critical_exit(s);
+    BM_CRITICAL_EXIT(s);
 }
 
 int bm_event_register_type(bm_event_type_t type, const char *name) {
     if (type >= BM_CONFIG_MAX_EVENT_TYPES || !name) {
         return BM_ERR_INVALID;
     }
-    bm_irq_state_t s = bm_hal_critical_enter();
+    bm_irq_state_t s = BM_CRITICAL_ENTER();
     _event_types[type].name = name;
-    bm_hal_critical_exit(s);
+    BM_CRITICAL_EXIT(s);
     return BM_OK;
 }
 
@@ -86,7 +86,7 @@ int bm_event_subscribe(bm_event_type_t type, bm_event_callback_t cb,
     if (!cb || type >= BM_CONFIG_MAX_EVENT_TYPES || !id) {
         return BM_ERR_INVALID;
     }
-    bm_irq_state_t s = bm_hal_critical_enter();
+    bm_irq_state_t s = BM_CRITICAL_ENTER();
 
     bm_subscriber_t *sub = NULL;
     for (int i = 0; i < BM_CONFIG_MAX_EVENT_SUBSCRIBERS; i++) {
@@ -96,7 +96,7 @@ int bm_event_subscribe(bm_event_type_t type, bm_event_callback_t cb,
         }
     }
     if (!sub) {
-        bm_hal_critical_exit(s);
+        BM_CRITICAL_EXIT(s);
         return BM_ERR_NO_MEM;
     }
 
@@ -107,7 +107,7 @@ int bm_event_subscribe(bm_event_type_t type, bm_event_callback_t cb,
     _event_types[type].head = sub;
     *id = sub->id;
 
-    bm_hal_critical_exit(s);
+    BM_CRITICAL_EXIT(s);
     return BM_OK;
 }
 
@@ -115,7 +115,7 @@ int bm_event_unsubscribe(bm_event_type_t type, bm_event_subscriber_id_t id) {
     if (type >= BM_CONFIG_MAX_EVENT_TYPES || id == 0) {
         return BM_ERR_INVALID;
     }
-    bm_irq_state_t s = bm_hal_critical_enter();
+    bm_irq_state_t s = BM_CRITICAL_ENTER();
 
     bm_subscriber_t **pp = &_event_types[type].head;
     while (*pp) {
@@ -125,22 +125,22 @@ int bm_event_unsubscribe(bm_event_type_t type, bm_event_subscriber_id_t id) {
             to_remove->id = 0;
             to_remove->cb = NULL;
             to_remove->next = NULL;
-            bm_hal_critical_exit(s);
+            BM_CRITICAL_EXIT(s);
             return BM_OK;
         }
         pp = &(*pp)->next;
     }
 
-    bm_hal_critical_exit(s);
+    BM_CRITICAL_EXIT(s);
     return BM_ERR_NOT_FOUND;
 }
 
 static int _queue_push_copy(const bm_event_t *event, const void *data, size_t len) {
-    bm_irq_state_t s = bm_hal_critical_enter();
+    bm_irq_state_t s = BM_CRITICAL_ENTER();
     uint32_t mask = BM_CONFIG_EVENT_QUEUE_SIZE - 1;
     uint32_t next = (_queue_write + 1) & mask;
     if (next == _queue_read) {
-        bm_hal_critical_exit(s);
+        BM_CRITICAL_EXIT(s);
         return BM_ERR_OVERFLOW;
     }
 
@@ -152,7 +152,7 @@ static int _queue_push_copy(const bm_event_t *event, const void *data, size_t le
             memcpy(item->inline_data, data, len);
             item->event.data = item->inline_data;
         } else {
-            bm_hal_critical_exit(s);
+            BM_CRITICAL_EXIT(s);
             return BM_ERR_NO_MEM;
         }
     } else {
@@ -161,7 +161,7 @@ static int _queue_push_copy(const bm_event_t *event, const void *data, size_t le
     }
 
     _queue_write = next;
-    bm_hal_critical_exit(s);
+    BM_CRITICAL_EXIT(s);
     return BM_OK;
 }
 
@@ -194,16 +194,16 @@ int bm_event_publish_event(const bm_event_t *event) {
         (event->data_len > 0 && !event->data)) {
         return BM_ERR_INVALID;
     }
-    bm_irq_state_t s = bm_hal_critical_enter();
+    bm_irq_state_t s = BM_CRITICAL_ENTER();
     uint32_t mask = BM_CONFIG_EVENT_QUEUE_SIZE - 1;
     uint32_t next = (_queue_write + 1) & mask;
     if (next == _queue_read) {
-        bm_hal_critical_exit(s);
+        BM_CRITICAL_EXIT(s);
         return BM_ERR_OVERFLOW;
     }
     _event_queue[_queue_write & mask].event = *event;
     _queue_write = next;
-    bm_hal_critical_exit(s);
+    BM_CRITICAL_EXIT(s);
     return BM_OK;
 }
 
@@ -213,9 +213,9 @@ int bm_event_publish_event_from_isr(const bm_event_t *event) {
 }
 
 static int _queue_pop_highest_prio(bm_queue_item_t *out) {
-    bm_irq_state_t s = bm_hal_critical_enter();
+    bm_irq_state_t s = BM_CRITICAL_ENTER();
     if (_queue_read == _queue_write) {
-        bm_hal_critical_exit(s);
+        BM_CRITICAL_EXIT(s);
         return BM_ERR_WOULD_BLOCK;
     }
 
@@ -234,7 +234,7 @@ static int _queue_pop_highest_prio(bm_queue_item_t *out) {
     }
 
     if (!found) {
-        bm_hal_critical_exit(s);
+        BM_CRITICAL_EXIT(s);
         return BM_ERR_WOULD_BLOCK;
     }
 
@@ -246,7 +246,7 @@ static int _queue_pop_highest_prio(bm_queue_item_t *out) {
     }
     _queue_read = (_queue_read + 1) & mask;
 
-    bm_hal_critical_exit(s);
+    BM_CRITICAL_EXIT(s);
     return BM_OK;
 }
 

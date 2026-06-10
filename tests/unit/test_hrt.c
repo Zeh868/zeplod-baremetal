@@ -1,0 +1,85 @@
+#include "unity.h"
+#include "bm_hrt.h"
+#include "bm_hal_timer_native.h"
+
+static uint32_t g_slot_a;
+static uint32_t g_slot_b;
+static void slot_a_cb(void *context) {
+    (void)context;
+    g_slot_a++;
+}
+
+static void slot_b_cb(void *context) {
+    (void)context;
+    g_slot_b++;
+}
+
+void setUp(void) {
+    g_slot_a = 0u;
+    g_slot_b = 0u;
+    bm_hal_timer_native_reset_ticks();
+    bm_hrt_reset();
+}
+
+void tearDown(void) {
+    bm_hrt_reset();
+}
+
+void test_hrt_schedules_multiple_slots(void) {
+    static const bm_hrt_slot_t slots[] = {
+        { 1000u, BM_HRT_TRIGGER_TIMER, slot_a_cb, NULL, "a" },
+        { 2000u, BM_HRT_TRIGGER_TIMER, slot_b_cb, NULL, "b" },
+    };
+
+    TEST_ASSERT_EQUAL(BM_OK, bm_hrt_init(slots, 2u));
+    TEST_ASSERT_EQUAL(BM_OK, bm_hrt_start());
+
+    bm_hal_timer_native_advance_ticks(10u);
+    TEST_ASSERT_EQUAL(1u, g_slot_a);
+    TEST_ASSERT_EQUAL(0u, g_slot_b);
+
+    bm_hal_timer_native_advance_ticks(10u);
+    TEST_ASSERT_EQUAL(2u, g_slot_a);
+    TEST_ASSERT_EQUAL(1u, g_slot_b);
+}
+
+void test_hrt_deadline_miss(void) {
+    static const bm_hrt_slot_t slots[] = {
+        { 1000u, BM_HRT_TRIGGER_TIMER, slot_a_cb, NULL, "a" },
+    };
+
+    TEST_ASSERT_EQUAL(BM_OK, bm_hrt_init(slots, 1u));
+    TEST_ASSERT_EQUAL(BM_OK, bm_hrt_start());
+
+    bm_hal_timer_native_advance_ticks(25u);
+    TEST_ASSERT_GREATER_THAN(0u, g_slot_a);
+}
+
+void test_hrt_rejects_invalid_period(void) {
+    static const bm_hrt_slot_t slots[] = {
+        { 150u, BM_HRT_TRIGGER_TIMER, slot_a_cb, NULL, "bad" },
+    };
+
+    TEST_ASSERT_EQUAL(BM_ERR_INVALID, bm_hrt_init(slots, 1u));
+}
+
+void test_hrt_stop_clears_callback(void) {
+    static const bm_hrt_slot_t slots[] = {
+        { 1000u, BM_HRT_TRIGGER_TIMER, slot_a_cb, NULL, "a" },
+    };
+
+    TEST_ASSERT_EQUAL(BM_OK, bm_hrt_init(slots, 1u));
+    TEST_ASSERT_EQUAL(BM_OK, bm_hrt_start());
+    bm_hrt_stop();
+    bm_hal_timer_native_advance_ticks(20u);
+    TEST_ASSERT_EQUAL(0u, g_slot_a);
+}
+
+int main(void) {
+    UNITY_BEGIN();
+    RUN_TEST(test_hrt_schedules_multiple_slots);
+    RUN_TEST(test_hrt_deadline_miss);
+    RUN_TEST(test_hrt_rejects_invalid_period);
+    RUN_TEST(test_hrt_stop_clears_callback);
+    return UNITY_END();
+}

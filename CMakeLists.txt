@@ -8,7 +8,19 @@ option(BM_ENABLE_MODULE "Enable bm-module" ON)
 option(BM_ENABLE_CHANNEL "Enable bm-channel" OFF)
 option(BM_ENABLE_SHELL "Enable bm-shell" OFF)
 option(BM_ENABLE_WDG "Enable bm-wdg" ON)
+option(BM_ENABLE_HRT "Enable bm-hrt" OFF)
+option(BM_ENABLE_TICKER "Enable bm-ticker" OFF)
+option(BM_ENABLE_CTRL_INST "Enable multi-instance control layer" OFF)
+option(BM_ENABLE_SYNC "Enable sync domain" OFF)
 option(BM_BUILD_TESTS "Build unit tests" ON)
+
+if(BM_ENABLE_CTRL_INST AND NOT BM_ENABLE_HRT)
+    message(FATAL_ERROR "BM_ENABLE_CTRL_INST requires BM_ENABLE_HRT")
+endif()
+
+if(BM_ENABLE_SYNC AND NOT BM_ENABLE_CTRL_INST)
+    message(FATAL_ERROR "BM_ENABLE_SYNC requires BM_ENABLE_CTRL_INST")
+endif()
 set(BM_CONFIG_FILE "" CACHE FILEPATH "Configuration header force-included in all targets")
 
 if(NOT BM_CONFIG_FILE AND EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/bm_config.h)
@@ -61,6 +73,37 @@ if(BM_ENABLE_WDG)
     add_library(bm_wdg STATIC src/core/bm_wdg.c)
     target_link_libraries(bm_wdg PUBLIC bm_core)
     target_link_libraries(bm_framework INTERFACE bm_wdg)
+endif()
+
+if(BM_ENABLE_HRT)
+    add_library(bm_hrt STATIC src/hrt/bm_hrt.c)
+    target_link_libraries(bm_hrt PUBLIC bm_core)
+    target_link_libraries(bm_framework INTERFACE bm_hrt)
+endif()
+
+if(BM_ENABLE_TICKER)
+    add_library(bm_ticker STATIC src/hrt/bm_ticker.c)
+    target_link_libraries(bm_ticker PUBLIC bm_core)
+    target_link_libraries(bm_framework INTERFACE bm_ticker)
+endif()
+
+if(BM_BUILD_TESTS OR BM_ENABLE_CTRL_INST)
+    if(NOT TARGET bm_resource)
+        add_library(bm_resource STATIC src/ctrl/bm_resource.c)
+        target_link_libraries(bm_resource PUBLIC bm_config)
+    endif()
+endif()
+
+if(BM_ENABLE_CTRL_INST)
+    add_library(bm_ctrl_inst STATIC src/ctrl/bm_ctrl_inst.c)
+    target_link_libraries(bm_ctrl_inst PUBLIC bm_hrt bm_core bm_resource)
+    if(BM_ENABLE_SYNC)
+        target_sources(bm_ctrl_inst PRIVATE
+            src/ctrl/bm_sync.c
+            hal_reference/native_sim/bm_sync_hal_native.c
+        )
+    endif()
+    target_link_libraries(bm_framework INTERFACE bm_ctrl_inst)
 endif()
 
 if(BM_BUILD_TESTS)

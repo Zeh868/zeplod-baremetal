@@ -1,41 +1,23 @@
-#ifndef _WIN32
-#ifndef _POSIX_C_SOURCE
-#define _POSIX_C_SOURCE 200809L
-#endif
-#endif
-
 #include "bm_hal_timer.h"
+#include "bm_hal_timer_native.h"
 
 #include <stdint.h>
 
-#ifdef _WIN32
-#include <windows.h>
-#else
-#include <time.h>
-#endif
-
-static uint32_t tick_freq = 1000;
+static uint32_t tick_freq = 1000u;
+static uint32_t tick_count;
+static void (*tick_callback)(void);
 
 int bm_hal_timer_init(uint32_t freq_hz) {
-    tick_freq = freq_hz ? freq_hz : 1000;
+    tick_freq = freq_hz ? freq_hz : 1000u;
     return 0;
 }
 
+void bm_hal_timer_stop(void) {
+    tick_callback = NULL;
+}
+
 uint32_t bm_hal_timer_get_ticks(void) {
-    uint64_t elapsed_ms;
-
-#ifdef _WIN32
-    elapsed_ms = (uint64_t)GetTickCount();
-#else
-    struct timespec ts;
-    if (clock_gettime(CLOCK_MONOTONIC, &ts) != 0) {
-        return 0;
-    }
-    elapsed_ms = (uint64_t)ts.tv_sec * 1000U;
-    elapsed_ms += (uint64_t)ts.tv_nsec / 1000000U;
-#endif
-
-    return (uint32_t)(elapsed_ms * tick_freq / 1000U);
+    return tick_count;
 }
 
 uint32_t bm_hal_timer_get_freq(void) {
@@ -43,5 +25,20 @@ uint32_t bm_hal_timer_get_freq(void) {
 }
 
 void bm_hal_timer_set_callback(void (*cb)(void)) {
-    (void)cb;
+    tick_callback = cb;
+}
+
+void bm_hal_timer_native_advance_ticks(uint32_t delta) {
+    uint32_t i;
+
+    for (i = 0u; i < delta; ++i) {
+        tick_count++;
+        if (tick_callback) {
+            tick_callback();
+        }
+    }
+}
+
+void bm_hal_timer_native_reset_ticks(void) {
+    tick_count = 0u;
 }
