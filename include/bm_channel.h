@@ -1,8 +1,11 @@
-/* include/bm_channel.h — lightweight SPSC data channel */
+/* Lightweight SPSC data channel. */
 #ifndef BM_CHANNEL_H
 #define BM_CHANNEL_H
 
-#include "bm_core.h"
+#include "bm_types.h"
+
+#include <stdbool.h>
+#include <stdint.h>
 
 #ifndef BM_CONFIG_CHANNEL_MAX_CHANNELS
 #define BM_CONFIG_CHANNEL_MAX_CHANNELS 4
@@ -54,7 +57,7 @@ static inline bool bm_channel_is_empty(const bm_channel_t *ch) {
 }
 
 static inline bool bm_channel_is_full(const bm_channel_t *ch) {
-    if (!ch) return true;
+    if (!ch || ch->capacity < 2U) return true;
     uint32_t next = (ch->write_idx + 1) % ch->capacity;
     return next == ch->read_idx;
 }

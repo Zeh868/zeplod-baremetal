@@ -1,4 +1,4 @@
-/* src/channel/bm_channel.c — SPSC ring buffer implementation */
+/* SPSC ring buffer implementation. */
 #include "bm_channel.h"
 #include "bm_hal_critical.h"
 #include <string.h>
@@ -12,7 +12,7 @@ void bm_channel_reset(bm_channel_t *ch) {
 }
 
 int bm_channel_send(bm_channel_t *ch, const void *data) {
-    if (!ch || !data) {
+    if (!ch || !data || !ch->buf || ch->elem_size == 0 || ch->capacity < 2U) {
         return BM_ERR_INVALID;
     }
 
@@ -31,7 +31,7 @@ int bm_channel_send(bm_channel_t *ch, const void *data) {
 }
 
 int bm_channel_recv(bm_channel_t *ch, void *data) {
-    if (!ch || !data) {
+    if (!ch || !data || !ch->buf || ch->elem_size == 0 || ch->capacity < 2U) {
         return BM_ERR_INVALID;
     }
 
@@ -49,7 +49,7 @@ int bm_channel_recv(bm_channel_t *ch, void *data) {
 }
 
 uint32_t bm_channel_count(const bm_channel_t *ch) {
-    if (!ch) return 0;
+    if (!ch || ch->capacity < 2U) return 0;
     bm_irq_state_t s = bm_hal_critical_enter();
     uint32_t w = ch->write_idx;
     uint32_t r = ch->read_idx;

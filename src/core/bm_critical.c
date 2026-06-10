@@ -1,4 +1,5 @@
 #include "bm_hal_critical.h"
+#include "bm_atomic.h"
 
 /* Default implementation for native_sim: use a global flag */
 static volatile bm_irq_state_t _irq_state = 0;
@@ -18,8 +19,6 @@ BM_WEAK bm_irq_state_t bm_hal_critical_enter(void) {
 BM_WEAK void bm_hal_critical_exit(bm_irq_state_t state) {
     _irq_state = state;
 }
-
-#include "bm_core.h"
 
 uint32_t bm_atomic_load(bm_atomic_t *v) {
     bm_irq_state_t s = bm_hal_critical_enter();

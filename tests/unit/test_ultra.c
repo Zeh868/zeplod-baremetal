@@ -13,10 +13,9 @@ static void test_cb(const void *data, uint8_t len) {
     }
 }
 
-/* Define callback table */
-static const bm_ultra_callback_t _bm_ultra_callbacks[BM_CONFIG_ULTRA_MAX_EVENT_TYPES] = {
+BM_ULTRA_CALLBACK_TABLE_DEFINE(
     BM_ULTRA_CB(EVENT_TEST, test_cb)
-};
+);
 
 void setUp(void) {
     g_count = 0;

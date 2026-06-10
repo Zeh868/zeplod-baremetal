@@ -1,7 +1,7 @@
 #ifndef BM_MODULE_H
 #define BM_MODULE_H
 
-#include "bm_core.h"
+#include "bm_types.h"
 
 #ifndef BM_CONFIG_MAX_MODULES
 #define BM_CONFIG_MAX_MODULES 8

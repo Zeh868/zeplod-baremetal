@@ -6,6 +6,7 @@ from pathlib import Path
 
 EXPECTED_APIS = {
     # Event system
+    "bm_event_reset": "void bm_event_reset(void)",
     "bm_event_register_type": "int bm_event_register_type(bm_event_type_t type, const char *name)",
     "bm_event_subscribe": "int bm_event_subscribe(bm_event_type_t type, bm_event_callback_t cb, void *user_data, bm_event_subscriber_id_t *id)",
     "bm_event_unsubscribe": "int bm_event_unsubscribe(bm_event_type_t type, bm_event_subscriber_id_t id)",
@@ -17,6 +18,10 @@ EXPECTED_APIS = {
     # Mempool
     "bm_mempool_alloc": "void *bm_mempool_alloc(bm_mempool_t *pool)",
     "bm_mempool_free": "void bm_mempool_free(bm_mempool_t *pool, void *obj)",
+    # Atomic helpers
+    "bm_atomic_load": "uint32_t bm_atomic_load(bm_atomic_t *value)",
+    "bm_atomic_store": "void bm_atomic_store(bm_atomic_t *value, uint32_t new_value)",
+    "bm_atomic_inc": "uint32_t bm_atomic_inc(bm_atomic_t *value)",
     # Critical section (HAL)
     "bm_hal_critical_enter": "bm_irq_state_t bm_hal_critical_enter(void)",
     "bm_hal_critical_exit": "void bm_hal_critical_exit(bm_irq_state_t state)",

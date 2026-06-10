@@ -1,8 +1,10 @@
-/* include/bm_shell.h — lightweight non-blocking serial CLI */
+/* Lightweight non-blocking serial CLI. */
 #ifndef BM_SHELL_H
 #define BM_SHELL_H
 
-#include "bm_core.h"
+#include "bm_types.h"
+
+#include <stdint.h>
 
 #ifndef BM_CONFIG_SHELL_BUF_SIZE
 #define BM_CONFIG_SHELL_BUF_SIZE 64

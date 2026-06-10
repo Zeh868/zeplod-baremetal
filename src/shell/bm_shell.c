@@ -1,4 +1,4 @@
-/* src/shell/bm_shell.c — lightweight non-blocking serial CLI */
+/* Lightweight non-blocking serial CLI. */
 #include "bm_shell.h"
 #include "bm_hal_uart.h"
 #include <string.h>

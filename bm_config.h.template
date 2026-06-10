@@ -1,4 +1,4 @@
-/* bm_config.h.template — copy to bm_config.h and customize */
+/* Copy to bm_config.h and customize. */
 #ifndef BM_CONFIG_H
 #define BM_CONFIG_H
 
@@ -7,6 +7,7 @@
 #define BM_CONFIG_MAX_EVENT_SUBSCRIBERS     32
 #define BM_CONFIG_EVENT_QUEUE_SIZE          16
 #define BM_CONFIG_EVENT_PRIORITIES          4
+#define BM_CONFIG_EVENT_INLINE_DATA_SIZE     8
 
 /* Module system */
 #define BM_CONFIG_MAX_MODULES               8
