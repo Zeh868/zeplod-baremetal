@@ -143,10 +143,13 @@ zeplod-baremetal/
 │   ├── unit/             # Unity 单元测试（PC 本地运行）
 │   └── qemu/             # QEMU 冒烟测试
 ├── docs/
-│   ├── architecture.md   # 框架架构概述
+│   ├── README.md         # 文档索引（00–09 导读）
+│   ├── 00-快速开始.md … 09-安全与可靠性.md
+│   ├── architecture.md   # 框架架构概述（英文）
 │   ├── api/              # API 参考文档
 │   ├── migration/        # 迁移指南（ultra→core→zephyr）
-│   └── porting/          # HAL 移植与 IDE 集成指南
+│   ├── porting/          # HAL 移植与 IDE 集成指南
+│   └── safety/           # SIL 认证准备与追溯
 ├── CMakeLists.txt        # CMake 构建（32 位主流平台）
 └── Makefile              # 纯 Makefile（8 位工具链友好）
 ```
@@ -257,11 +260,22 @@ Zeplod Baremetal 被设计为机器人/电子系统三层架构的底层：
 
 ## 文档
 
-- [`docs/architecture.md`](docs/architecture.md) — 框架架构与依赖方向
-- [`docs/api/`](docs/api/) — HRT、ticker、snapshot、控制实例、同步域和资源声明的 API 参考
-- [`docs/migration/`](docs/migration/) — 各层级之间以及向 Zephyr 迁移的指南
-- [`docs/porting/`](docs/porting/) — HAL 架构（方案 B）、移植、Keil/IAR 集成
-- [`examples/PORTING.md`](examples/PORTING.md) — 自定义硬件的示例移植指南
+**导读（推荐从此开始）**：[`docs/README.md`](docs/README.md)
+
+| 编号 | 文档 |
+|------|------|
+| 00 | [快速开始](docs/00-快速开始.md) |
+| 01 | [框架概览与资源层级](docs/01-框架概览与资源层级.md) |
+| 02 | [混合域与执行模型](docs/02-混合域与执行模型.md) |
+| 03 | [核心机制](docs/03-核心机制.md) |
+| 04 | [构建配置与 CMake](docs/04-构建配置与CMake.md) |
+| 05 | [示例与上手路径](docs/05-示例与上手路径.md) |
+| 06 | [HAL 移植指南](docs/06-HAL移植指南.md) |
+| 07 | [测试与调试](docs/07-测试与调试.md) |
+| 08 | [迁移与演进](docs/08-迁移与演进.md) |
+| 09 | [安全与可靠性](docs/09-安全与可靠性.md) |
+
+专题：[architecture.md](docs/architecture.md) · [api/](docs/api/) · [migration/](docs/migration/) · [porting/](docs/porting/) · [safety/](docs/safety/)
 
 ---
 
