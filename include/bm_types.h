@@ -1,6 +1,8 @@
 #ifndef BM_TYPES_H
 #define BM_TYPES_H
 
+#include <bm_config.h>
+
 #include <stdint.h>
 
 #define BM_OK                0

@@ -1,80 +1,77 @@
 #!/usr/bin/env python3
-"""list_sources.py — generate source file list for Keil/IAR/Make integration."""
+"""Generate framework-only source lists for IDE and Make integrations."""
+
 import argparse
-import sys
-
-CORE_SRCS = [
-    "src/core/bm_critical.c",
-    "src/core/bm_event.c",
-    "src/core/bm_mempool.c",
-]
-
-MODULE_SRCS = [
-    "src/module/bm_module.c",
-]
-
-WDG_SRCS = [
-    "src/core/bm_wdg.c",
-]
-
-HAL_QEMU_SRCS = [
-    "hal_reference/qemu_cortex_m0/startup_qemu_cm0.s",
-    "hal_reference/qemu_cortex_m0/bm_hal_uart_qemu.c",
-]
+from pathlib import Path
 
 
-def get_sources(enable_module: bool, enable_wdg: bool) -> list:
-    srcs = list(CORE_SRCS)
-    if enable_module:
-        srcs.extend(MODULE_SRCS)
-    if enable_wdg:
-        srcs.extend(WDG_SRCS)
-    srcs.extend(HAL_QEMU_SRCS)
-    return srcs
+COMPONENTS = {
+    "core": [
+        "src/core/bm_critical.c",
+        "src/core/bm_event.c",
+        "src/core/bm_mempool.c",
+    ],
+    "module": ["src/module/bm_module.c"],
+    "channel": ["src/channel/bm_channel.c"],
+    "shell": ["src/shell/bm_shell.c"],
+    "wdg": ["src/core/bm_wdg.c"],
+}
 
 
-def format_keil(paths: list, root: str) -> str:
-    lines = []
-    for p in paths:
-        lines.append(f"../../{p}")
-    return "\n".join(lines)
+def enabled(value: str) -> bool:
+    return value == "ON"
 
 
-def format_iar(paths: list, root: str) -> str:
-    # Same relative path format as Keil for source list
-    return format_keil(paths, root)
+def get_sources(args: argparse.Namespace) -> list[str]:
+    sources = list(COMPONENTS["core"])
+    for name in ("module", "channel", "shell", "wdg"):
+        if enabled(getattr(args, f"enable_{name}")):
+            sources.extend(COMPONENTS[name])
+    return sources
 
 
-def format_makefile(paths: list, root: str) -> str:
+def resolve_paths(paths: list[str], root: str) -> list[str]:
+    base = Path(root).resolve()
+    return [str((base / path).resolve()) for path in paths]
+
+
+def format_plain(paths: list[str]) -> str:
+    return "\n".join(paths)
+
+
+def format_makefile(paths: list[str]) -> str:
     lines = ["BM_SRCS := \\"]
-    for p in paths:
-        lines.append(f"    $(ZEPLOD_ROOT)/{p} \\")
+    for index, path in enumerate(paths):
+        suffix = " \\" if index < len(paths) - 1 else ""
+        lines.append(f"    $(ZEPLOD_ROOT)/{path}{suffix}")
     return "\n".join(lines)
 
 
-def main():
-    parser = argparse.ArgumentParser(description="Generate zeplod-baremetal source list")
+def main() -> None:
+    parser = argparse.ArgumentParser(
+        description="Generate zeplod-baremetal framework source lists"
+    )
     parser.add_argument("--enable-module", choices=["ON", "OFF"], default="ON")
+    parser.add_argument("--enable-channel", choices=["ON", "OFF"], default="OFF")
+    parser.add_argument("--enable-shell", choices=["ON", "OFF"], default="OFF")
     parser.add_argument("--enable-wdg", choices=["ON", "OFF"], default="OFF")
-    parser.add_argument("--format", choices=["keil", "iar", "makefile"], default="keil")
-    parser.add_argument("--root", default=".", help="Framework root path")
+    parser.add_argument(
+        "--format",
+        choices=["relative", "absolute", "keil", "iar", "makefile"],
+        default="relative",
+    )
+    parser.add_argument("--root", default=".", help="Framework repository root")
     args = parser.parse_args()
 
-    enable_module = args.enable_module == "ON"
-    enable_wdg = args.enable_wdg == "ON"
-    paths = get_sources(enable_module, enable_wdg)
-
-    fmt = args.format
-    if fmt == "keil":
-        out = format_keil(paths, args.root)
-    elif fmt == "iar":
-        out = format_iar(paths, args.root)
-    elif fmt == "makefile":
-        out = format_makefile(paths, args.root)
+    sources = get_sources(args)
+    if args.format == "absolute":
+        output = format_plain(resolve_paths(sources, args.root))
+    elif args.format == "makefile":
+        output = format_makefile(sources)
     else:
-        out = "\n".join(paths)
+        output = format_plain(sources)
 
-    print(out)
+    print(output)
 
 
 if __name__ == "__main__":

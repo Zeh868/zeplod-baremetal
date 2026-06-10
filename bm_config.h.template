@@ -1,4 +1,7 @@
-/* Copy to bm_config.h and customize. */
+/*
+ * Copy to the application directory as bm_config.h.
+ * Put that directory before zeplod-baremetal/include in the include path.
+ */
 #ifndef BM_CONFIG_H
 #define BM_CONFIG_H
 

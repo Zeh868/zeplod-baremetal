@@ -1,47 +1,121 @@
-# Keil MDK-ARM 集成指南
+# Keil MDK-ARM Integration
 
-## 1. 新建工程
+Zeplod Baremetal is distributed as C99 source code. Add the required source
+files directly to an existing MDK project; no prebuilt library is required.
 
-Project → New μVision Project → 选择目标芯片（如 STM32F030C8）。
+Arm Compiler 6 is recommended. Arm Compiler 5 has only partial C99 support and
+is not part of the verified toolchain set.
 
-## 2. 添加源文件
+## 1. Add Include Paths
 
-按功能层级选择：
+In `Options for Target -> C/C++ (AC6) -> Include Paths`, add paths in this
+order:
 
-### 仅 bm-ultra
-- 无 `.c` 文件（纯头文件库）
-- 添加启动文件（如 `startup_stm32f030.s`）
-- 添加 `bm_hal_uart_*.c` 等 HAL 实现
+1. The application configuration directory containing `bm_config.h`
+2. `<zeplod-baremetal>/include`
+3. The MCU vendor CMSIS and device include directories
 
-### bm-core + bm-module
-追加：
-- `src/core/bm_critical.c`
-- `src/core/bm_event.c`
-- `src/core/bm_mempool.c`
-- `src/module/bm_module.c`
+The application path must come first so its `bm_config.h` overrides the
+framework defaults in `include/bm_config.h`.
 
-### bm-wdg
-追加：
-- `src/core/bm_wdg.c`
+Copy `bm_config.h.template` into the application directory and tune the
+resource limits. Every translation unit must see the same configuration.
 
-## 3. 头文件路径
+## 2. Add Framework Sources
 
-C/C++ → Include Paths：
-- `include/`
-- 应用目录（放置 `bm_config.h`）
+The mandatory core is:
 
-## 4. 编译器选项
+```text
+src/core/bm_critical.c
+src/core/bm_event.c
+src/core/bm_mempool.c
+```
 
-- C standard: C99
-- 建议开启 `-O2` 或 `-Os`
+Add optional components only when used:
 
-## 5. 链接器设置
+```text
+src/module/bm_module.c
+src/channel/bm_channel.c
+src/shell/bm_shell.c
+src/core/bm_wdg.c
+```
 
-Keil 使用 `.sct` (Scatter) 文件，而非 GCC 的 `.ld`。
+Generate a source list with:
 
-- 若使用默认分散加载：在 Target → IROM1/IRAM1 中调整地址和大小。
-- 若需精确控制：将 `linker.ld` 的 `MEMORY/SECTIONS` 语义手工转为 `.sct`。
+```bash
+python tools/list_sources.py --format keil \
+  --enable-module ON --enable-channel OFF \
+  --enable-shell OFF --enable-wdg ON
+```
 
-## 6. bm_config.h
+`bm_ultra.h` is header-only and does not require framework `.c` files.
 
-复制 `bm_config.h.template` 到工程根目录，按需修改宏值。
+## 3. Provide Platform HAL
+
+The core requires:
+
+```c
+bm_irq_state_t bm_hal_critical_enter(void);
+void bm_hal_critical_exit(bm_irq_state_t state);
+```
+
+Use `hal_reference/stm32f0/bm_hal_critical_stm32f0.c` for an STM32F0 CMSIS
+project, or provide an equivalent implementation for the target MCU. Do not
+add native or QEMU HAL files to a hardware project.
+
+Optional component dependencies:
+
+| Component | Required HAL |
+|---|---|
+| Core, module, channel | Critical section |
+| Shell | Critical section and UART |
+| Watchdog | Critical section, timer, and watchdog |
+
+The UART, timer, and watchdog STM32F0 files are interface stubs and must be
+completed for the selected device and board.
+
+## 4. Compiler and Linker
+
+- Select a C99-compatible language mode.
+- Size optimization is recommended.
+- Use the device pack startup file and CMSIS system file.
+- Use the normal Keil scatter file or target memory configuration. The QEMU
+  `linker.ld` is not used by Keil.
+
+The framework uses no heap, constructors, custom linker sections, or runtime
+registration. Module registration is an application-defined
+`_bm_module_table`.
+
+## 5. Minimal Application
+
+```c
+#include "bm_event.h"
+
+static void on_event(const bm_event_t *event, void *user_data)
+{
+    (void)event;
+    (void)user_data;
+}
+
+int main(void)
+{
+    bm_event_subscriber_id_t subscriber_id;
+
+    bm_event_reset();
+    bm_event_register_type(1, "APP_EVENT");
+    bm_event_subscribe(1, on_event, 0, &subscriber_id);
+
+    for (;;) {
+        bm_event_process(4);
+    }
+}
+```
+
+## 6. Integration Checklist
+
+- Application `bm_config.h` is found before the framework default.
+- Exactly one target implementation of each required HAL symbol is linked.
+- `BM_CONFIG_EVENT_QUEUE_SIZE` is a power of two and at least 2.
+- `BM_CONFIG_EVENT_INLINE_DATA_SIZE` fits every `bm_event_publish_copy`
+  payload.
+- All framework and application files use the same configuration macros.

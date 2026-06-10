@@ -1,6 +1,8 @@
 #ifndef BM_ULTRA_H
 #define BM_ULTRA_H
 
+#include <bm_config.h>
+
 #include <stdint.h>
 #include <stddef.h>
 #include <string.h>

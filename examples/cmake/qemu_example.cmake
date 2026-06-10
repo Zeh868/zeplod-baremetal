@@ -26,6 +26,12 @@ function(bm_add_qemu_example TARGET)
         ${EX_EXTRA_SOURCES}
     )
 
+    if(EX_FRAMEWORK_LIBS)
+        target_sources(${TARGET}.elf PRIVATE
+            "${ZEPLOD_ROOT}/hal_reference/qemu_cortex_m0/bm_hal_critical_qemu.c"
+        )
+    endif()
+
     target_include_directories(${TARGET}.elf PRIVATE
         "${CMAKE_CURRENT_SOURCE_DIR}"
         "${ZEPLOD_ROOT}/examples/common"

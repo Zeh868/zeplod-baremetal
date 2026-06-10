@@ -14,6 +14,11 @@ QEMU_COMMON_SRCS := \
     $(ZEPLOD_ROOT)/hal_reference/qemu_cortex_m0/startup_qemu_cm0.s \
     $(ZEPLOD_ROOT)/hal_reference/qemu_cortex_m0/crt0_qemu.c
 
+ifneq ($(strip $(FRAMEWORK_SRCS)),)
+QEMU_COMMON_SRCS += \
+    $(ZEPLOD_ROOT)/hal_reference/qemu_cortex_m0/bm_hal_critical_qemu.c
+endif
+
 SRCS := main.c $(QEMU_COMMON_SRCS) $(FRAMEWORK_SRCS) $(HAL_SRCS) $(EXTRA_SRCS)
 
 .PHONY: all clean qemu
