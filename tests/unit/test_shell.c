@@ -91,6 +91,12 @@ void test_shell_feed_crlf(void) {
     TEST_ASSERT_EQUAL_STRING("1", g_last_argv[1]);
 }
 
+void test_shell_too_many_args_rejected(void) {
+    TEST_ASSERT_EQUAL(BM_OK, bm_shell_register(&my_shell, "echo", cmd_echo, NULL));
+    char line[] = "echo a b c d e";
+    TEST_ASSERT_EQUAL(BM_ERR_INVALID, bm_shell_exec(&my_shell, line));
+}
+
 void test_shell_feed_backspace(void) {
     TEST_ASSERT_EQUAL(BM_OK, bm_shell_register(&my_shell, "echo", cmd_echo, NULL));
 
@@ -114,5 +120,6 @@ int main(void) {
     RUN_TEST(test_shell_too_many_cmds);
     RUN_TEST(test_shell_feed_crlf);
     RUN_TEST(test_shell_feed_backspace);
+    RUN_TEST(test_shell_too_many_args_rejected);
     return UNITY_END();
 }

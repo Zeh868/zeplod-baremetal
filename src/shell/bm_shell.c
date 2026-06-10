@@ -113,7 +113,16 @@ int bm_shell_exec(bm_shell_t *shell, char *line) {
 
     char *argv[BM_CONFIG_SHELL_MAX_ARGS];
     int argc = _tokenize(line, argv, BM_CONFIG_SHELL_MAX_ARGS);
-    if (argc == 0) return BM_OK;
+    if (argc == 0) {
+        return BM_OK;
+    }
+    if (argc >= BM_CONFIG_SHELL_MAX_ARGS) {
+        BM_LOGW("shell", "too many arguments");
+        return BM_ERR_INVALID;
+    }
+    if (shell->cmd_count > BM_CONFIG_SHELL_MAX_CMDS) {
+        return BM_ERR_INVALID;
+    }
 
     for (uint8_t i = 0; i < shell->cmd_count; i++) {
         if (_strcmp(argv[0], shell->cmds[i].name) == 0) {
@@ -141,6 +150,7 @@ void bm_shell_feed(bm_shell_t *shell, char c) {
     if (c == '\b' || c == 0x7F) {
         if (shell->cursor > 0) {
             shell->cursor--;
+            shell->buf[shell->cursor] = '\0';
             _puts("\b \b");
         }
         return;

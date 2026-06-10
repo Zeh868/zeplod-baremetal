@@ -23,6 +23,10 @@
 #define BM_CONFIG_HRT_TICK_US 100u
 #endif
 
+#if BM_CONFIG_HRT_TICK_US == 0u || (1000000u % BM_CONFIG_HRT_TICK_US) != 0u
+#error "BM_CONFIG_HRT_TICK_US must divide 1000000 evenly and be non-zero"
+#endif
+
 #ifndef BM_CONFIG_HRT_MAX_SLOTS
 #define BM_CONFIG_HRT_MAX_SLOTS 16u
 #endif
@@ -72,20 +76,23 @@ static void hrt_dispatch(void) {
         if (slot->pub.trigger != BM_HRT_TRIGGER_TIMER) {
             continue;
         }
-        while (slot->period_ticks > 0u &&
-               (int32_t)(now - slot->next_tick) >= 0) {
-            if ((uint32_t)(now - slot->next_tick) >= slot->period_ticks) {
-                BM_LOGW("hrt", "deadline missed slot '%s'",
-                        slot->pub.name ? slot->pub.name : "(null)");
-                bm_hrt_deadline_missed_hook(&slot->pub);
-                slot->next_tick = now + slot->period_ticks;
-                break;
-            }
-            if (slot->pub.callback) {
-                slot->pub.callback(slot->pub.context);
-            }
-            slot->next_tick += slot->period_ticks;
+        if (slot->period_ticks == 0u) {
+            continue;
         }
+        if ((int32_t)(now - slot->next_tick) < 0) {
+            continue;
+        }
+        if ((uint32_t)(now - slot->next_tick) >= slot->period_ticks) {
+            BM_LOGW("hrt", "deadline missed slot '%s'",
+                    slot->pub.name ? slot->pub.name : "(null)");
+            bm_hrt_deadline_missed_hook(&slot->pub);
+            slot->next_tick = now + slot->period_ticks;
+            continue;
+        }
+        if (slot->pub.callback) {
+            slot->pub.callback(slot->pub.context);
+        }
+        slot->next_tick += slot->period_ticks;
     }
 }
 
@@ -129,6 +136,11 @@ static int validate_slot(const bm_hrt_slot_t *slot) {
 int bm_hrt_init(const bm_hrt_slot_t *slots, uint32_t slot_count) {
     uint32_t i;
     uint32_t now;
+
+    if (g_started) {
+        BM_LOGE("hrt", "init while started");
+        return BM_ERR_ALREADY;
+    }
 
     if (!slots && slot_count > 0u) {
         BM_LOGE("hrt", "init invalid slots pointer");

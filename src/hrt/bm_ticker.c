@@ -16,8 +16,13 @@
 #include "bm_ticker.h"
 #include "bm_hal_timer.h"
 #include "bm_log.h"
+#include "bm_safety.h"
 
 #include <string.h>
+
+#ifndef BM_CONFIG_TICKER_MAX_CATCHUP
+#define BM_CONFIG_TICKER_MAX_CATCHUP 4u
+#endif
 
 #ifndef BM_CONFIG_TICKER_MAX_SLOTS
 #define BM_CONFIG_TICKER_MAX_SLOTS 8u
@@ -41,12 +46,21 @@ static int g_initialized;
  * @param period_ms 周期（毫秒）
  * @return tick 数；频率为 0 时返回 0
  */
-static uint32_t ms_to_ticks(uint32_t period_ms) {
+static int ms_to_ticks(uint32_t period_ms, uint32_t *ticks_out) {
     uint32_t freq = bm_hal_timer_get_freq();
-    if (freq == 0u) {
-        return 0u;
+    uint32_t product = 0u;
+
+    if (freq == 0u || !ticks_out) {
+        return BM_ERR_INVALID;
     }
-    return (period_ms * freq) / 1000u;
+    if (bm_mul_u32_overflow(period_ms, freq, &product)) {
+        return BM_ERR_INVALID;
+    }
+    *ticks_out = product / 1000u;
+    if (*ticks_out == 0u) {
+        return BM_ERR_INVALID;
+    }
+    return BM_OK;
 }
 
 /**
@@ -77,19 +91,25 @@ int bm_ticker_init(const bm_ticker_slot_t *slots, uint32_t slot_count) {
     }
 
     memset(g_slots, 0, sizeof(g_slots));
-    g_slot_count = slot_count;
+    g_slot_count = 0u;
     now = bm_hal_timer_get_ticks();
 
     for (i = 0u; i < slot_count; ++i) {
-        g_slots[i].pub = slots[i];
-        g_slots[i].period_ticks = ms_to_ticks(slots[i].period_ms);
-        if (g_slots[i].period_ticks == 0u) {
+        uint32_t period_ticks = 0u;
+        int trc = ms_to_ticks(slots[i].period_ms, &period_ticks);
+        if (trc != BM_OK) {
             BM_LOGE("ticker", "init slot %u tick conversion failed", (unsigned)i);
+            memset(g_slots, 0, sizeof(g_slots));
+            g_slot_count = 0u;
+            g_initialized = 0;
             return BM_ERR_INVALID;
         }
-        g_slots[i].next_tick = now + g_slots[i].period_ticks;
+        g_slots[i].pub = slots[i];
+        g_slots[i].period_ticks = period_ticks;
+        g_slots[i].next_tick = now + period_ticks;
     }
 
+    g_slot_count = slot_count;
     g_initialized = 1;
     BM_LOGI("ticker", "init %u slots", (unsigned)slot_count);
     return BM_OK;
@@ -114,22 +134,27 @@ int bm_ticker_poll(void) {
     for (i = 0u; i < g_slot_count; ++i) {
         bm_ticker_runtime_slot_t *slot = &g_slots[i];
 
-        while ((int32_t)(now - slot->next_tick) >= 0) {
-            int rc = bm_event_publish_copy(slot->pub.event_type,
-                                           slot->pub.priority,
-                                           NULL, 0u);
-            if (rc != BM_OK) {
-                slot->dropped++;
-                BM_LOGW("ticker", "slot %u drop event type=%u total=%u",
-                        (unsigned)i, (unsigned)slot->pub.event_type,
-                        (unsigned)slot->dropped);
-                break;
-            }
-            published++;
-            slot->next_tick += slot->period_ticks;
-            if ((uint32_t)(now - slot->next_tick) >= slot->period_ticks) {
-                slot->next_tick = now + slot->period_ticks;
-                break;
+        {
+            uint32_t catchup = 0u;
+            while ((int32_t)(now - slot->next_tick) >= 0 &&
+                   catchup < BM_CONFIG_TICKER_MAX_CATCHUP) {
+                int rc = bm_event_publish_copy(slot->pub.event_type,
+                                               slot->pub.priority,
+                                               NULL, 0u);
+                if (rc != BM_OK) {
+                    slot->dropped++;
+                    BM_LOGW("ticker", "slot %u drop event type=%u total=%u",
+                            (unsigned)i, (unsigned)slot->pub.event_type,
+                            (unsigned)slot->dropped);
+                    break;
+                }
+                published++;
+                catchup++;
+                slot->next_tick += slot->period_ticks;
+                if ((uint32_t)(now - slot->next_tick) >= slot->period_ticks) {
+                    slot->next_tick = now + slot->period_ticks;
+                    break;
+                }
             }
         }
     }

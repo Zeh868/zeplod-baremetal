@@ -123,6 +123,20 @@ void test_event_priority_reorder_preserves_inline_data(void) {
     TEST_ASSERT_EQUAL(11, g_seen_data[1]);
 }
 
+void test_event_queue_overflow_counts_dropped(void) {
+    uint32_t i = 0u;
+    while (bm_event_publish_copy(EVENT_TEST, 0, NULL, 0u) == BM_OK) {
+        i++;
+    }
+    TEST_ASSERT_GREATER_THAN(0u, i);
+    TEST_ASSERT_GREATER_THAN(0u, bm_event_get_dropped_count());
+}
+
+void test_event_register_type_rejects_duplicate(void) {
+    TEST_ASSERT_EQUAL(BM_OK, bm_event_register_type(EVENT_TEST, "TEST"));
+    TEST_ASSERT_EQUAL(BM_ERR_ALREADY, bm_event_register_type(EVENT_TEST, "TEST2"));
+}
+
 void test_event_rejects_invalid_payload_and_priority(void) {
     BM_LOGE("test_evt", "expect INVALID for bad payload/priority");
     TEST_ASSERT_EQUAL(BM_ERR_INVALID,
@@ -138,5 +152,7 @@ int main(void) {
     RUN_TEST(test_event_unsubscribe_by_id);
     RUN_TEST(test_event_priority_reorder_preserves_inline_data);
     RUN_TEST(test_event_rejects_invalid_payload_and_priority);
+    RUN_TEST(test_event_queue_overflow_counts_dropped);
+    RUN_TEST(test_event_register_type_rejects_duplicate);
     return UNITY_END();
 }

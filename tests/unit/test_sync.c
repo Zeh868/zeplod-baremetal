@@ -50,6 +50,12 @@ void test_sync_configure_arm_trigger(void) {
     TEST_ASSERT_EQUAL(BM_OK, bm_sync_trigger(&domain));
 }
 
+void test_sync_safe_stop_null_clears_active(void) {
+    TEST_ASSERT_EQUAL(BM_OK, bm_sync_configure(&domain));
+    bm_sync_safe_stop(NULL);
+    TEST_ASSERT_EQUAL(BM_ERR_NOT_INIT, bm_sync_arm(&domain));
+}
+
 void test_sync_trigger_before_arm_fails(void) {
     TEST_ASSERT_EQUAL(BM_OK, bm_sync_configure(&domain));
     BM_LOGE("test_sync", "expect NOT_INIT when trigger before arm");
@@ -60,5 +66,6 @@ int main(void) {
     UNITY_BEGIN();
     RUN_TEST(test_sync_configure_arm_trigger);
     RUN_TEST(test_sync_trigger_before_arm_fails);
+    RUN_TEST(test_sync_safe_stop_null_clears_active);
     return UNITY_END();
 }

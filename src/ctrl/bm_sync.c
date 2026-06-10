@@ -115,8 +115,13 @@ int bm_sync_trigger(const bm_sync_domain_t *domain) {
 void bm_sync_safe_stop(const bm_sync_domain_t *domain) {
     if (domain) {
         bm_sync_hal_safe_stop(domain);
-    }
-    if (g_active_domain == domain) {
+        if (g_active_domain == domain) {
+            g_active_domain = NULL;
+        }
+    } else {
+        if (g_active_domain) {
+            bm_sync_hal_safe_stop(g_active_domain);
+        }
         g_active_domain = NULL;
     }
     BM_LOGI("sync", "safe stop");

@@ -36,6 +36,7 @@
 #define BM_CONFIG_SHELL_MAX_ARGS             4
 #define BM_CONFIG_SHELL_MAX_CMDS             8
 #define BM_CONFIG_MAX_WDG_MODULES            4
+#define BM_CONFIG_WDG_MODULE_TIMEOUT_MS      1000
 
 /* Header-only ultra profile */
 #define BM_CONFIG_ULTRA_MAX_EVENT_TYPES      8

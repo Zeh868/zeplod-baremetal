@@ -71,6 +71,15 @@ static bm_queue_item_t      _event_queue[BM_CONFIG_EVENT_QUEUE_SIZE];
 static uint32_t             _queue_write = 0;
 static uint32_t             _queue_read = 0;
 static uint32_t             _next_subscriber_id = 1;
+static uint32_t             _queue_dropped = 0;
+
+/** 分发阶段订阅者快照（避免回调期间链表被修改） */
+typedef struct {
+    bm_event_callback_t cb;
+    void               *user_data;
+} bm_dispatch_snap_t;
+
+static bm_dispatch_snap_t _dispatch_snap[BM_CONFIG_MAX_EVENT_SUBSCRIBERS];
 
 /**
  * @brief 深拷贝队列项并修正内联 data 指针
@@ -97,6 +106,7 @@ void bm_event_reset(void) {
     _queue_write = 0;
     _queue_read = 0;
     _next_subscriber_id = 1;
+    _queue_dropped = 0;
     BM_CRITICAL_EXIT(s);
     BM_LOGI("event", "event bus reset");
 }
@@ -114,6 +124,11 @@ int bm_event_register_type(bm_event_type_t type, const char *name) {
         return BM_ERR_INVALID;
     }
     bm_irq_state_t s = BM_CRITICAL_ENTER();
+    if (_event_types[type].name != NULL) {
+        BM_CRITICAL_EXIT(s);
+        BM_LOGW("event", "type %u already registered", (unsigned)type);
+        return BM_ERR_ALREADY;
+    }
     _event_types[type].name = name;
     BM_CRITICAL_EXIT(s);
     BM_LOGD("event", "type %u registered as '%s'", (unsigned)type, name);
@@ -147,6 +162,11 @@ int bm_event_subscribe(bm_event_type_t type, bm_event_callback_t cb,
     if (!sub) {
         BM_CRITICAL_EXIT(s);
         BM_LOGW("event", "subscribe no free slot for type=%u", (unsigned)type);
+        return BM_ERR_NO_MEM;
+    }
+    if (_next_subscriber_id == 0u) {
+        BM_CRITICAL_EXIT(s);
+        BM_LOGW("event", "subscribe id exhausted");
         return BM_ERR_NO_MEM;
     }
 
@@ -208,6 +228,7 @@ static int _queue_push_copy(const bm_event_t *event, const void *data, size_t le
     uint32_t mask = BM_CONFIG_EVENT_QUEUE_SIZE - 1;
     uint32_t next = (_queue_write + 1) & mask;
     if (next == _queue_read) {
+        _queue_dropped++;
         BM_CRITICAL_EXIT(s);
         BM_LOGW("event", "queue overflow type=%u", (unsigned)event->type);
         return BM_ERR_OVERFLOW;
@@ -292,6 +313,7 @@ int bm_event_publish_event(const bm_event_t *event) {
     uint32_t mask = BM_CONFIG_EVENT_QUEUE_SIZE - 1;
     uint32_t next = (_queue_write + 1) & mask;
     if (next == _queue_read) {
+        _queue_dropped++;
         BM_CRITICAL_EXIT(s);
         BM_LOGW("event", "queue overflow type=%u", (unsigned)event->type);
         return BM_ERR_OVERFLOW;
@@ -363,20 +385,37 @@ static int _queue_pop_highest_prio(bm_queue_item_t *out) {
  * @param max_events 单次最多处理的事件数
  * @return 实际处理的事件数量
  */
+/**
+ * @brief 查询因队列满而丢弃的发布次数
+ */
+uint32_t bm_event_get_dropped_count(void) {
+    return _queue_dropped;
+}
+
 int bm_event_process(uint32_t max_events) {
     uint32_t processed = 0;
     for (uint32_t i = 0; i < max_events; i++) {
         bm_queue_item_t item;
         int rc = _queue_pop_highest_prio(&item);
-        if (rc != BM_OK) break;
+        if (rc != BM_OK) {
+            break;
+        }
 
+        int snap_count = 0;
+        bm_irq_state_t s = BM_CRITICAL_ENTER();
         bm_subscriber_t *sub = _event_types[item.event.type].head;
-        while (sub) {
-            bm_subscriber_t *next = sub->next;
+        while (sub && snap_count < BM_CONFIG_MAX_EVENT_SUBSCRIBERS) {
             if (sub->cb) {
-                sub->cb(&item.event, sub->user_data);
+                _dispatch_snap[snap_count].cb = sub->cb;
+                _dispatch_snap[snap_count].user_data = sub->user_data;
+                snap_count++;
             }
-            sub = next;
+            sub = sub->next;
+        }
+        BM_CRITICAL_EXIT(s);
+
+        for (int j = 0; j < snap_count; j++) {
+            _dispatch_snap[j].cb(&item.event, _dispatch_snap[j].user_data);
         }
         processed++;
     }

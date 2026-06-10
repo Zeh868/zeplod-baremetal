@@ -16,6 +16,9 @@ bm_add_test(test_skeleton test_skeleton.c bm_core)
 bm_add_test(test_ultra test_ultra.c bm_core)
 bm_add_test(test_mempool test_mempool.c bm_core)
 bm_add_test(test_event test_event.c bm_core)
+bm_add_test(test_wdg test_wdg.c bm_wdg)
+target_include_directories(test_wdg PRIVATE
+    ${CMAKE_SOURCE_DIR}/hal_reference/native_sim)
 
 if(BM_ENABLE_MODULE)
     bm_add_test(test_module test_module.c bm_module)

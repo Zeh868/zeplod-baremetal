@@ -105,6 +105,17 @@ void test_hrt_tick_wraparound(void) {
     TEST_ASSERT_GREATER_THAN(0u, g_slot_a);
 }
 
+void test_hrt_rejects_init_while_started(void) {
+    static const bm_hrt_slot_t slots[] = {
+        { 1000u, BM_HRT_TRIGGER_TIMER, slot_a_cb, NULL, "a" },
+    };
+
+    TEST_ASSERT_EQUAL(BM_OK, bm_hrt_init(slots, 1u));
+    TEST_ASSERT_EQUAL(BM_OK, bm_hrt_start());
+    TEST_ASSERT_EQUAL(BM_ERR_ALREADY, bm_hrt_init(slots, 1u));
+    bm_hrt_stop();
+}
+
 void test_hrt_rejects_slot_overflow(void) {
     static const bm_hrt_slot_t slot = {
         1000u, BM_HRT_TRIGGER_TIMER, slot_a_cb, NULL, "a"
@@ -123,5 +134,6 @@ int main(void) {
     RUN_TEST(test_hrt_start_ok_with_no_timer_slots);
     RUN_TEST(test_hrt_tick_wraparound);
     RUN_TEST(test_hrt_rejects_slot_overflow);
+    RUN_TEST(test_hrt_rejects_init_while_started);
     return UNITY_END();
 }

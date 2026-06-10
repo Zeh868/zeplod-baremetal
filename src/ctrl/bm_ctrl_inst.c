@@ -240,6 +240,8 @@ int bm_ctrl_init_all(const bm_ctrl_inst_t *const *instances, uint32_t count) {
     uint32_t s;
     int rc;
 
+    bm_hrt_stop();
+    bm_hrt_reset();
     ctrl_clear_runtime();
 
     if (!instances || count == 0u || count > BM_CONFIG_MAX_CTRL_INSTANCES) {
@@ -254,6 +256,9 @@ int bm_ctrl_init_all(const bm_ctrl_inst_t *const *instances, uint32_t count) {
     }
 
     for (i = 0u; i < count; ++i) {
+        if (!instances[i]) {
+            return BM_ERR_INVALID;
+        }
         rc = validate_instance(instances[i]);
         if (rc != BM_OK) {
             return rc;
@@ -360,17 +365,23 @@ int bm_ctrl_start_all(const bm_ctrl_inst_t *const *instances, uint32_t count) {
     }
 
     for (i = 0u; i < count; ++i) {
-        if (instances[i] != g_instances[i]) {
+        if (!instances[i] || instances[i] != g_instances[i]) {
             return BM_ERR_INVALID;
         }
         rc = instances[i]->ops->start(instances[i]);
         if (rc != BM_OK) {
             BM_LOGE("ctrl", "start failed inst id=%u rc=%d",
                     (unsigned)instances[i]->id, rc);
-            while (i > 0u) {
-                --i;
-                instances[i]->ops->safe_stop(instances[i]);
+            bm_hrt_stop();
+            for (uint32_t j = 0u; j < i; j++) {
+                const bm_ctrl_inst_t *inst = instances[j];
+                if (inst && inst->ops && inst->ops->safe_stop) {
+                    inst->ops->safe_stop(inst);
+                }
             }
+            ctrl_unbind_all_hardware();
+            bm_hrt_reset();
+            ctrl_clear_runtime();
             return rc;
         }
     }

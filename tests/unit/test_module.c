@@ -39,7 +39,9 @@ void setUp(void) {
     g_start_count = 0;
     g_stop_count = 0;
 }
-void tearDown(void) {}
+void tearDown(void) {
+    bm_module_deinit_all();
+}
 
 void test_module_lifecycle_order(void) {
     TEST_ASSERT_EQUAL(BM_OK, bm_module_init_all());

@@ -45,8 +45,8 @@ void bm_event_reset(void);
  * @brief 注册事件类型
  *
  * @param type 事件类型 ID
- * @param name 类型名称（可为 NULL）
- * @return BM_OK 成功；BM_ERR_ALREADY 已注册；BM_ERR_NO_MEM 类型表已满
+ * @param name 类型名称（非 NULL）
+ * @return BM_OK 成功；BM_ERR_ALREADY 已注册；BM_ERR_INVALID 参数无效
  */
 int bm_event_register_type(bm_event_type_t type, const char *name);
 
@@ -118,5 +118,12 @@ int bm_event_publish_event_from_isr(const bm_event_t *event);
  * @return 实际处理的事件条数
  */
 int bm_event_process(uint32_t max_events);
+
+/**
+ * @brief 查询因事件队列满而丢弃的发布次数
+ *
+ * @return 丢弃计数（reset 后清零）
+ */
+uint32_t bm_event_get_dropped_count(void);
 
 #endif /* BM_EVENT_H */

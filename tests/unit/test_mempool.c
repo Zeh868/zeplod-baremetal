@@ -35,6 +35,17 @@ void test_mempool_alloc_free(void) {
     TEST_ASSERT_EQUAL_PTR(a, b);
 }
 
+void test_mempool_double_free_ignored(void) {
+    BM_MEMPOOL_DEFINE(pool, test_obj_t, 2);
+    memset(pool.bitmap, 0, pool.bitmap_words * sizeof(uint32_t));
+
+    test_obj_t *a = (test_obj_t *)bm_mempool_alloc(&pool);
+    TEST_ASSERT_NOT_NULL(a);
+    bm_mempool_free(&pool, a);
+    bm_mempool_free(&pool, a);
+    TEST_ASSERT_NOT_NULL(bm_mempool_alloc(&pool));
+}
+
 void test_mempool_exhausted(void) {
     BM_MEMPOOL_DEFINE(pool, test_obj_t, 2);
     memset(pool.bitmap, 0, pool.bitmap_words * sizeof(uint32_t));
@@ -49,5 +60,6 @@ int main(void) {
     UNITY_BEGIN();
     RUN_TEST(test_mempool_alloc_free);
     RUN_TEST(test_mempool_exhausted);
+    RUN_TEST(test_mempool_double_free_ignored);
     return UNITY_END();
 }

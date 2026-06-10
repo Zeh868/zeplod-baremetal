@@ -57,6 +57,38 @@ void test_channel_underflow(void) {
     TEST_ASSERT_EQUAL(BM_ERR_WOULD_BLOCK, bm_channel_recv(&my_chan, &out));
 }
 
+void test_channel_invalid_args(void) {
+    test_msg_t msg = { .a = 1, .b = 2 };
+    test_msg_t out = {0};
+
+    TEST_ASSERT_EQUAL(BM_ERR_INVALID, bm_channel_send(NULL, &msg));
+    TEST_ASSERT_EQUAL(BM_ERR_INVALID, bm_channel_send(&my_chan, NULL));
+    TEST_ASSERT_EQUAL(BM_ERR_INVALID, bm_channel_recv(NULL, &out));
+    TEST_ASSERT_EQUAL(BM_ERR_INVALID, bm_channel_recv(&my_chan, NULL));
+
+    my_chan.write_idx = 99u;
+    TEST_ASSERT_EQUAL(BM_ERR_INVALID, bm_channel_send(&my_chan, &msg));
+    bm_channel_reset(&my_chan);
+}
+
+void test_channel_reset_and_capacity(void) {
+    test_msg_t msg = { .a = 7, .b = 8 };
+    TEST_ASSERT_EQUAL(BM_OK, bm_channel_send(&my_chan, &msg));
+    bm_channel_reset(&my_chan);
+    TEST_ASSERT_TRUE(bm_channel_is_empty(&my_chan));
+    TEST_ASSERT_EQUAL(4u, bm_channel_capacity(&my_chan));
+}
+
+void test_channel_query_consistency(void) {
+    test_msg_t msg = { .a = 1, .b = 2 };
+    for (int i = 0; i < 3; i++) {
+        TEST_ASSERT_FALSE(bm_channel_is_full(&my_chan));
+        TEST_ASSERT_EQUAL(BM_OK, bm_channel_send(&my_chan, &msg));
+    }
+    TEST_ASSERT_TRUE(bm_channel_is_full(&my_chan));
+    TEST_ASSERT_EQUAL(3u, bm_channel_count(&my_chan));
+}
+
 void test_channel_wraparound(void) {
     test_msg_t msg = { .a = 42, .b = 0 };
     for (int i = 0; i < 3; i++) {
@@ -90,5 +122,8 @@ int main(void) {
     RUN_TEST(test_channel_overflow);
     RUN_TEST(test_channel_underflow);
     RUN_TEST(test_channel_wraparound);
+    RUN_TEST(test_channel_invalid_args);
+    RUN_TEST(test_channel_reset_and_capacity);
+    RUN_TEST(test_channel_query_consistency);
     return UNITY_END();
 }
