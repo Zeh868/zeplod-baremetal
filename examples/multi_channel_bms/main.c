@@ -1,6 +1,20 @@
+/**
+ * @file main.c
+ * @brief 多通道 BMS 示例：Pack 采样 + 16 路电芯快照与过压检测
+ * @author zeh
+ * @version 1.0
+ * @date 2026-06-10
+ *
+ * @par 修改日志:
+ *
+ *    Date         Version        Author          Description
+ * 2026-06-10       1.0            zeh            正式发布
+ *
+ */
 #include "bm_ctrl_inst.h"
 #include "bm_event.h"
 #include "bm_hrt.h"
+#include "bm_log.h"
 #include "bm_snapshot.h"
 #include "bm_ticker.h"
 #include "hybrid_print.h"
@@ -12,8 +26,13 @@
 #ifdef NATIVE_SIM
 #include "bm_hal_timer_native.h"
 #endif
+#ifdef BM_EXAMPLE_QEMU
+#include "qemu_delay.h"
+#endif
 
 #include <stdint.h>
+
+#define TAG "multi_bms"
 
 #define CELL_COUNT          16u
 #define EVENT_CELL_CHECK    2u
@@ -37,6 +56,7 @@ typedef struct {
 static pack_state_t g_pack_state;
 static cell_state_t g_cell_states[CELL_COUNT];
 
+/** Pack 级 ADC 采样：遍历各电芯通道并发布快照 */
 static void pack_sample_step(const bm_ctrl_inst_t *instance) {
     pack_state_t *state = (pack_state_t *)instance->state;
     uint32_t ch;
@@ -118,10 +138,17 @@ static bm_resource_claim_t g_cell_claims[CELL_COUNT];
 static bm_ctrl_inst_t g_cells[CELL_COUNT];
 static const bm_ctrl_inst_t *g_instance_table[CELL_COUNT + 1u];
 
+#if defined(BM_EXAMPLE_QEMU)
+#define BMS_CHECK_MS  10u
+#else
+#define BMS_CHECK_MS  100u
+#endif
+
 static const bm_ticker_slot_t g_check_ticker[] = {
-    { 100u, EVENT_CELL_CHECK, 1u, "cell_check" }
+    { BMS_CHECK_MS, EVENT_CELL_CHECK, 1u, "cell_check" }
 };
 
+/** 周期性读取各电芯电压并检测过压 */
 static void on_cell_check(const bm_event_t *event, void *user_data) {
     uint32_t i;
 
@@ -136,10 +163,12 @@ static void on_cell_check(const bm_event_t *event, void *user_data) {
         g_cell_states[i].last_mv = mv;
         if (mv > 4200u) {
             g_cell_states[i].overvoltage_hits++;
+            BM_LOGW(TAG, "cell %u overvoltage: %u mV", (unsigned)i, (unsigned)mv);
         }
     }
 }
 
+/** 动态构建 16 路电芯控制实例及资源声明 */
 static void setup_cells(void) {
     uint32_t i;
 
@@ -165,6 +194,7 @@ static void setup_cells(void) {
         g_instance_table[i + 1u] = &g_cells[i];
     }
     g_instance_table[0] = &g_pack_sampler;
+    BM_LOGD(TAG, "setup %u cell instances", (unsigned)CELL_COUNT);
 }
 
 int main(void) {
@@ -173,6 +203,7 @@ int main(void) {
     uint32_t reported = 0u;
     int rc;
 
+    BM_LOGI(TAG, "multi_channel_bms example start");
     bm_hal_uart_init(NULL);
     bm_event_reset();
     setup_cells();
@@ -184,19 +215,27 @@ int main(void) {
 
     rc = bm_ctrl_init_all(g_instance_table, CELL_COUNT + 1u);
     if (rc != BM_OK) {
+        BM_LOGE(TAG, "ctrl init failed, rc=%d", rc);
         hybrid_print("EXAMPLE_MULTI_CHANNEL_BMS: FAIL init\n");
         return 1;
     }
     rc = bm_hrt_start();
     if (rc != BM_OK) {
+        BM_LOGE(TAG, "hrt start failed, rc=%d", rc);
         return 1;
     }
     rc = bm_ctrl_start_all(g_instance_table, CELL_COUNT + 1u);
     if (rc != BM_OK) {
+        BM_LOGE(TAG, "ctrl start failed, rc=%d", rc);
         return 1;
     }
+#ifdef BM_EXAMPLE_QEMU
+    bm_example_qemu_warmup();
+#endif
+
     rc = bm_ticker_init(g_check_ticker, 1u);
     if (rc != BM_OK) {
+        BM_LOGE(TAG, "ticker init failed, rc=%d", rc);
         return 1;
     }
 
@@ -207,8 +246,17 @@ int main(void) {
         (void)bm_ticker_poll();
         (void)bm_event_process(8u);
     }
+#elif defined(BM_EXAMPLE_QEMU)
+    for (i = 0u; i < 1500u; ++i) {
+        bm_example_qemu_spin();
+        bm_hal_adc_sim_fire_complete(&BM_HAL_ADC_SIM0);
+        (void)bm_ticker_poll();
+        (void)bm_event_process(8u);
+    }
 #else
     for (i = 0u; i < 200u; ++i) {
+        for (volatile uint32_t d = 0u; d < 5000u; ++d) {
+        }
         bm_hal_adc_sim_fire_complete(&BM_HAL_ADC_SIM0);
         (void)bm_ticker_poll();
         (void)bm_event_process(8u);
@@ -222,8 +270,13 @@ int main(void) {
     }
 
     if (g_pack_state.samples > 0u && reported == CELL_COUNT) {
+        BM_LOGI(TAG, "metrics ok: samples=%u reported=%u",
+                (unsigned)g_pack_state.samples, (unsigned)reported);
         hybrid_print_pass("MULTI_CHANNEL_BMS");
     } else {
+        BM_LOGE(TAG, "metrics failed: samples=%u reported=%u/%u",
+                (unsigned)g_pack_state.samples, (unsigned)reported,
+                (unsigned)CELL_COUNT);
         hybrid_print("EXAMPLE_MULTI_CHANNEL_BMS: FAIL metrics\n");
         bm_ctrl_safe_stop_all(g_instance_table, CELL_COUNT + 1u);
         return 1;

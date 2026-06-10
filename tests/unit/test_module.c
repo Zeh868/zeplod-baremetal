@@ -1,5 +1,17 @@
+/**
+ * @file test_module.c
+ * @brief 模块表 init/start/stop/deinit 生命周期与优先级顺序单元测试
+ * @author zeh (china_qzh@163.com)
+ * @version 1.0
+ * @date 2026-06-10
+ * @par 修改日志:
+ *    Date         Version        Author          Description
+ * 2026-06-10       1.0            zeh            正式发布
+ */
+
 #include "unity.h"
 #include "bm_module.h"
+#include "bm_log.h"
 
 static int g_init_count = 0;
 static int g_start_count = 0;
@@ -22,6 +34,7 @@ const bm_module_t _bm_module_table[] = {
 const uint32_t _bm_module_count = 2;
 
 void setUp(void) {
+    BM_LOGI("test_mod", "setUp: reset lifecycle counters");
     g_init_count = 0;
     g_start_count = 0;
     g_stop_count = 0;

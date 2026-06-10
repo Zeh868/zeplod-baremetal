@@ -52,6 +52,11 @@ function(bm_add_qemu_example TARGET)
         )
     endif()
 
+    target_compile_definitions(${TARGET}.elf PRIVATE
+        BM_EXAMPLE_QEMU=1
+        BM_CONFIG_ENABLE_LOG=0
+    )
+
     target_include_directories(${TARGET}.elf PRIVATE
         "${CMAKE_CURRENT_SOURCE_DIR}"
         "${ZEPLOD_ROOT}/examples/common"
@@ -62,5 +67,6 @@ function(bm_add_qemu_example TARGET)
         "-T${ZEPLOD_ROOT}/hal_reference/qemu_cortex_m0/linker.ld"
         "-nostartfiles"
         "-Wl,--gc-sections"
+        "--specs=rdimon.specs"
     )
 endfunction()

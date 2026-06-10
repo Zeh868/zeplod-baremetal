@@ -1,5 +1,19 @@
+/**
+ * @file main.c
+ * @brief 多轴同步示例：bm_sync 域触发三轴同时启动
+ * @author zeh
+ * @version 1.0
+ * @date 2026-06-10
+ *
+ * @par 修改日志:
+ *
+ *    Date         Version        Author          Description
+ * 2026-06-10       1.0            zeh            正式发布
+ *
+ */
 #include "bm_ctrl_inst.h"
 #include "bm_hrt.h"
+#include "bm_log.h"
 #include "bm_sync.h"
 #include "hybrid_print.h"
 
@@ -13,12 +27,15 @@
 
 #include <stdint.h>
 
+#define TAG "multi_axis"
+
 struct bm_hal_timer {
     uint32_t id;
 };
 
 static const struct bm_hal_timer g_master_timer = { 0u };
 
+/** 单轴运行时状态 */
 typedef struct {
     uint32_t start_tick;
     int started;
@@ -26,11 +43,14 @@ typedef struct {
 
 static axis_state_t g_axis_state[3];
 
+/** 同步触发后记录启动时刻并使能 PWM */
 static void axis_step(const bm_ctrl_inst_t *instance) {
     axis_state_t *state = (axis_state_t *)instance->state;
     if (!state->started) {
         state->start_tick = bm_hal_timer_get_ticks();
         state->started = 1;
+        BM_LOGD(TAG, "axis %s started at tick %u",
+                instance->name, (unsigned)state->start_tick);
         (void)bm_hal_pwm_enable_outputs(
             (const bm_hal_pwm_t *)instance->config, 1);
     }
@@ -100,34 +120,42 @@ int main(void) {
     uint32_t i;
     int rc;
 
+    BM_LOGI(TAG, "multi_axis_sync example start");
     bm_hal_uart_init(NULL);
     (void)bm_hal_timer_init(10000u);
 
     rc = bm_ctrl_init_all(g_instances, 3u);
     if (rc != BM_OK) {
+        BM_LOGE(TAG, "ctrl init failed, rc=%d", rc);
         hybrid_print("EXAMPLE_MULTI_AXIS_SYNC: FAIL init\n");
         return 1;
     }
     rc = bm_sync_configure(&g_domain);
     if (rc != BM_OK) {
+        BM_LOGE(TAG, "sync configure failed, rc=%d", rc);
         return 1;
     }
     rc = bm_sync_arm(&g_domain);
     if (rc != BM_OK) {
+        BM_LOGE(TAG, "sync arm failed, rc=%d", rc);
         return 1;
     }
     rc = bm_hrt_start();
     if (rc != BM_OK) {
+        BM_LOGE(TAG, "hrt start failed, rc=%d", rc);
         return 1;
     }
     rc = bm_ctrl_start_all(g_instances, 3u);
     if (rc != BM_OK) {
+        BM_LOGE(TAG, "ctrl start failed, rc=%d", rc);
         return 1;
     }
     rc = bm_sync_trigger(&g_domain);
     if (rc != BM_OK) {
+        BM_LOGE(TAG, "sync trigger failed, rc=%d", rc);
         return 1;
     }
+    BM_LOGI(TAG, "sync domain triggered");
 
 #ifdef NATIVE_SIM
     for (i = 0u; i < 50u; ++i) {
@@ -135,7 +163,7 @@ int main(void) {
     }
 #else
     for (i = 0u; i < 200u; ++i) {
-        for (volatile uint32_t d = 0u; d < 20u; ++d) {
+        for (volatile uint32_t d = 0u; d < 500u; ++d) {
         }
     }
 #endif
@@ -144,8 +172,16 @@ int main(void) {
         g_axis_state[2].started &&
         g_axis_state[0].start_tick == g_axis_state[1].start_tick &&
         g_axis_state[1].start_tick == g_axis_state[2].start_tick) {
+        BM_LOGI(TAG, "all axes synced at tick %u",
+                (unsigned)g_axis_state[0].start_tick);
         hybrid_print_pass("MULTI_AXIS_SYNC");
     } else {
+        BM_LOGE(TAG, "sync failed: started=[%d,%d,%d] ticks=[%u,%u,%u]",
+                g_axis_state[0].started, g_axis_state[1].started,
+                g_axis_state[2].started,
+                (unsigned)g_axis_state[0].start_tick,
+                (unsigned)g_axis_state[1].start_tick,
+                (unsigned)g_axis_state[2].start_tick);
         hybrid_print("EXAMPLE_MULTI_AXIS_SYNC: FAIL sync\n");
         bm_sync_safe_stop(&g_domain);
         bm_ctrl_safe_stop_all(g_instances, 3u);

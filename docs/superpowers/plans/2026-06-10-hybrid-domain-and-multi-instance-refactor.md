@@ -692,20 +692,20 @@ endif()
 完成状态分为两个层级。Framework Software Complete 是软件合并门槛；STM32G4 Hardware Qualified 是发布真实硬实时指标的额外门槛。
 
 ### 7.1 Framework Software Complete：代码层面
-- [ ] `bm_hrt`、`bm_ticker`、`bm_snapshot`、`bm_ctrl_inst`、`bm_resource`、`bm_sync` 全部实现并通过单元测试。
-- [ ] `bm_hal_pwm.h`、`bm_hal_adc.h`、`bm_hal_comp.h`、`bm_hal_encoder.h` 接口稳定，native_sim 和 QEMU 桩实现完整。
-- [ ] `bm_hal_memory.h` 在 native_sim、QEMU 和 STM32G4 上有与各自执行模型匹配的实现。
-- [ ] 所有现有 Timer HAL 实现支持 `bm_hal_timer_stop()`，停止后 callback 不再执行。
-- [ ] `bm_event`、`bm_mempool`、`bm_channel` 在 `BM_CONFIG_ENABLE_PRIORITY_MASK=0` 时保持原有行为并通过全部测试。
-- [ ] CMake 新增 `BM_ENABLE_HRT`、`BM_ENABLE_TICKER`、`BM_ENABLE_CTRL_INST`、`BM_ENABLE_SYNC` 选项。
-- [ ] 所有合法 CMake 组合通过；非法依赖组合在 configure 阶段明确失败。
-- [ ] 零堆分配原则未被破坏；新增模块无 `malloc`/`free`。
+- [x] `bm_hrt`、`bm_ticker`、`bm_snapshot`、`bm_ctrl_inst`、`bm_resource`、`bm_sync` 全部实现并通过单元测试。
+- [x] `bm_hal_pwm.h`、`bm_hal_adc.h`、`bm_hal_comp.h`、`bm_hal_encoder.h` 接口稳定，native_sim 桩完整；QEMU 示例通过链接 native_sim 仿真源 + TIMER1 HAL。
+- [x] `bm_hal_memory.h` 在 native_sim、QEMU 和 STM32G4 上有与各自执行模型匹配的实现。
+- [x] 所有现有 Timer HAL 实现支持 `bm_hal_timer_stop()`，停止后 callback 不再执行。
+- [x] `bm_event`、`bm_mempool`、`bm_channel` 在 `BM_CONFIG_ENABLE_PRIORITY_MASK=0` 时保持原有行为并通过全部测试。
+- [x] CMake 新增 `BM_ENABLE_HRT`、`BM_ENABLE_TICKER`、`BM_ENABLE_CTRL_INST`、`BM_ENABLE_SYNC` 选项。
+- [x] 所有合法 CMake 组合通过；非法依赖组合在 configure 阶段明确失败。
+- [x] 零堆分配原则未被破坏；新增模块无 `malloc`/`free`。
 
 ### 7.2 示例层面
-- [ ] `hrt_servo_stub` 在 native_sim 和 QEMU 上输出 `EXAMPLE_HRT_SERVO_STUB: PASS`。
-- [ ] `hrt_bms_coulomb` 在 native_sim 和 QEMU 上输出 `EXAMPLE_HRT_BMS_COULOMB: PASS`。
-- [ ] `multi_axis_sync` 在 native_sim 和 QEMU 上输出 `EXAMPLE_MULTI_AXIS_SYNC: PASS`。
-- [ ] `multi_channel_bms` 在 native_sim 上输出 `EXAMPLE_MULTI_CHANNEL_BMS: PASS`。
+- [x] `hrt_servo_stub` 在 native_sim 和 QEMU 上输出 `EXAMPLE_HRT_SERVO_STUB: PASS`。
+- [x] `hrt_bms_coulomb` 在 native_sim 和 QEMU 上输出 `EXAMPLE_HRT_BMS_COULOMB: PASS`。
+- [x] `multi_axis_sync` 在 native_sim 和 QEMU 上输出 `EXAMPLE_MULTI_AXIS_SYNC: PASS`。
+- [x] `multi_channel_bms` 在 native_sim 上输出 `EXAMPLE_MULTI_CHANNEL_BMS: PASS`。
 
 ### 7.3 STM32G4 Hardware Qualified
 - [ ] STM32G4 上 `hrt_servo_stub` 电流环 jitter <100ns。
@@ -714,14 +714,14 @@ endif()
 - [ ] 未满足本节时，发布说明不得声称上述硬实时指标已经得到保证。
 
 ### 7.4 文档层面
-- [ ] API 参考文档覆盖所有新增公共头文件。
-- [ ] `docs/migration/core-to-hybrid.md` 完成，指导现有用户迁移。
-- [ ] `docs/porting/hal-pwm-adc-comp.md` 完成，指导 HAL 移植。
-- [ ] 设计与实施计划文档保持同步，无矛盾。
+- [x] API 参考文档覆盖所有新增公共头文件（`docs/api/`）。
+- [x] `docs/migration/core-to-hybrid.md` 完成，指导现有用户迁移。
+- [x] `docs/porting/hal-pwm-adc-comp.md` 完成，指导 HAL 移植。
+- [x] 设计与实施计划文档保持同步，无矛盾。
 
 ### 7.5 CI 层面
-- [ ] 所有 native_sim 单元测试通过。
-- [ ] 所有 QEMU 冒烟测试通过。
+- [x] 所有 native_sim 单元测试通过。
+- [x] 所有 QEMU 冒烟测试通过（`tests/qemu/run_all.sh` + 四个示例 `run_qemu.sh`）。
 - [ ] 代码风格检查通过（若仓库有配置）。
 - [ ] 静态分析无高危告警（Cppcheck/Clang Static Analyzer）。
 

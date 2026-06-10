@@ -1,5 +1,19 @@
+/**
+ * @file main.c
+ * @brief HRT BMS 库仑计示例：Pack 电流采样 + 电芯积分 + 比较器安全停机
+ * @author zeh
+ * @version 1.0
+ * @date 2026-06-10
+ *
+ * @par 修改日志:
+ *
+ *    Date         Version        Author          Description
+ * 2026-06-10       1.0            zeh            正式发布
+ *
+ */
 #include "bm_ctrl_inst.h"
 #include "bm_hrt.h"
+#include "bm_log.h"
 #include "bm_snapshot.h"
 #include "bm_ticker.h"
 #include "hybrid_print.h"
@@ -14,8 +28,13 @@
 #ifdef NATIVE_SIM
 #include "bm_hal_timer_native.h"
 #endif
+#ifdef BM_EXAMPLE_QEMU
+#include "qemu_delay.h"
+#endif
 
 #include <stdint.h>
+
+#define TAG "hrt_bms"
 
 #define TICKER_INTEGRATE 1u
 
@@ -35,6 +54,7 @@ typedef struct {
 static pack_state_t g_pack_state;
 static cell_state_t g_cell_state;
 
+/** Pack 电流采样：ADC 读数换算为安培并发布快照 */
 static void pack_sample_step(const bm_ctrl_inst_t *instance) {
     pack_state_t *state = (pack_state_t *)instance->state;
     uint16_t raw = 0u;
@@ -59,6 +79,7 @@ static int pack_init(const bm_ctrl_inst_t *instance) {
     (void)instance;
     bm_hal_adc_sim_set_rank(&BM_HAL_ADC_SIM0, 0u, 4095u);
     (void)bm_hal_pwm_enable_outputs(&BM_HAL_PWM_SIM0, 1);
+    BM_LOGD(TAG, "pack init, ADC full-scale, PWM enabled");
     return BM_OK;
 }
 
@@ -69,6 +90,7 @@ static int pack_start(const bm_ctrl_inst_t *instance) {
 
 static void pack_safe_stop(const bm_ctrl_inst_t *instance) {
     (void)instance;
+    BM_LOGW(TAG, "pack safe stop");
     bm_hal_pwm_request_safe_state(&BM_HAL_PWM_SIM0);
 }
 
@@ -92,6 +114,7 @@ static const bm_ctrl_inst_t g_pack_sampler = {
     g_pack_slots, 1u, NULL, 0u, &g_pack_ops
 };
 
+/** 电芯库仑积分：读取 Pack 电流快照并累加 */
 static void cell_integrate_step(const bm_ctrl_inst_t *instance) {
     cell_state_t *state = (cell_state_t *)instance->state;
     float amps;
@@ -119,8 +142,14 @@ static const bm_ctrl_ops_t g_cell_ops = {
     cell_init, cell_start, cell_safe_stop
 };
 
+#if defined(BM_EXAMPLE_QEMU)
+#define CELL_TICKER_MS  10u
+#else
+#define CELL_TICKER_MS  100u
+#endif
+
 static const bm_ticker_slot_t g_cell_ticker[] = {
-    { 100u, TICKER_INTEGRATE, 1u, "integrate" }
+    { CELL_TICKER_MS, TICKER_INTEGRATE, 1u, "integrate" }
 };
 
 static const bm_ctrl_inst_t g_cell_0 = {
@@ -133,6 +162,7 @@ static const bm_ctrl_inst_t *const g_instances[] = {
     &g_cell_0
 };
 
+/** ticker 积分事件回调 */
 static void on_integrate(const bm_event_t *event, void *user_data) {
     (void)user_data;
     if (event->type == TICKER_INTEGRATE) {
@@ -140,12 +170,15 @@ static void on_integrate(const bm_event_t *event, void *user_data) {
     }
 }
 
+/** 推进仿真并轮询 ticker / 事件 */
 static void run_sim(uint32_t cycles) {
     uint32_t i;
 
     for (i = 0u; i < cycles; ++i) {
 #ifdef NATIVE_SIM
         bm_hal_timer_native_advance_ticks(1u);
+#elif defined(BM_EXAMPLE_QEMU)
+        bm_example_qemu_spin();
 #else
         for (volatile uint32_t d = 0u; d < 20u; ++d) {
         }
@@ -162,6 +195,7 @@ int main(void) {
     bm_event_subscriber_id_t sub;
     int rc;
 
+    BM_LOGI(TAG, "hrt_bms_coulomb example start");
     bm_hal_uart_init(NULL);
     bm_event_reset();
     bm_event_register_type(TICKER_INTEGRATE, "INTEGRATE");
@@ -172,37 +206,58 @@ int main(void) {
 
     rc = bm_ctrl_init_all(g_instances, 2u);
     if (rc != BM_OK) {
+        BM_LOGE(TAG, "ctrl init failed, rc=%d", rc);
         hybrid_print("EXAMPLE_HRT_BMS_COULOMB: FAIL init\n");
         return 1;
     }
     rc = bm_hrt_start();
     if (rc != BM_OK) {
+        BM_LOGE(TAG, "hrt start failed, rc=%d", rc);
         return 1;
     }
     rc = bm_ctrl_start_all(g_instances, 2u);
     if (rc != BM_OK) {
+        BM_LOGE(TAG, "ctrl start failed, rc=%d", rc);
         return 1;
     }
+#ifdef BM_EXAMPLE_QEMU
+    bm_example_qemu_warmup();
+#endif
+
     rc = bm_ticker_init(g_cell_ticker, 1u);
     if (rc != BM_OK) {
+        BM_LOGE(TAG, "ticker init failed, rc=%d", rc);
         return 1;
     }
 
 #ifdef NATIVE_SIM
     run_sim(1000u);
+#elif defined(BM_EXAMPLE_QEMU)
+    run_sim(2000u);
 #else
     run_sim(500u);
 #endif
 
+    /* 模拟比较器过压触发，请求 PWM 安全态 */
     bm_hal_comp_sim_trip(&BM_HAL_COMP_SIM0, 4000u);
     bm_hal_pwm_request_safe_state(&BM_HAL_PWM_SIM0);
+    BM_LOGW(TAG, "comparator tripped, PWM safe state requested");
 
     if (g_pack_state.sample_count > 0u &&
         g_cell_state.integrate_ticks > 0u &&
         g_cell_state.coulomb_ah > 0.0001f &&
         !bm_hal_pwm_sim_outputs_enabled(&BM_HAL_PWM_SIM0)) {
+        BM_LOGI(TAG, "metrics ok: samples=%u integrate=%u coulomb=%.4f",
+                (unsigned)g_pack_state.sample_count,
+                (unsigned)g_cell_state.integrate_ticks,
+                (double)g_cell_state.coulomb_ah);
         hybrid_print_pass("HRT_BMS_COULOMB");
     } else {
+        BM_LOGE(TAG, "metrics failed: samples=%u integrate=%u coulomb=%.4f pwm=%d",
+                (unsigned)g_pack_state.sample_count,
+                (unsigned)g_cell_state.integrate_ticks,
+                (double)g_cell_state.coulomb_ah,
+                bm_hal_pwm_sim_outputs_enabled(&BM_HAL_PWM_SIM0));
         hybrid_print("EXAMPLE_HRT_BMS_COULOMB: FAIL metrics\n");
         bm_ctrl_safe_stop_all(g_instances, 2u);
         return 1;

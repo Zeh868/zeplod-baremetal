@@ -1,5 +1,17 @@
+/**
+ * @file test_channel.c
+ * @brief 消息通道 ring buffer 收发、溢出与回绕单元测试
+ * @author zeh (china_qzh@163.com)
+ * @version 1.0
+ * @date 2026-06-10
+ * @par 修改日志:
+ *    Date         Version        Author          Description
+ * 2026-06-10       1.0            zeh            正式发布
+ */
+
 #include "unity.h"
 #include "bm_channel.h"
+#include "bm_log.h"
 
 typedef struct {
     uint32_t a;
@@ -9,6 +21,7 @@ typedef struct {
 BM_CHANNEL_DEFINE(my_chan, test_msg_t, 4);
 
 void setUp(void) {
+    BM_LOGI("test_chan", "setUp: reset channel");
     bm_channel_reset(&my_chan);
 }
 void tearDown(void) {}
@@ -33,12 +46,14 @@ void test_channel_overflow(void) {
         TEST_ASSERT_EQUAL(BM_OK, bm_channel_send(&my_chan, &msg));
     }
     TEST_ASSERT_TRUE(bm_channel_is_full(&my_chan));
+    BM_LOGE("test_chan", "expect OVERFLOW on full channel send");
     TEST_ASSERT_EQUAL(BM_ERR_OVERFLOW, bm_channel_send(&my_chan, &msg));
 }
 
 void test_channel_underflow(void) {
     test_msg_t out = {0};
     TEST_ASSERT_TRUE(bm_channel_is_empty(&my_chan));
+    BM_LOGE("test_chan", "expect WOULD_BLOCK on empty channel recv");
     TEST_ASSERT_EQUAL(BM_ERR_WOULD_BLOCK, bm_channel_recv(&my_chan, &out));
 }
 

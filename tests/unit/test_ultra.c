@@ -1,5 +1,17 @@
+/**
+ * @file test_ultra.c
+ * @brief Ultra 轻量事件发布、处理与队列溢出单元测试
+ * @author zeh (china_qzh@163.com)
+ * @version 1.0
+ * @date 2026-06-10
+ * @par 修改日志:
+ *    Date         Version        Author          Description
+ * 2026-06-10       1.0            zeh            正式发布
+ */
+
 #include "unity.h"
 #include "bm_ultra.h"
+#include "bm_log.h"
 
 static int g_count = 0;
 
@@ -18,6 +30,7 @@ BM_ULTRA_CALLBACK_TABLE_DEFINE(
 );
 
 void setUp(void) {
+    BM_LOGI("test_ultra", "setUp: reset ultra subsystem");
     g_count = 0;
     bm_ultra_init();
 }

@@ -1,5 +1,17 @@
+/**
+ * @file test_hrt.c
+ * @brief 硬实时调度器（HRT）多槽、截止期与边界条件单元测试
+ * @author zeh (china_qzh@163.com)
+ * @version 1.0
+ * @date 2026-06-10
+ * @par 修改日志:
+ *    Date         Version        Author          Description
+ * 2026-06-10       1.0            zeh            正式发布
+ */
+
 #include "unity.h"
 #include "bm_hrt.h"
+#include "bm_log.h"
 #include "bm_hal_timer_native.h"
 
 static uint32_t g_slot_a;
@@ -15,6 +27,7 @@ static void slot_b_cb(void *context) {
 }
 
 void setUp(void) {
+    BM_LOGI("test_hrt", "setUp: reset HRT and native timer");
     g_slot_a = 0u;
     g_slot_b = 0u;
     bm_hal_timer_native_reset_ticks();
@@ -80,6 +93,18 @@ void test_hrt_start_ok_with_no_timer_slots(void) {
     bm_hrt_stop();
 }
 
+void test_hrt_tick_wraparound(void) {
+    static const bm_hrt_slot_t slots[] = {
+        { 1000u, BM_HRT_TRIGGER_TIMER, slot_a_cb, NULL, "a" },
+    };
+
+    bm_hal_timer_native_advance_ticks(0xFFFFFFF0u);
+    TEST_ASSERT_EQUAL(BM_OK, bm_hrt_init(slots, 1u));
+    TEST_ASSERT_EQUAL(BM_OK, bm_hrt_start());
+    bm_hal_timer_native_advance_ticks(20u);
+    TEST_ASSERT_GREATER_THAN(0u, g_slot_a);
+}
+
 void test_hrt_rejects_slot_overflow(void) {
     static const bm_hrt_slot_t slot = {
         1000u, BM_HRT_TRIGGER_TIMER, slot_a_cb, NULL, "a"
@@ -96,6 +121,7 @@ int main(void) {
     RUN_TEST(test_hrt_rejects_invalid_period);
     RUN_TEST(test_hrt_stop_clears_callback);
     RUN_TEST(test_hrt_start_ok_with_no_timer_slots);
+    RUN_TEST(test_hrt_tick_wraparound);
     RUN_TEST(test_hrt_rejects_slot_overflow);
     return UNITY_END();
 }

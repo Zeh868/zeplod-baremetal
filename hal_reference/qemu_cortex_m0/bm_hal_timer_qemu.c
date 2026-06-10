@@ -1,9 +1,23 @@
+/**
+ * @file bm_hal_timer_qemu.c
+ * @brief QEMU Cortex-M0 定时器 HAL 实现（nRF51 TIMER1）
+ * @author zeh (china_qzh@163.com)
+ * @version 1.0
+ * @date 2026-06-10
+ * @par 修改日志:
+ *    Date         Version        Author          Description
+ * 2026-06-10       1.0            zeh            正式发布
+ */
+
 #include "bm_hal_timer.h"
+#include "bm_log.h"
 
 #include <stddef.h>
 #include <stdint.h>
 
-/* nRF51 TIMER1 — micro:bit QEMU does not drive Cortex-M SysTick. */
+#define TAG "hal_timer"
+
+/* micro:bit QEMU 不驱动 Cortex-M SysTick，使用 nRF51 TIMER1 */
 #define TIMER1_BASE             0x40009000U
 #define TIMER1_TASKS_START      (*(volatile uint32_t *)(TIMER1_BASE + 0x000U))
 #define TIMER1_TASKS_STOP       (*(volatile uint32_t *)(TIMER1_BASE + 0x004U))
@@ -20,13 +34,14 @@
 #define NVIC_ICPR               (*(volatile uint32_t *)0xE000E280U)
 #define TIMER1_IRQ_NUMBER       9U
 
-/* 16 MHz CPU with prescaler 4 -> 1 MHz timer counter. */
+/* 16 MHz CPU，预分频 4 -> 1 MHz 计数器 */
 #define NRF_TIMER_CLK_HZ        1000000u
 
 static volatile uint32_t _ticks;
 static void (*_tick_cb)(void);
 static uint32_t _tick_freq = 1000u;
 
+/** TIMER1 比较匹配中断：递增 tick 并调用回调 */
 void TIMER1_IRQHandler(void) {
     if (TIMER1_EVENTS_COMPARE0 == 0U) {
         return;
@@ -41,6 +56,7 @@ void TIMER1_IRQHandler(void) {
     TIMER1_TASKS_START = 1U;
 }
 
+/** 根据 tick 频率编程 CC0 比较值 */
 static void timer_program_period(void) {
     uint32_t cc = NRF_TIMER_CLK_HZ / _tick_freq;
 
@@ -65,6 +81,7 @@ int bm_hal_timer_init(uint32_t freq_hz) {
     NVIC_ICPR = (1U << TIMER1_IRQ_NUMBER);
     NVIC_ISER = (1U << TIMER1_IRQ_NUMBER);
     TIMER1_TASKS_START = 1U;
+    BM_LOGI(TAG, "init: freq_hz=%u", _tick_freq);
     return 0;
 }
 
@@ -72,6 +89,7 @@ void bm_hal_timer_stop(void) {
     TIMER1_TASKS_STOP = 1U;
     TIMER1_INTENCLR = (1U << 16);
     _tick_cb = NULL;
+    BM_LOGI(TAG, "stop");
 }
 
 uint32_t bm_hal_timer_get_ticks(void) {

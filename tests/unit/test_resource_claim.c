@@ -1,6 +1,19 @@
+/**
+ * @file test_resource_claim.c
+ * @brief 资源声明冲突检测（独占/共享/协调）单元测试
+ * @author zeh (china_qzh@163.com)
+ * @version 1.0
+ * @date 2026-06-10
+ * @par 修改日志:
+ *    Date         Version        Author          Description
+ * 2026-06-10       1.0            zeh            正式发布
+ */
+
 #include "unity.h"
 #include "bm_resource.h"
+#include "bm_log.h"
 
+/* 两实例争抢同一 PWM 通道（独占） */
 static const bm_resource_claim_t inst_a_claims[] = {
     { BM_RESOURCE_PWM, 1u, BM_RESOURCE_EXCLUSIVE, 0u, "pwm" },
 };
@@ -21,13 +34,16 @@ static const bm_resource_claim_t reader_no_owner[] = {
     { BM_RESOURCE_ADC_GROUP, 2u, BM_RESOURCE_SHARED_READ, 10u, "reader only" },
 };
 
-void setUp(void) {}
+void setUp(void) {
+    BM_LOGI("test_res", "setUp");
+}
 void tearDown(void) {}
 
 void test_resource_exclusive_conflict(void) {
     const bm_resource_claim_t *claims[] = { inst_a_claims, inst_b_claims };
     uint32_t counts[] = { 1u, 1u };
 
+    BM_LOGE("test_res", "expect BUSY on exclusive PWM conflict");
     TEST_ASSERT_EQUAL(BM_ERR_BUSY,
                       bm_resource_check_conflicts(claims, counts, 2u));
 }

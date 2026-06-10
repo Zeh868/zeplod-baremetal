@@ -1,5 +1,17 @@
+/**
+ * @file test_event.c
+ * @brief 事件总线 publish/subscribe、优先级与内联数据单元测试
+ * @author zeh (china_qzh@163.com)
+ * @version 1.0
+ * @date 2026-06-10
+ * @par 修改日志:
+ *    Date         Version        Author          Description
+ * 2026-06-10       1.0            zeh            正式发布
+ */
+
 #include "unity.h"
 #include "bm_core.h"
+#include "bm_log.h"
 
 #include <string.h>
 
@@ -27,6 +39,7 @@ static void test_cb(const bm_event_t *ev, void *user_data) {
 }
 
 void setUp(void) {
+    BM_LOGI("test_evt", "setUp: reset event subsystem");
     bm_event_reset();
     g_count = 0;
     g_last_data = 0;
@@ -111,6 +124,7 @@ void test_event_priority_reorder_preserves_inline_data(void) {
 }
 
 void test_event_rejects_invalid_payload_and_priority(void) {
+    BM_LOGE("test_evt", "expect INVALID for bad payload/priority");
     TEST_ASSERT_EQUAL(BM_ERR_INVALID,
         bm_event_publish_copy(EVENT_TEST, 0, NULL, 1));
     TEST_ASSERT_EQUAL(BM_ERR_INVALID,

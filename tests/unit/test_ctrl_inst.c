@@ -1,12 +1,26 @@
+/**
+ * @file test_ctrl_inst.c
+ * @brief 控制器实例生命周期、HRT 槽绑定与失败回滚单元测试
+ * @author zeh (china_qzh@163.com)
+ * @version 1.0
+ * @date 2026-06-10
+ * @par 修改日志:
+ *    Date         Version        Author          Description
+ * 2026-06-10       1.0            zeh            正式发布
+ */
+
 #include "unity.h"
 #include "bm_ctrl_inst.h"
 #include "bm_hrt.h"
 #include "bm_hal_adc_sim.h"
 #include "bm_hal_pwm_sim.h"
 #include "bm_hal_timer_native.h"
+#include "bm_log.h"
 
+/* 各 mock 回调的调用计数 */
 static uint32_t g_step_count;
 static uint32_t g_hw_step_count;
+static uint32_t g_safe_stop_count;
 
 static int mock_init(const bm_ctrl_inst_t *instance) {
     (void)instance;
@@ -20,6 +34,28 @@ static int mock_start(const bm_ctrl_inst_t *instance) {
 
 static void mock_safe_stop(const bm_ctrl_inst_t *instance) {
     (void)instance;
+    g_safe_stop_count++;
+}
+
+static int init_fail_id2(const bm_ctrl_inst_t *instance) {
+    if (instance->id == 2u) {
+        return BM_ERR_INVALID;
+    }
+    return BM_OK;
+}
+
+static int start_fail_id2(const bm_ctrl_inst_t *instance) {
+    if (instance->id == 2u) {
+        return BM_ERR_INVALID;
+    }
+    return BM_OK;
+}
+
+static int bind_fail(const bm_ctrl_inst_t *instance,
+                    const bm_hal_hrt_binding_t *binding) {
+    (void)instance;
+    (void)binding;
+    return BM_ERR_INVALID;
 }
 
 static void scheduled_step(const bm_ctrl_inst_t *instance) {
@@ -40,6 +76,7 @@ static int bind_adc(const bm_ctrl_inst_t *instance,
     return bm_hal_adc_bind_complete(adc, binding);
 }
 
+/* mock 控制器 ops：init/start/safe_stop */
 static const bm_ctrl_ops_t mock_ops = {
     mock_init,
     mock_start,
@@ -68,6 +105,7 @@ static const bm_ctrl_slot_t hardware_slots[] = {
     },
 };
 
+/* 定时调度槽实例（1000us 周期） */
 static const bm_ctrl_inst_t sched_inst = {
     1u, "sched", NULL, NULL, NULL,
     scheduled_slots,
@@ -75,6 +113,7 @@ static const bm_ctrl_inst_t sched_inst = {
     NULL, 0u, &mock_ops
 };
 
+/* 硬件触发槽实例（ADC 完成中断） */
 static const bm_ctrl_inst_t hw_inst = {
     2u, "hw", NULL, NULL, NULL,
     hardware_slots,
@@ -82,15 +121,62 @@ static const bm_ctrl_inst_t hw_inst = {
     NULL, 0u, &mock_ops
 };
 
+static const bm_ctrl_ops_t fail_init_ops = {
+    init_fail_id2, mock_start, mock_safe_stop
+};
+
+static const bm_ctrl_ops_t fail_start_ops = {
+    mock_init, start_fail_id2, mock_safe_stop
+};
+
+static const bm_ctrl_ops_t fail_bind_ops = {
+    mock_init, mock_start, mock_safe_stop
+};
+
+static const bm_ctrl_slot_t bind_fail_slots[] = {
+    {
+        BM_CTRL_SLOT_HARDWARE,
+        0u,
+        BM_HRT_TRIGGER_ADC_COMPLETE,
+        hardware_step,
+        bind_fail,
+        "bind_fail"
+    },
+};
+
+static const bm_ctrl_inst_t fail_init_inst = {
+    2u, "fail_init", NULL, NULL, NULL,
+    scheduled_slots,
+    (uint32_t)(sizeof(scheduled_slots) / sizeof(scheduled_slots[0])),
+    NULL, 0u, &fail_init_ops
+};
+
+static const bm_ctrl_inst_t fail_start_inst = {
+    2u, "fail_start", NULL, NULL, NULL,
+    scheduled_slots,
+    (uint32_t)(sizeof(scheduled_slots) / sizeof(scheduled_slots[0])),
+    NULL, 0u, &fail_start_ops
+};
+
+static const bm_ctrl_inst_t bind_fail_inst = {
+    3u, "bind_fail", NULL, NULL, NULL,
+    bind_fail_slots,
+    (uint32_t)(sizeof(bind_fail_slots) / sizeof(bind_fail_slots[0])),
+    NULL, 0u, &fail_bind_ops
+};
+
 void setUp(void) {
+    BM_LOGI("test_ctrl", "setUp: reset counters and HRT");
     g_step_count = 0u;
     g_hw_step_count = 0u;
+    g_safe_stop_count = 0u;
     bm_hal_timer_native_reset_ticks();
     bm_hrt_reset();
 }
 
 void tearDown(void) {
     bm_ctrl_safe_stop_all(NULL, 0u);
+    BM_LOGI("test_ctrl", "tearDown: safe_stop_all done");
 }
 
 void test_ctrl_init_and_scheduled_slot(void) {
@@ -125,6 +211,36 @@ void test_ctrl_hardware_only_hrt_start_ok(void) {
     bm_ctrl_safe_stop_all(instances, 1u);
 }
 
+void test_ctrl_init_failure_rolls_back_safe_stop(void) {
+    /* 第二实例 init 失败时，应回滚并调用已 init 实例的 safe_stop */
+    const bm_ctrl_inst_t *const instances[] = { &sched_inst, &fail_init_inst };
+
+    TEST_ASSERT_EQUAL(BM_ERR_INVALID, bm_ctrl_init_all(instances, 2u));
+    TEST_ASSERT_EQUAL(1u, g_safe_stop_count);
+    TEST_ASSERT_EQUAL(BM_OK, bm_ctrl_init_all(&instances[0], 1u));
+    TEST_ASSERT_EQUAL(BM_OK, bm_hrt_start());
+    bm_hal_timer_native_advance_ticks(10u);
+    TEST_ASSERT_GREATER_THAN(0u, g_step_count);
+    bm_ctrl_safe_stop_all(&instances[0], 1u);
+}
+
+void test_ctrl_start_failure_rolls_back_safe_stop(void) {
+    const bm_ctrl_inst_t *const instances[] = { &sched_inst, &fail_start_inst };
+
+    TEST_ASSERT_EQUAL(BM_OK, bm_ctrl_init_all(instances, 2u));
+    TEST_ASSERT_EQUAL(BM_ERR_INVALID, bm_ctrl_start_all(instances, 2u));
+    TEST_ASSERT_EQUAL(1u, g_safe_stop_count);
+    bm_ctrl_safe_stop_all(instances, 2u);
+}
+
+void test_ctrl_bind_failure_rolls_back(void) {
+    const bm_ctrl_inst_t *const instances[] = { &bind_fail_inst };
+
+    TEST_ASSERT_EQUAL(BM_ERR_INVALID, bm_ctrl_init_all(instances, 1u));
+    bm_hal_adc_sim_fire_complete(&BM_HAL_ADC_SIM0);
+    TEST_ASSERT_EQUAL(0u, g_hw_step_count);
+}
+
 void test_ctrl_find_instance(void) {
     const bm_ctrl_inst_t *const instances[] = { &sched_inst, &hw_inst };
 
@@ -137,6 +253,9 @@ int main(void) {
     RUN_TEST(test_ctrl_init_and_scheduled_slot);
     RUN_TEST(test_ctrl_hardware_bind_fires_step);
     RUN_TEST(test_ctrl_hardware_only_hrt_start_ok);
+    RUN_TEST(test_ctrl_init_failure_rolls_back_safe_stop);
+    RUN_TEST(test_ctrl_start_failure_rolls_back_safe_stop);
+    RUN_TEST(test_ctrl_bind_failure_rolls_back);
     RUN_TEST(test_ctrl_find_instance);
     return UNITY_END();
 }

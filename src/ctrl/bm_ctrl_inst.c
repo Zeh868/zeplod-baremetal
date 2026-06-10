@@ -1,5 +1,21 @@
+/**
+ * @file bm_ctrl_inst.c
+ * @brief 控制实例批量生命周期管理实现
+ *
+ * 校验实例与资源声明，组装 HRT 调度表，协调 init/start/stop 与硬件绑定。
+ * @author zeh (china_qzh@163.com)
+ * @version 1.0
+ * @date 2026-06-10
+ *
+ * @par 修改日志:
+ *
+ *    Date         Version        Author          Description
+ * 2026-06-10       1.0            zeh            正式发布
+ *
+ */
 #include "bm_ctrl_inst.h"
 #include "bm_hrt.h"
+#include "bm_log.h"
 
 #include <string.h>
 
@@ -19,6 +35,7 @@
 #define BM_CONFIG_MAX_CTRL_INSTANCES 16u
 #endif
 
+/** 实例槽位绑定：用于 HRT/硬件回调上下文 */
 typedef struct {
     const bm_ctrl_inst_t *instance;
     const bm_ctrl_slot_t *slot;
@@ -32,11 +49,19 @@ static bm_hrt_slot_t g_hrt_slots[BM_CONFIG_HRT_MAX_SLOTS];
 static uint32_t g_hrt_slot_count;
 static uint32_t g_init_done_count;
 
+/**
+ * @brief HRT/硬件回调入口，执行绑定槽位的 step 函数
+ *
+ * @param context 指向 bm_ctrl_binding_t 的上下文指针
+ */
 static void bm_ctrl_run_binding(void *context) {
     const bm_ctrl_binding_t *binding = (const bm_ctrl_binding_t *)context;
     binding->slot->step(binding->instance);
 }
 
+/**
+ * @brief 清零运行时全局状态（实例表、绑定表、HRT 槽）
+ */
 static void ctrl_clear_runtime(void) {
     {
         uint32_t n;
@@ -52,6 +77,9 @@ static void ctrl_clear_runtime(void) {
     g_init_done_count = 0u;
 }
 
+/**
+ * @brief 解绑所有硬件槽位的外部中断/定时器
+ */
 static void ctrl_unbind_all_hardware(void) {
     uint32_t i;
     uint32_t s;
@@ -67,6 +95,9 @@ static void ctrl_unbind_all_hardware(void) {
     }
 }
 
+/**
+ * @brief 按逆序回滚已完成的实例 init，调用 safe_stop
+ */
 static void ctrl_rollback_inits(void) {
     while (g_init_done_count > 0u) {
         g_init_done_count--;
@@ -77,6 +108,12 @@ static void ctrl_rollback_inits(void) {
     }
 }
 
+/**
+ * @brief 校验单个控制实例描述符与槽位配置
+ *
+ * @param inst 控制实例指针
+ * @return BM_OK 有效；BM_ERR_INVALID 字段或槽位配置无效
+ */
 static int validate_instance(const bm_ctrl_inst_t *inst) {
     uint32_t s;
 
@@ -121,6 +158,13 @@ static int validate_instance(const bm_ctrl_inst_t *inst) {
     return BM_OK;
 }
 
+/**
+ * @brief 校验实例 ID 在批次内唯一
+ *
+ * @param instances 实例指针数组
+ * @param count 实例数量
+ * @return BM_OK 唯一；BM_ERR_ALREADY 存在重复 ID
+ */
 static int validate_unique_ids(const bm_ctrl_inst_t *const *instances,
                                uint32_t count) {
     uint32_t i;
@@ -136,6 +180,13 @@ static int validate_unique_ids(const bm_ctrl_inst_t *const *instances,
     return BM_OK;
 }
 
+/**
+ * @brief 组装绑定表与 HRT 调度槽表
+ *
+ * @param instances 实例指针数组
+ * @param count 实例数量
+ * @return BM_OK 成功；BM_ERR_OVERFLOW 槽位表溢出
+ */
 static int assemble_tables(const bm_ctrl_inst_t *const *instances,
                            uint32_t count) {
     uint32_t i;
@@ -175,6 +226,13 @@ static int assemble_tables(const bm_ctrl_inst_t *const *instances,
     return BM_OK;
 }
 
+/**
+ * @brief 批量初始化控制实例（校验、资源检查、HRT 与硬件绑定）
+ *
+ * @param instances 实例指针数组
+ * @param count 实例数量
+ * @return BM_OK 成功；负值为各阶段错误码
+ */
 int bm_ctrl_init_all(const bm_ctrl_inst_t *const *instances, uint32_t count) {
     const bm_resource_claim_t *claim_ptrs[BM_CONFIG_MAX_CTRL_INSTANCES];
     uint32_t claim_counts[BM_CONFIG_MAX_CTRL_INSTANCES];
@@ -185,11 +243,13 @@ int bm_ctrl_init_all(const bm_ctrl_inst_t *const *instances, uint32_t count) {
     ctrl_clear_runtime();
 
     if (!instances || count == 0u || count > BM_CONFIG_MAX_CTRL_INSTANCES) {
+        BM_LOGE("ctrl", "init_all invalid count=%u", (unsigned)count);
         return BM_ERR_INVALID;
     }
 
     rc = validate_unique_ids(instances, count);
     if (rc != BM_OK) {
+        BM_LOGE("ctrl", "init_all duplicate instance id");
         return rc;
     }
 
@@ -204,6 +264,7 @@ int bm_ctrl_init_all(const bm_ctrl_inst_t *const *instances, uint32_t count) {
 
     rc = bm_resource_check_conflicts(claim_ptrs, claim_counts, count);
     if (rc != BM_OK) {
+        BM_LOGE("ctrl", "init_all resource conflict rc=%d", rc);
         return rc;
     }
 
@@ -229,6 +290,8 @@ int bm_ctrl_init_all(const bm_ctrl_inst_t *const *instances, uint32_t count) {
     for (i = 0u; i < count; ++i) {
         rc = instances[i]->ops->init(instances[i]);
         if (rc != BM_OK) {
+            BM_LOGE("ctrl", "init failed inst id=%u rc=%d",
+                    (unsigned)instances[i]->id, rc);
             ctrl_rollback_inits();
             bm_hrt_stop();
             ctrl_unbind_all_hardware();
@@ -276,9 +339,18 @@ int bm_ctrl_init_all(const bm_ctrl_inst_t *const *instances, uint32_t count) {
         }
     }
 
+    BM_LOGI("ctrl", "init_all ok count=%u hrt_slots=%u",
+            (unsigned)count, (unsigned)g_hrt_slot_count);
     return BM_OK;
 }
 
+/**
+ * @brief 批量启动已初始化的控制实例
+ *
+ * @param instances 实例指针数组（须与 init_all 时一致）
+ * @param count 实例数量
+ * @return BM_OK 成功；BM_ERR_INVALID 参数不匹配；负值为 start 失败码
+ */
 int bm_ctrl_start_all(const bm_ctrl_inst_t *const *instances, uint32_t count) {
     uint32_t i;
     int rc;
@@ -293,6 +365,8 @@ int bm_ctrl_start_all(const bm_ctrl_inst_t *const *instances, uint32_t count) {
         }
         rc = instances[i]->ops->start(instances[i]);
         if (rc != BM_OK) {
+            BM_LOGE("ctrl", "start failed inst id=%u rc=%d",
+                    (unsigned)instances[i]->id, rc);
             while (i > 0u) {
                 --i;
                 instances[i]->ops->safe_stop(instances[i]);
@@ -301,9 +375,16 @@ int bm_ctrl_start_all(const bm_ctrl_inst_t *const *instances, uint32_t count) {
         }
     }
 
+    BM_LOGI("ctrl", "start_all ok count=%u", (unsigned)count);
     return BM_OK;
 }
 
+/**
+ * @brief 安全停止所有实例并释放 HRT/硬件绑定
+ *
+ * @param instances 实例指针数组（可为 NULL，则使用内部记录）
+ * @param count 实例数量
+ */
 void bm_ctrl_safe_stop_all(const bm_ctrl_inst_t *const *instances,
                            uint32_t count) {
     uint32_t i;
@@ -329,8 +410,17 @@ void bm_ctrl_safe_stop_all(const bm_ctrl_inst_t *const *instances,
     ctrl_unbind_all_hardware();
     bm_hrt_reset();
     ctrl_clear_runtime();
+    BM_LOGI("ctrl", "safe_stop_all done");
 }
 
+/**
+ * @brief 按 ID 在实例数组中查找控制实例
+ *
+ * @param instances 实例指针数组
+ * @param count 实例数量
+ * @param id 目标实例 ID
+ * @return 匹配的实例指针；未找到返回 NULL
+ */
 const bm_ctrl_inst_t *bm_ctrl_find(const bm_ctrl_inst_t *const *instances,
                                    uint32_t count,
                                    uint32_t id) {

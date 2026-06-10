@@ -1,3 +1,14 @@
+/**
+ * @file bm_hal_critical_stm32g4.c
+ * @brief STM32G4 临界区 HAL 实现（PRIMASK + BASEPRI）
+ * @author zeh (china_qzh@163.com)
+ * @version 1.0
+ * @date 2026-06-10
+ * @par 修改日志:
+ *    Date         Version        Author          Description
+ * 2026-06-10       1.0            zeh            正式发布
+ */
+
 #define BM_HAL_HAS_PRIORITY_MASK 1
 
 #ifndef __NVIC_PRIO_BITS
@@ -26,6 +37,7 @@ static inline void write_basepri(uint32_t basepri) {
     __asm volatile ("msr basepri, %0" :: "r" (basepri) : "memory");
 }
 
+/** 关全局中断（PRIMASK） */
 bm_irq_state_t bm_hal_critical_enter(void) {
     bm_irq_state_t state = read_primask();
     __asm volatile ("cpsid i" ::: "memory");
@@ -36,6 +48,10 @@ void bm_hal_critical_exit(bm_irq_state_t state) {
     write_primask(state);
 }
 
+/**
+ * 屏蔽优先级不高于 threshold 的中断（BASEPRI）。
+ * 返回值打包 basepri（低 8 位）与 primask（高 8 位）。
+ */
 bm_irq_state_t bm_hal_critical_enter_below(uint8_t threshold) {
     bm_irq_state_t packed = read_basepri();
     packed |= (read_primask() << 8);

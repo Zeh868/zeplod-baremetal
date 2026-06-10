@@ -29,4 +29,7 @@ SECTIONS {
         . = ALIGN(4);
         _ebss = .;
     } > RAM
+
+    /* newlib semihosting (_sbrk) */
+    end = .;
 }

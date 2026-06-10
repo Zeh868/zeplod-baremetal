@@ -81,3 +81,16 @@ jobs:
           Write-Host $out
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           if ($out -notmatch ': PASS') { Write-Error 'Example did not report PASS'; exit 1 }
+
+  qemu-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install toolchain and QEMU
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-arm-none-eabi qemu-system-arm
+      - name: Build and run QEMU smoke + hybrid examples
+        run: |
+          chmod +x examples/run_qemu.sh tests/qemu/run_hybrid_smoke.sh tests/qemu/run_all.sh
+          bash tests/qemu/run_all.sh

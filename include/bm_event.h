@@ -1,3 +1,18 @@
+/**
+ * @file bm_event.h
+ * @brief 发布-订阅事件总线
+ *
+ * 支持优先级队列、ISR 安全发布及批量消费处理。
+ * @author zeh (china_qzh@163.com)
+ * @version 1.0
+ * @date 2026-06-10
+ *
+ * @par 修改日志:
+ *
+ *    Date         Version        Author          Description
+ * 2026-06-10       1.0            zeh            正式发布
+ *
+ */
 #ifndef BM_EVENT_H
 #define BM_EVENT_H
 
@@ -5,10 +20,11 @@
 
 #include <stddef.h>
 
-typedef uint8_t bm_event_type_t;
-typedef uint8_t bm_event_priority_t;
-typedef uint32_t bm_event_subscriber_id_t;
+typedef uint8_t bm_event_type_t;              /**< 事件类型 ID */
+typedef uint8_t bm_event_priority_t;          /**< 事件优先级 */
+typedef uint32_t bm_event_subscriber_id_t;    /**< 订阅者句柄 */
 
+/** 事件载荷 */
 typedef struct {
     bm_event_type_t      type;
     bm_event_priority_t  priority;
@@ -17,19 +33,90 @@ typedef struct {
     uint8_t              source_id;
 } bm_event_t;
 
+/** 订阅回调函数 */
 typedef void (*bm_event_callback_t)(const bm_event_t *event, void *user_data);
 
+/**
+ * @brief 重置事件子系统为初始状态
+ */
 void bm_event_reset(void);
+
+/**
+ * @brief 注册事件类型
+ *
+ * @param type 事件类型 ID
+ * @param name 类型名称（可为 NULL）
+ * @return BM_OK 成功；BM_ERR_ALREADY 已注册；BM_ERR_NO_MEM 类型表已满
+ */
 int bm_event_register_type(bm_event_type_t type, const char *name);
+
+/**
+ * @brief 订阅指定类型的事件
+ *
+ * @param type 事件类型 ID
+ * @param cb 回调函数
+ * @param user_data 用户上下文指针
+ * @param id 输出订阅者句柄（可为 NULL）
+ * @return BM_OK 成功；BM_ERR_NO_MEM 订阅表已满；BM_ERR_INVALID 参数无效
+ */
 int bm_event_subscribe(bm_event_type_t type, bm_event_callback_t cb,
                        void *user_data, bm_event_subscriber_id_t *id);
+
+/**
+ * @brief 取消订阅
+ *
+ * @param type 事件类型 ID
+ * @param id 订阅者句柄
+ * @return BM_OK 成功；BM_ERR_NOT_FOUND 未找到订阅
+ */
 int bm_event_unsubscribe(bm_event_type_t type, bm_event_subscriber_id_t id);
+
+/**
+ * @brief 发布事件（内部拷贝数据）
+ *
+ * @param type 事件类型 ID
+ * @param prio 事件优先级
+ * @param data 载荷数据指针
+ * @param len 载荷字节长度
+ * @return BM_OK 成功；BM_ERR_OVERFLOW 队列已满；BM_ERR_INVALID 参数无效
+ */
 int bm_event_publish_copy(bm_event_type_t type, bm_event_priority_t prio,
                           const void *data, size_t len);
+
+/**
+ * @brief ISR 上下文发布事件（内部拷贝数据）
+ *
+ * @param type 事件类型 ID
+ * @param prio 事件优先级
+ * @param data 载荷数据指针
+ * @param len 载荷字节长度
+ * @return BM_OK 成功；BM_ERR_OVERFLOW 队列已满；BM_ERR_INVALID 参数无效
+ */
 int bm_event_publish_copy_from_isr(bm_event_type_t type, bm_event_priority_t prio,
                                    const void *data, size_t len);
+
+/**
+ * @brief 发布完整事件结构
+ *
+ * @param event 事件描述指针
+ * @return BM_OK 成功；BM_ERR_OVERFLOW 队列已满；BM_ERR_INVALID 参数无效
+ */
 int bm_event_publish_event(const bm_event_t *event);
+
+/**
+ * @brief ISR 上下文发布完整事件结构
+ *
+ * @param event 事件描述指针
+ * @return BM_OK 成功；BM_ERR_OVERFLOW 队列已满；BM_ERR_INVALID 参数无效
+ */
 int bm_event_publish_event_from_isr(const bm_event_t *event);
+
+/**
+ * @brief 从队列取出并分发事件
+ *
+ * @param max_events 本次最多处理的事件条数
+ * @return 实际处理的事件条数
+ */
 int bm_event_process(uint32_t max_events);
 
 #endif /* BM_EVENT_H */

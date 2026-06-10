@@ -1,5 +1,17 @@
+/**
+ * @file test_shell.c
+ * @brief Shell 命令注册、解析、feed 与边界条件单元测试
+ * @author zeh (china_qzh@163.com)
+ * @version 1.0
+ * @date 2026-06-10
+ * @par 修改日志:
+ *    Date         Version        Author          Description
+ * 2026-06-10       1.0            zeh            正式发布
+ */
+
 #include "unity.h"
 #include "bm_shell.h"
+#include "bm_log.h"
 
 #include <stdio.h>
 
@@ -24,6 +36,7 @@ int cmd_fail(int argc, char *argv[]) {
 BM_SHELL_DEFINE(my_shell);
 
 void setUp(void) {
+    BM_LOGI("test_shell", "setUp: reset shell state");
     g_cmd_count = 0;
     g_last_argc = 0;
     for (int i = 0; i < 4; i++) g_last_argv[i] = NULL;
@@ -44,6 +57,7 @@ void test_shell_register_and_exec(void) {
 }
 
 void test_shell_unknown_command(void) {
+    BM_LOGE("test_shell", "expect NOT_FOUND for unknown command");
     TEST_ASSERT_EQUAL(BM_ERR_NOT_FOUND, bm_shell_exec(&my_shell, "noop"));
 }
 

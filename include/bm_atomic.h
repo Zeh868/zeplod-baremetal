@@ -1,10 +1,45 @@
+/**
+ * @file bm_atomic.h
+ * @brief 原子变量读写操作
+ *
+ * 提供对 bm_atomic_t 类型的加载、存储与自增接口。
+ * @author zeh (china_qzh@163.com)
+ * @version 1.0
+ * @date 2026-06-10
+ *
+ * @par 修改日志:
+ *
+ *    Date         Version        Author          Description
+ * 2026-06-10       1.0            zeh            正式发布
+ *
+ */
 #ifndef BM_ATOMIC_H
 #define BM_ATOMIC_H
 
 #include "bm_types.h"
 
+/**
+ * @brief 原子读取 32 位无符号整数值
+ *
+ * @param value 原子变量指针
+ * @return 当前存储的值
+ */
 uint32_t bm_atomic_load(bm_atomic_t *value);
+
+/**
+ * @brief 原子写入 32 位无符号整数值
+ *
+ * @param value 原子变量指针
+ * @param new_value 待写入的新值
+ */
 void bm_atomic_store(bm_atomic_t *value, uint32_t new_value);
+
+/**
+ * @brief 原子自增并返回递增后的值
+ *
+ * @param value 原子变量指针
+ * @return 自增后的值
+ */
 uint32_t bm_atomic_inc(bm_atomic_t *value);
 
 #endif /* BM_ATOMIC_H */

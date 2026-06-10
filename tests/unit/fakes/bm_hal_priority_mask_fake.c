@@ -1,3 +1,14 @@
+/**
+ * @file bm_hal_priority_mask_fake.c
+ * @brief 优先级掩码 HAL 桩实现：模拟 bm_hal_critical_enter_below/exit_below
+ * @author zeh (china_qzh@163.com)
+ * @version 1.0
+ * @date 2026-06-10
+ * @par 修改日志:
+ *    Date         Version        Author          Description
+ * 2026-06-10       1.0            zeh            正式发布
+ */
+
 #define BM_HAL_HAS_PRIORITY_MASK 1
 
 #include "bm_hal_critical.h"

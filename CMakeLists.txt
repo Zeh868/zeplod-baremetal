@@ -43,15 +43,29 @@ if(BM_CONFIG_FILE)
     )
 endif()
 
+add_library(bm_hal STATIC
+    src/hal/bm_hal_critical.c
+    src/hal/bm_hal_uart.c
+    src/hal/bm_hal_timer.c
+    src/hal/bm_hal_wdg.c
+    src/hal/bm_hal_memory.c
+    src/hal/bm_hal_pwm.c
+    src/hal/bm_hal_adc.c
+    src/hal/bm_hal_comp.c
+    src/hal/bm_hal_encoder.c
+)
+target_link_libraries(bm_hal PUBLIC bm_config)
+
 add_library(bm_core STATIC
     src/core/bm_mempool.c
     src/core/bm_critical.c
     src/core/bm_event.c
+    src/core/bm_log.c
 )
-target_link_libraries(bm_core PUBLIC bm_config)
+target_link_libraries(bm_core PUBLIC bm_config bm_hal)
 
 add_library(bm_framework INTERFACE)
-target_link_libraries(bm_framework INTERFACE bm_core)
+target_link_libraries(bm_framework INTERFACE bm_core bm_hal)
 
 if(BM_ENABLE_MODULE)
     add_library(bm_module STATIC src/module/bm_module.c)
@@ -92,7 +106,7 @@ endif()
 if(BM_BUILD_TESTS OR BM_ENABLE_CTRL_INST)
     if(NOT TARGET bm_resource)
         add_library(bm_resource STATIC src/ctrl/bm_resource.c)
-        target_link_libraries(bm_resource PUBLIC bm_config)
+        target_link_libraries(bm_resource PUBLIC bm_core)
     endif()
 endif()
 
@@ -121,3 +135,5 @@ if(BM_BUILD_TESTS)
 endif()
 
 add_subdirectory(hal_reference/native_sim EXCLUDE_FROM_ALL)
+add_subdirectory(hal_reference/stm32g4 EXCLUDE_FROM_ALL)
+add_subdirectory(hal_reference/ch32v003 EXCLUDE_FROM_ALL)

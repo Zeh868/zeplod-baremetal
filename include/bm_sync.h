@@ -1,3 +1,18 @@
+/**
+ * @file bm_sync.h
+ * @brief 多控制实例硬件同步域
+ *
+ * 通过主定时器与相位偏移，协调多个控制实例的 PWM/采样时序。
+ * @author zeh (china_qzh@163.com)
+ * @version 1.0
+ * @date 2026-06-10
+ *
+ * @par 修改日志:
+ *
+ *    Date         Version        Author          Description
+ * 2026-06-10       1.0            zeh            正式发布
+ *
+ */
 #ifndef BM_SYNC_H
 #define BM_SYNC_H
 
@@ -6,6 +21,7 @@
 
 typedef struct bm_hal_timer bm_hal_timer_t;
 
+/** 同步域配置 */
 typedef struct {
     const char *name;
     const bm_hal_timer_t *master_timer;
@@ -14,9 +30,35 @@ typedef struct {
     uint32_t member_count;
 } bm_sync_domain_t;
 
+/**
+ * @brief 配置同步域并委托 HAL 完成硬件设置
+ *
+ * @param domain 同步域描述符指针
+ * @return BM_OK 成功；BM_ERR_INVALID 参数无效；其他为 HAL 错误码
+ */
 int bm_sync_configure(const bm_sync_domain_t *domain);
+
+/**
+ * @brief 武装同步域，准备触发
+ *
+ * @param domain 同步域描述符指针
+ * @return BM_OK 成功；BM_ERR_INVALID 参数无效；其他为 HAL 错误码
+ */
 int bm_sync_arm(const bm_sync_domain_t *domain);
+
+/**
+ * @brief 触发同步域，按相位启动各成员
+ *
+ * @param domain 同步域描述符指针
+ * @return BM_OK 成功；BM_ERR_INVALID 参数无效；其他为 HAL 错误码
+ */
 int bm_sync_trigger(const bm_sync_domain_t *domain);
+
+/**
+ * @brief 安全停止同步域并复位 HAL 状态
+ *
+ * @param domain 同步域描述符指针
+ */
 void bm_sync_safe_stop(const bm_sync_domain_t *domain);
 
 #endif /* BM_SYNC_H */

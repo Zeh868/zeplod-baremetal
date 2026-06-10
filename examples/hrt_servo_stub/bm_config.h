@@ -1,3 +1,16 @@
+/**
+ * @file bm_config.h
+ * @brief hrt_servo_stub 示例运行时容量配置
+ * @author zeh
+ * @version 1.0
+ * @date 2026-06-10
+ *
+ * @par 修改日志:
+ *
+ *    Date         Version        Author          Description
+ * 2026-06-10       1.0            zeh            正式发布
+ *
+ */
 #ifndef BM_CONFIG_H
 #define BM_CONFIG_H
 

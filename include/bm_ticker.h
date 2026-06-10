@@ -1,9 +1,25 @@
+/**
+ * @file bm_ticker.h
+ * @brief 毫秒级周期事件发布器
+ *
+ * 按固定周期向事件总线发布 ticker 事件，适用于慢速后台任务触发。
+ * @author zeh (china_qzh@163.com)
+ * @version 1.0
+ * @date 2026-06-10
+ *
+ * @par 修改日志:
+ *
+ *    Date         Version        Author          Description
+ * 2026-06-10       1.0            zeh            正式发布
+ *
+ */
 #ifndef BM_TICKER_H
 #define BM_TICKER_H
 
 #include "bm_event.h"
 #include "bm_types.h"
 
+/** Ticker slot 配置 */
 typedef struct {
     uint32_t period_ms;
     bm_event_type_t event_type;
@@ -11,9 +27,33 @@ typedef struct {
     const char *name;
 } bm_ticker_slot_t;
 
+/**
+ * @brief 初始化 ticker 并注册 slot 表
+ *
+ * @param slots slot 描述数组
+ * @param slot_count slot 数量
+ * @return BM_OK 成功；BM_ERR_INVALID 参数无效
+ */
 int bm_ticker_init(const bm_ticker_slot_t *slots, uint32_t slot_count);
+
+/**
+ * @brief 轮询 ticker 并发布到期事件
+ *
+ * @return BM_OK 成功；BM_ERR_NOT_INIT 未初始化
+ */
 int bm_ticker_poll(void);
+
+/**
+ * @brief 查询指定 slot 因队列满而丢弃的事件计数
+ *
+ * @param slot_index slot 索引
+ * @return 丢弃事件计数
+ */
 uint32_t bm_ticker_get_dropped(uint32_t slot_index);
+
+/**
+ * @brief 重置 ticker 内部状态
+ */
 void bm_ticker_reset(void);
 
 #endif /* BM_TICKER_H */

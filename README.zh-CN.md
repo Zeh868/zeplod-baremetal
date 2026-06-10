@@ -125,17 +125,19 @@ zeplod-baremetal/
 │   └── bm_hal_*.h        # HAL 接口契约（UART、定时器、PWM、ADC、比较器、编码器等）
 ├── src/
 │   ├── core/             # bm_event、bm_mempool、bm_critical、bm_wdg
+│   ├── hal/              # bm_hal 默认弱符号桩（可被 hal_reference 覆盖）
 │   ├── module/           # bm_module
 │   ├── channel/          # bm_channel
 │   ├── shell/            # bm_shell
 │   ├── hrt/              # bm_hrt、bm_ticker
 │   └── ctrl/             # bm_ctrl_inst、bm_resource、bm_sync
-├── hal_reference/        # 参考 HAL 实现
-│   ├── native_sim/       # PC 纯软件模拟（无硬件依赖）
+├── hal_reference/        # 精选平台参考 HAL（方案 B）
+│   ├── native_sim/       # PC 纯软件模拟（全外设）
 │   ├── qemu_cortex_m0/   # QEMU ARM Cortex-M0
 │   ├── qemu_riscv32/     # QEMU RISC-V 32 位
-│   ├── stm32f0/          # STM32F0 真实硬件
-│   └── stm32g4/          # STM32G4 真实硬件
+│   ├── stm32f0/          # STM32F0 基础外设
+│   ├── stm32g4/          # STM32G4 伺服/BMS 外设（PWM/ADC/COMP/Encoder）
+│   └── ch32v003/         # CH32V003 Nano 级基础外设
 ├── examples/             # 渐进式示例（见下表）
 ├── tests/
 │   ├── unit/             # Unity 单元测试（PC 本地运行）
@@ -258,7 +260,7 @@ Zeplod Baremetal 被设计为机器人/电子系统三层架构的底层：
 - [`docs/architecture.md`](docs/architecture.md) — 框架架构与依赖方向
 - [`docs/api/`](docs/api/) — HRT、ticker、snapshot、控制实例、同步域和资源声明的 API 参考
 - [`docs/migration/`](docs/migration/) — 各层级之间以及向 Zephyr 迁移的指南
-- [`docs/porting/`](docs/porting/) — HAL 移植、Keil/IAR 集成
+- [`docs/porting/`](docs/porting/) — HAL 架构（方案 B）、移植、Keil/IAR 集成
 - [`examples/PORTING.md`](examples/PORTING.md) — 自定义硬件的示例移植指南
 
 ---
