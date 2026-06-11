@@ -1,7 +1,7 @@
 /**
  * @file main.c
  * @brief 核心域传感器示例：模块生命周期 + 事件发布/订阅
- * @author zeh
+ * @author zeh (china_qzh@163.com)
  * @version 1.0
  * @date 2026-06-10
  *

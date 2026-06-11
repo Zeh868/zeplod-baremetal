@@ -1,7 +1,7 @@
 /**
  * @file example_support.c
  * @brief 示例公共辅助函数实现
- * @author zeh
+ * @author zeh (china_qzh@163.com)
  * @version 1.0
  * @date 2026-06-10
  *

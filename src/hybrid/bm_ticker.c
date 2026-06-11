@@ -4,7 +4,7 @@
  *
  * 主循环轮询到期槽，向事件总线发布空载荷事件；统计丢弃次数。
  * @author zeh (china_qzh@163.com)
- * @version 1.2
+ * @version 1.3
  * @date 2026-06-11
  *
  * @par 修改日志:

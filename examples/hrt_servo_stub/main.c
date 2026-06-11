@@ -1,7 +1,7 @@
 /**
  * @file main.c
  * @brief HRT 伺服控制桩示例：ADC 电流环 + 定时速度环 + 位置事件
- * @author zeh
+ * @author zeh (china_qzh@163.com)
  * @version 1.0
  * @date 2026-06-10
  *

@@ -95,10 +95,10 @@ void test_event_priority_order(void) {
     bm_event_publish_copy(EVENT_HIGH, 0, &high, sizeof(high));
 
     g_count = 0;
-    bm_event_process(1); /* only process one */
+    bm_event_process(1); /* 仅处理一条 */
     TEST_ASSERT_EQUAL(EVENT_HIGH, g_last_event.type);
 
-    bm_event_process(1); /* process second */
+    bm_event_process(1); /* 处理第二条 */
     TEST_ASSERT_EQUAL(EVENT_TEST, g_last_event.type);
 
     bm_event_unsubscribe(EVENT_TEST, id1);
@@ -114,7 +114,7 @@ void test_event_unsubscribe_by_id(void) {
     uint8_t data = 1;
     bm_event_publish_copy(EVENT_TEST, 0, &data, sizeof(data));
     bm_event_process(8);
-    TEST_ASSERT_EQUAL(0, g_count); /* unsubscribed, should not fire */
+    TEST_ASSERT_EQUAL(0, g_count); /* 已退订，不应触发 */
 }
 
 void test_event_priority_reorder_preserves_inline_data(void) {

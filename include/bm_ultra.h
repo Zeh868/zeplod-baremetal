@@ -3,6 +3,15 @@
  * @brief 超轻量事件队列（单 TU 队列 + 编译期回调表）
  *
  * 队列状态在 bm_ultra.c 中单例实现；回调表须在单个 .c 中实例化。
+ * @author zeh (china_qzh@163.com)
+ * @version 1.0
+ * @date 2026-06-10
+ *
+ * @par 修改日志:
+ *
+ *    Date         Version        Author          Description
+ * 2026-06-10       1.0            zeh            正式发布
+ *
  */
 #ifndef BM_ULTRA_H
 #define BM_ULTRA_H

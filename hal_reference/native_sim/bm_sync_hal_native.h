@@ -1,3 +1,17 @@
+/**
+ * @file bm_sync_hal_native.h
+ * @brief 原生仿真同步域 HAL 测试辅助接口
+ *
+ * @author zeh (china_qzh@163.com)
+ * @version 1.0
+ * @date 2026-06-10
+ *
+ * @par 修改日志:
+ *
+ *    Date         Version        Author          Description
+ * 2026-06-10       1.0            zeh            正式发布
+ *
+ */
 #ifndef BM_SYNC_HAL_NATIVE_H
 #define BM_SYNC_HAL_NATIVE_H
 

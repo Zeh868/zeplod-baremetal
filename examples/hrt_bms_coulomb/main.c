@@ -1,7 +1,7 @@
 /**
  * @file main.c
  * @brief HRT BMS 库仑计示例：Pack 电流采样 + 电芯积分 + 比较器安全停机
- * @author zeh
+ * @author zeh (china_qzh@163.com)
  * @version 1.0
  * @date 2026-06-10
  *

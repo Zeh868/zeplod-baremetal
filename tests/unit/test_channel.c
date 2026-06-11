@@ -40,7 +40,7 @@ void test_channel_send_recv(void) {
 }
 
 void test_channel_overflow(void) {
-    /* capacity 4, but one slot reserved to distinguish full/empty */
+    /* 容量 4，保留 1 槽区分满/空 */
     test_msg_t msg = { .a = 1, .b = 2 };
     for (int i = 0; i < 3; i++) {
         TEST_ASSERT_EQUAL(BM_OK, bm_channel_send(&my_chan, &msg));
@@ -100,7 +100,7 @@ void test_channel_wraparound(void) {
         TEST_ASSERT_EQUAL(BM_OK, bm_channel_send(&my_chan, &msg));
     }
 
-    /* Receive 2, send 2 to force wrap */
+    /* 收 2 发 2，迫使环形缓冲回绕 */
     test_msg_t out;
     bm_channel_recv(&my_chan, &out);
     bm_channel_recv(&my_chan, &out);
@@ -110,7 +110,7 @@ void test_channel_wraparound(void) {
     msg.a = 101;
     TEST_ASSERT_EQUAL(BM_OK, bm_channel_send(&my_chan, &msg));
 
-    /* Drain and verify order */
+    /* 排空并校验顺序 */
     bm_channel_recv(&my_chan, &out);
     TEST_ASSERT_EQUAL(2, out.a);
     bm_channel_recv(&my_chan, &out);

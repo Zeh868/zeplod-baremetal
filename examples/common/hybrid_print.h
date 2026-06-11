@@ -1,7 +1,7 @@
 /**
  * @file hybrid_print.h
  * @brief 混合域示例统一输出接口
- * @author zeh
+ * @author zeh (china_qzh@163.com)
  * @version 1.0
  * @date 2026-06-10
  *

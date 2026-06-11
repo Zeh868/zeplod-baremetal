@@ -120,7 +120,7 @@ void test_shell_feed_backspace(void) {
 
     bm_shell_feed(&my_shell, 'e');
     bm_shell_feed(&my_shell, 'x');
-    bm_shell_feed(&my_shell, '\b');  /* backspace */
+    bm_shell_feed(&my_shell, '\b');  /* 退格 */
     bm_shell_feed(&my_shell, 'c');
     bm_shell_feed(&my_shell, 'h');
     bm_shell_feed(&my_shell, 'o');

@@ -1,6 +1,16 @@
 /**
  * @file bm_time.h
  * @brief 毫秒到 HAL 定时器 tick 的公共换算
+ *
+ * @author zeh (china_qzh@163.com)
+ * @version 1.0
+ * @date 2026-06-10
+ *
+ * @par 修改日志:
+ *
+ *    Date         Version        Author          Description
+ * 2026-06-10       1.0            zeh            正式发布
+ *
  */
 #ifndef BM_TIME_H
 #define BM_TIME_H

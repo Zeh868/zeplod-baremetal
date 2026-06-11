@@ -19,7 +19,7 @@
 #include "bm_event.h"
 #include "bm_types.h"
 
-/** Ticker slot 配置 */
+/** Ticker 槽位配置 */
 typedef struct {
     uint32_t period_ms;
     bm_event_type_t event_type;

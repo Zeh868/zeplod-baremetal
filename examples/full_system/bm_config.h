@@ -1,7 +1,7 @@
 /**
  * @file bm_config.h
  * @brief full_system 示例运行时容量配置
- * @author zeh
+ * @author zeh (china_qzh@163.com)
  * @version 1.0
  * @date 2026-06-10
  *
