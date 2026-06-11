@@ -24,6 +24,14 @@
 
 typedef struct bm_ctrl_inst bm_ctrl_inst_t;
 
+/** 控制实例批次会话状态（单 MCU 单运行时，见 bm_runtime_model.h） */
+typedef enum {
+    BM_CTRL_SESSION_NONE = 0,
+    BM_CTRL_SESSION_INITED,
+    BM_CTRL_SESSION_STARTED,
+    BM_CTRL_SESSION_STOPPING
+} bm_ctrl_session_t;
+
 /** 单步控制算法回调 */
 typedef void (*bm_ctrl_step_fn_t)(const bm_ctrl_inst_t *instance);
 
@@ -110,5 +118,10 @@ void bm_ctrl_safe_stop_all(const bm_ctrl_inst_t *const *instances,
 const bm_ctrl_inst_t *bm_ctrl_find(const bm_ctrl_inst_t *const *instances,
                                    uint32_t count,
                                    uint32_t id);
+
+/**
+ * @brief 查询当前控制批次会话状态（只读，临界区内快照）
+ */
+bm_ctrl_session_t bm_ctrl_get_session(void);
 
 #endif /* BM_CTRL_INST_H */

@@ -23,14 +23,6 @@
 
 #include <string.h>
 
-/** 控制实例批次会话状态 */
-typedef enum {
-    BM_CTRL_SESSION_NONE = 0,
-    BM_CTRL_SESSION_INITED,
-    BM_CTRL_SESSION_STARTED,
-    BM_CTRL_SESSION_STOPPING
-} bm_ctrl_session_t;
-
 /** 实例槽位绑定：用于 HRT/硬件回调上下文 */
 typedef struct {
     const bm_ctrl_inst_t *instance;
@@ -471,6 +463,19 @@ void bm_ctrl_safe_stop_all(const bm_ctrl_inst_t *const *instances,
 
     ctrl_teardown_session();
     BM_LOGI("ctrl", "safe_stop_all done");
+}
+
+/**
+ * @brief 查询当前控制批次会话状态
+ *
+ * @return 临界区内读取的会话状态快照
+ */
+bm_ctrl_session_t bm_ctrl_get_session(void) {
+    bm_irq_state_t irq_state = BM_CRITICAL_ENTER();
+    bm_ctrl_session_t session = g_session;
+
+    BM_CRITICAL_EXIT(irq_state);
+    return session;
 }
 
 /**

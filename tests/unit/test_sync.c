@@ -49,14 +49,27 @@ void tearDown(void) {
 
 void test_sync_configure_arm_trigger(void) {
     /* 正常路径：配置 → 武装 → 触发 */
+    TEST_ASSERT_EQUAL(BM_SYNC_STATE_IDLE, bm_sync_get_state());
     TEST_ASSERT_EQUAL(BM_OK, bm_sync_configure(&domain));
+    TEST_ASSERT_EQUAL(BM_SYNC_STATE_TRANSITION,
+                      bm_sync_hal_native_configure_observed_state());
+    TEST_ASSERT_EQUAL(BM_SYNC_STATE_CONFIGURED, bm_sync_get_state());
     TEST_ASSERT_EQUAL(BM_OK, bm_sync_arm(&domain));
+    TEST_ASSERT_EQUAL(BM_SYNC_STATE_TRANSITION,
+                      bm_sync_hal_native_arm_observed_state());
+    TEST_ASSERT_EQUAL(BM_SYNC_STATE_ARMED, bm_sync_get_state());
     TEST_ASSERT_EQUAL(BM_OK, bm_sync_trigger(&domain));
+    TEST_ASSERT_EQUAL(BM_SYNC_STATE_TRANSITION,
+                      bm_sync_hal_native_trigger_observed_state());
+    TEST_ASSERT_EQUAL(BM_SYNC_STATE_CONFIGURED, bm_sync_get_state());
 }
 
 void test_sync_safe_stop_null_clears_active(void) {
     TEST_ASSERT_EQUAL(BM_OK, bm_sync_configure(&domain));
     bm_sync_safe_stop(NULL);
+    TEST_ASSERT_EQUAL(BM_SYNC_STATE_TRANSITION,
+                      bm_sync_hal_native_safe_stop_observed_state());
+    TEST_ASSERT_EQUAL(BM_SYNC_STATE_IDLE, bm_sync_get_state());
     TEST_ASSERT_EQUAL(BM_ERR_NOT_INIT, bm_sync_arm(&domain));
 }
 
@@ -118,6 +131,7 @@ void test_sync_configure_failure_safe_stops_hal(void) {
     bm_sync_hal_native_fail_configure(1);
     TEST_ASSERT_EQUAL(BM_ERR_INVALID, bm_sync_configure(&domain));
     TEST_ASSERT_EQUAL(1, bm_sync_hal_native_safe_stop_count());
+    TEST_ASSERT_EQUAL(BM_SYNC_STATE_IDLE, bm_sync_get_state());
     TEST_ASSERT_EQUAL(BM_ERR_NOT_INIT, bm_sync_arm(&domain));
 }
 
@@ -126,6 +140,7 @@ void test_sync_arm_failure_safe_stops_hal(void) {
     bm_sync_hal_native_fail_arm(1);
     TEST_ASSERT_EQUAL(BM_ERR_INVALID, bm_sync_arm(&domain));
     TEST_ASSERT_EQUAL(1, bm_sync_hal_native_safe_stop_count());
+    TEST_ASSERT_EQUAL(BM_SYNC_STATE_IDLE, bm_sync_get_state());
     TEST_ASSERT_EQUAL(BM_ERR_NOT_INIT, bm_sync_trigger(&domain));
 }
 
@@ -136,6 +151,7 @@ void test_sync_trigger_failure_safe_stops_hal(void) {
     TEST_ASSERT_EQUAL(BM_ERR_INVALID, bm_sync_trigger(&domain));
     TEST_ASSERT_EQUAL(1, bm_sync_hal_native_safe_stop_count());
     TEST_ASSERT_EQUAL(0, bm_sync_hal_native_triggered());
+    TEST_ASSERT_EQUAL(BM_SYNC_STATE_IDLE, bm_sync_get_state());
     TEST_ASSERT_EQUAL(BM_ERR_NOT_INIT, bm_sync_arm(&domain));
 }
 

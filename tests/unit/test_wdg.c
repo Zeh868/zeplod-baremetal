@@ -4,6 +4,7 @@
  */
 #include "unity.h"
 #include "bm_wdg.h"
+#include "bm_hal_timer.h"
 #include "bm_hal_timer_native.h"
 #include "bm_hal_wdg_native.h"
 #include "bm_log.h"

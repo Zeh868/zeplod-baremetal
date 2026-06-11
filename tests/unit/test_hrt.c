@@ -46,6 +46,7 @@ void test_hrt_schedules_multiple_slots(void) {
 
     TEST_ASSERT_EQUAL(BM_OK, bm_hrt_init(slots, 2u));
     TEST_ASSERT_EQUAL(BM_OK, bm_hrt_start());
+    TEST_ASSERT_EQUAL(1, bm_hrt_is_started());
 
     bm_hal_timer_native_advance_ticks(10u);
     TEST_ASSERT_EQUAL(1u, g_slot_a);
@@ -87,6 +88,7 @@ void test_hrt_stop_clears_callback(void) {
     TEST_ASSERT_EQUAL(BM_OK, bm_hrt_init(slots, 1u));
     TEST_ASSERT_EQUAL(BM_OK, bm_hrt_start());
     bm_hrt_stop();
+    TEST_ASSERT_EQUAL(0, bm_hrt_is_started());
     bm_hal_timer_native_advance_ticks(20u);
     TEST_ASSERT_EQUAL(0u, g_slot_a);
 }

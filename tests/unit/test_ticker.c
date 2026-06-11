@@ -90,8 +90,12 @@ void test_ticker_rejects_reinit(void) {
     };
 
     bm_event_register_type(TICKER_EVT, "TICK");
+    TEST_ASSERT_EQUAL(0, bm_ticker_is_initialized());
     TEST_ASSERT_EQUAL(BM_OK, bm_ticker_init(slots, 1u));
+    TEST_ASSERT_EQUAL(1, bm_ticker_is_initialized());
     TEST_ASSERT_EQUAL(BM_ERR_ALREADY, bm_ticker_init(slots, 1u));
+    bm_ticker_reset();
+    TEST_ASSERT_EQUAL(0, bm_ticker_is_initialized());
 }
 
 void test_ticker_rejects_invalid_event_type(void) {
@@ -109,6 +113,7 @@ void test_ticker_rejects_timer_not_configured(void) {
 
     bm_hal_timer_native_deinit();
     TEST_ASSERT_EQUAL(BM_ERR_NOT_INIT, bm_ticker_init(slots, 1u));
+    TEST_ASSERT_EQUAL(0, bm_ticker_is_initialized());
     bm_hal_timer_init(1000u);
 }
 

@@ -56,4 +56,11 @@ uint32_t bm_ticker_get_dropped(uint32_t slot_index);
  */
 void bm_ticker_reset(void);
 
+/**
+ * @brief 查询 ticker 是否已初始化（只读）
+ *
+ * @return 1 已初始化；0 未初始化
+ */
+int bm_ticker_is_initialized(void);
+
 #endif /* BM_TICKER_H */

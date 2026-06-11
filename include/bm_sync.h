@@ -30,6 +30,14 @@ typedef struct {
     uint32_t member_count;
 } bm_sync_domain_t;
 
+/** 同步域框架层状态（单活动域，见 bm_runtime_model.h） */
+typedef enum {
+    BM_SYNC_STATE_IDLE = 0,
+    BM_SYNC_STATE_CONFIGURED,
+    BM_SYNC_STATE_ARMED,
+    BM_SYNC_STATE_TRANSITION
+} bm_sync_state_t;
+
 /**
  * @brief 配置同步域并委托 HAL 完成硬件设置
  *
@@ -62,5 +70,13 @@ int bm_sync_trigger(const bm_sync_domain_t *domain);
  * @param domain 同步域描述符指针，可为 NULL
  */
 void bm_sync_safe_stop(const bm_sync_domain_t *domain);
+
+/**
+ * @brief 查询同步域框架层状态（只读，临界区内快照）
+ *
+ * HAL 配置、武装、触发或安全停止尚未完成时返回
+ * BM_SYNC_STATE_TRANSITION。
+ */
+bm_sync_state_t bm_sync_get_state(void);
 
 #endif /* BM_SYNC_H */

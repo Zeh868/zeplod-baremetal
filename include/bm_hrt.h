@@ -94,4 +94,11 @@ uint32_t bm_hrt_get_deadline_missed(uint32_t slot_index);
  */
 uint32_t bm_hrt_get_deadline_missed_total(void);
 
+/**
+ * @brief 查询 HRT 调度器是否已启动（只读）
+ *
+ * @return 1 已启动；0 未启动或未 init
+ */
+int bm_hrt_is_started(void);
+
 #endif /* BM_HRT_H */

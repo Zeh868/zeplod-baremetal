@@ -310,3 +310,11 @@ uint32_t bm_hrt_get_deadline_missed_total(void) {
     BM_CRITICAL_EXIT(irq_state);
     return total;
 }
+
+int bm_hrt_is_started(void) {
+    bm_irq_state_t irq_state = BM_CRITICAL_ENTER();
+    int started = g_started;
+
+    BM_CRITICAL_EXIT(irq_state);
+    return started;
+}

@@ -60,7 +60,7 @@ endif()
 
 if(BM_ENABLE_SYNC)
     add_executable(test_sync test_sync.c)
-    target_link_libraries(test_sync PRIVATE unity bm_ctrl_inst)
+    target_link_libraries(test_sync PRIVATE unity bm_ctrl_inst bm_hal_native)
     target_include_directories(test_sync PRIVATE
         ${CMAKE_SOURCE_DIR}/include
         ${CMAKE_SOURCE_DIR}/tests/unit/unity

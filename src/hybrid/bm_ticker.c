@@ -52,6 +52,7 @@ static uint32_t ticker_deadline_from(uint32_t base, uint32_t period) {
  * @return BM_OK 成功；BM_ERR_INVALID 参数无效；BM_ERR_OVERFLOW 槽数超限
  */
 int bm_ticker_init(const bm_ticker_slot_t *slots, uint32_t slot_count) {
+    bm_irq_state_t irq_state;
     uint32_t i;
     uint32_t now;
 
@@ -116,8 +117,10 @@ int bm_ticker_init(const bm_ticker_slot_t *slots, uint32_t slot_count) {
         g_slots[i].next_tick = ticker_deadline_from(now, period_ticks);
     }
 
+    irq_state = BM_CRITICAL_ENTER();
     g_slot_count = slot_count;
     g_initialized = 1;
+    BM_CRITICAL_EXIT(irq_state);
     BM_LOGI("ticker", "init %u slots", (unsigned)slot_count);
     return BM_OK;
 }
@@ -200,8 +203,19 @@ uint32_t bm_ticker_get_dropped(uint32_t slot_index) {
  * @brief 重置发布器全部内部状态
  */
 void bm_ticker_reset(void) {
-    memset(g_slots, 0, sizeof(g_slots));
-    g_slot_count = 0u;
+    bm_irq_state_t irq_state = BM_CRITICAL_ENTER();
+
     g_initialized = 0;
+    g_slot_count = 0u;
+    BM_CRITICAL_EXIT(irq_state);
+    memset(g_slots, 0, sizeof(g_slots));
     BM_LOGI("ticker", "reset");
+}
+
+int bm_ticker_is_initialized(void) {
+    bm_irq_state_t irq_state = BM_CRITICAL_ENTER();
+    int initialized = g_initialized;
+
+    BM_CRITICAL_EXIT(irq_state);
+    return initialized;
 }

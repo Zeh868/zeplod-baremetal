@@ -293,9 +293,9 @@ Contributions are welcome. When adding new components or HAL references:
 
 ## License
 
-Zeplod Baremetal is free software licensed under the [GNU General Public License v3.0](LICENSE) (GPL-3.0). See [NOTICE](NOTICE) for the copyright holder and warranty disclaimer.
+Zeplod Baremetal is free software licensed under the [GNU Lesser General Public License v3.0](COPYING.LESSER) (LGPL-3.0). The incorporated GPLv3 terms are included in [COPYING.GPL3](COPYING.GPL3). See [NOTICE](NOTICE) (`SPDX-License-Identifier: LGPL-3.0-or-later`).
 
-If you distribute firmware that incorporates or is derived from this framework (typical for static linking on bare metal), GPL-3.0 copyleft obligations may apply to that combined work. Consult your legal counsel for product-specific compliance.
+When you statically link this library into proprietary firmware, LGPL-3.0 obligations apply to the **library portion** (relinking and Corresponding Source for the library). Application code is generally not subject to GPL copyleft. Consult legal counsel for bare-metal compliance; see [docs/12-运行时与实例模型.md](docs/12-运行时与实例模型.md).
 
 Third-party files may use other licenses; see their headers (e.g. Unity test framework: MIT).
 

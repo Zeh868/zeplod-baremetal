@@ -42,6 +42,12 @@ HAL 失败时立即执行 safe-stop，后续必须重新 configure。
 
 安全停止并复位 HAL 状态。
 
+### `bm_sync_get_state()`
+
+在临界区内读取框架层状态。稳定状态为 `IDLE`、`CONFIGURED` 或
+`ARMED`；HAL 配置、武装、触发或安全停止尚未完成时返回
+`TRANSITION`，监督逻辑不得把它当作可运行状态。
+
 ## 框架层校验
 
 - `member_count` ≤ `BM_CONFIG_MAX_SYNC_MEMBERS`

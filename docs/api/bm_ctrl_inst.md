@@ -40,6 +40,10 @@
 
 按 `id` 查找实例，未找到返回 `NULL`。
 
+### `bm_ctrl_get_session()`
+
+返回当前批次会话 `NONE` / `INITED` / `STARTED` / `STOPPING`（只读）。单 MCU 单运行时模型见 [12-运行时与实例模型](../12-运行时与实例模型.md)。
+
 ## 典型模式
 
 ```c

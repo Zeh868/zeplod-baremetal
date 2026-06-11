@@ -54,6 +54,12 @@ so configuration macros are applied consistently.
 
 ## State Ownership
 
-Core event state is currently a single static instance to preserve the small
-RAM footprint and existing API. Call `bm_event_reset()` during application
-startup and test setup to establish a deterministic initial state.
+Each subsystem uses one static runtime per MCU link image (event bus, HRT,
+ticker, ctrl batch session, sync domain). Multi-axis control uses multiple
+`bm_ctrl_inst_t` entries, not multiple event buses. Read-only query APIs
+(`bm_ctrl_get_session`, `bm_hrt_is_started`, etc.) support tests and
+supervision. See [12-运行时与实例模型](12-运行时与实例模型.md) (Chinese) and
+`include/bm_runtime_model.h`.
+
+Call `bm_event_reset()` during application startup and test setup to establish
+a deterministic initial state.

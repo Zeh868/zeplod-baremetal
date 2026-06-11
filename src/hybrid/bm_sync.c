@@ -18,13 +18,24 @@
  */
 #include "bm_sync.h"
 #include "bm_config.h"
+#include "bm_critical_wrap.h"
 #include "bm_sync_hal.h"
 #include "bm_log.h"
 
-#include <stdbool.h>
-
 static const bm_sync_domain_t *g_active_domain;
-static bool g_armed;
+static bm_sync_state_t g_state;
+
+/**
+ * @brief 原子提交活动域和公开状态
+ */
+static void sync_set_state(const bm_sync_domain_t *domain,
+                           bm_sync_state_t state) {
+    bm_irq_state_t irq_state = BM_CRITICAL_ENTER();
+
+    g_active_domain = domain;
+    g_state = state;
+    BM_CRITICAL_EXIT(irq_state);
+}
 
 /**
  * @brief 校验同步域描述符字段完整性
@@ -74,25 +85,28 @@ static int validate_domain(const bm_sync_domain_t *domain) {
  * @return BM_OK 成功；BM_ERR_INVALID 参数无效；其他为 HAL 错误码
  */
 int bm_sync_configure(const bm_sync_domain_t *domain) {
+    const bm_sync_domain_t *previous_domain;
     int rc = validate_domain(domain);
+
     if (rc != BM_OK) {
         return rc;
     }
-    if (g_active_domain != NULL && g_active_domain != domain) {
-        bm_sync_hal_safe_stop(g_active_domain);
-        g_active_domain = NULL;
-        g_armed = false;
+
+    previous_domain = g_active_domain;
+    sync_set_state(previous_domain, BM_SYNC_STATE_TRANSITION);
+    if (previous_domain != NULL && previous_domain != domain) {
+        bm_sync_hal_safe_stop(previous_domain);
     }
+
     rc = bm_sync_hal_configure(domain);
     if (rc != BM_OK) {
         BM_LOGE("sync", "hal configure failed rc=%d", rc);
         bm_sync_hal_safe_stop(domain);
-        g_active_domain = NULL;
-        g_armed = false;
+        sync_set_state(NULL, BM_SYNC_STATE_IDLE);
         return rc;
     }
-    g_active_domain = domain;
-    g_armed = false;
+
+    sync_set_state(domain, BM_SYNC_STATE_CONFIGURED);
     BM_LOGI("sync", "configured %u members", (unsigned)domain->member_count);
     return BM_OK;
 }
@@ -108,18 +122,19 @@ int bm_sync_arm(const bm_sync_domain_t *domain) {
     if (rc != BM_OK) {
         return rc;
     }
-    if (g_active_domain != domain) {
+    if (g_active_domain != domain || g_state != BM_SYNC_STATE_CONFIGURED) {
         BM_LOGW("sync", "arm before configure");
         return BM_ERR_NOT_INIT;
     }
+
+    sync_set_state(domain, BM_SYNC_STATE_TRANSITION);
     rc = bm_sync_hal_arm(domain);
     if (rc != BM_OK) {
         BM_LOGE("sync", "hal arm failed rc=%d", rc);
         bm_sync_hal_safe_stop(domain);
-        g_active_domain = NULL;
-        g_armed = false;
+        sync_set_state(NULL, BM_SYNC_STATE_IDLE);
     } else {
-        g_armed = true;
+        sync_set_state(domain, BM_SYNC_STATE_ARMED);
         BM_LOGI("sync", "armed");
     }
     return rc;
@@ -140,18 +155,19 @@ int bm_sync_trigger(const bm_sync_domain_t *domain) {
         BM_LOGW("sync", "trigger before configure");
         return BM_ERR_NOT_INIT;
     }
-    if (!g_armed) {
+    if (g_state != BM_SYNC_STATE_ARMED) {
         BM_LOGW("sync", "trigger before arm");
         return BM_ERR_NOT_INIT;
     }
+
+    sync_set_state(domain, BM_SYNC_STATE_TRANSITION);
     rc = bm_sync_hal_trigger(domain);
     if (rc != BM_OK) {
         BM_LOGE("sync", "hal trigger failed rc=%d", rc);
         bm_sync_hal_safe_stop(domain);
-        g_active_domain = NULL;
-        g_armed = false;
+        sync_set_state(NULL, BM_SYNC_STATE_IDLE);
     } else {
-        g_armed = false;
+        sync_set_state(domain, BM_SYNC_STATE_CONFIGURED);
         BM_LOGD("sync", "triggered");
     }
     return rc;
@@ -170,10 +186,19 @@ void bm_sync_safe_stop(const bm_sync_domain_t *domain) {
     } else if (domain && domain != target) {
         BM_LOGW("sync", "safe_stop ignored mismatched domain");
     }
+
+    sync_set_state(target, BM_SYNC_STATE_TRANSITION);
     if (target) {
         bm_sync_hal_safe_stop(target);
     }
-    g_active_domain = NULL;
-    g_armed = false;
+    sync_set_state(NULL, BM_SYNC_STATE_IDLE);
     BM_LOGI("sync", "safe stop");
+}
+
+bm_sync_state_t bm_sync_get_state(void) {
+    bm_irq_state_t irq_state = BM_CRITICAL_ENTER();
+    bm_sync_state_t state = g_state;
+
+    BM_CRITICAL_EXIT(irq_state);
+    return state;
 }

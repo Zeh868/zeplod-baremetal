@@ -334,6 +334,18 @@ void test_ctrl_start_all_starts_hrt_after_all_instances(void) {
     bm_ctrl_safe_stop_all(instances, 2u);
 }
 
+void test_ctrl_session_transitions(void) {
+    const bm_ctrl_inst_t *const instances[] = { &sched_inst };
+
+    TEST_ASSERT_EQUAL(BM_CTRL_SESSION_NONE, bm_ctrl_get_session());
+    TEST_ASSERT_EQUAL(BM_OK, bm_ctrl_init_all(instances, 1u));
+    TEST_ASSERT_EQUAL(BM_CTRL_SESSION_INITED, bm_ctrl_get_session());
+    TEST_ASSERT_EQUAL(BM_OK, bm_ctrl_start_all(instances, 1u));
+    TEST_ASSERT_EQUAL(BM_CTRL_SESSION_STARTED, bm_ctrl_get_session());
+    bm_ctrl_safe_stop_all(instances, 1u);
+    TEST_ASSERT_EQUAL(BM_CTRL_SESSION_NONE, bm_ctrl_get_session());
+}
+
 void test_ctrl_start_all_without_init_fails(void) {
     const bm_ctrl_inst_t *const instances[] = { &sched_inst };
 
@@ -413,6 +425,7 @@ int main(void) {
     RUN_TEST(test_ctrl_find_instance);
     RUN_TEST(test_ctrl_reinit_teardowns_previous_session);
     RUN_TEST(test_ctrl_start_all_starts_hrt_after_all_instances);
+    RUN_TEST(test_ctrl_session_transitions);
     RUN_TEST(test_ctrl_start_all_without_init_fails);
     RUN_TEST(test_ctrl_init_rejects_null_instance);
     RUN_TEST(test_ctrl_rejects_double_start);
