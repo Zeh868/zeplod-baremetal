@@ -6,6 +6,12 @@
  * @author zeh (china_qzh@163.com)
  * @version 1.0
  * @date 2026-06-10
+ *
+ * @par 修改日志:
+ *
+ *    Date         Version        Author          Description
+ * 2026-06-10       1.0            zeh            正式发布
+ *
  */
 #ifndef BM_SHELL_H
 #define BM_SHELL_H
@@ -31,7 +37,7 @@
 #endif
 
 #if BM_CONFIG_SHELL_MAX_NAME_LEN < 2
-#error "BM_CONFIG_SHELL_MAX_NAME_LEN must be at least 2"
+#error "BM_CONFIG_SHELL_MAX_NAME_LEN 至少为 2"
 #endif
 
 /** 命令处理函数 */

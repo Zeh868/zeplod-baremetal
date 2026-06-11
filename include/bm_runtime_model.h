@@ -9,6 +9,15 @@
  * 可观测性：各子系统提供 get_session / is_started 等只读查询 API，供测试、
  * 诊断与安全监督逻辑使用。详见 docs/12-运行时与实例模型.md。
  *
+ * @author zeh (china_qzh@163.com)
+ * @version 1.0
+ * @date 2026-06-11
+ *
+ * @par 修改日志:
+ *
+ *    Date         Version        Author          Description
+ * 2026-06-11       1.0            zeh            正式发布
+ *
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 #ifndef BM_RUNTIME_MODEL_H

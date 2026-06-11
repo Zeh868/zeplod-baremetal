@@ -1,6 +1,16 @@
 /**
  * @file bm_ultra.c
  * @brief Ultra 剖面事件队列单例实现
+ *
+ * @author zeh (china_qzh@163.com)
+ * @version 1.0
+ * @date 2026-06-10
+ *
+ * @par 修改日志:
+ *
+ *    Date         Version        Author          Description
+ * 2026-06-10       1.0            zeh            正式发布
+ *
  */
 #include "bm_ultra.h"
 #include "bm_critical_wrap.h"
@@ -9,11 +19,11 @@
 
 #if BM_CONFIG_ULTRA_QUEUE_DEPTH < 2 || \
     ((BM_CONFIG_ULTRA_QUEUE_DEPTH & (BM_CONFIG_ULTRA_QUEUE_DEPTH - 1)) != 0)
-#error "BM_CONFIG_ULTRA_QUEUE_DEPTH must be a power of two and at least 2"
+#error "BM_CONFIG_ULTRA_QUEUE_DEPTH 须为 2 的幂且至少为 2"
 #endif
 
 #if BM_CONFIG_ULTRA_QUEUE_DEPTH > 256
-#error "BM_CONFIG_ULTRA_QUEUE_DEPTH must not exceed 256 with uint8_t indices"
+#error "BM_CONFIG_ULTRA_QUEUE_DEPTH 使用 uint8_t 索引时不得超过 256"
 #endif
 
 static bm_ultra_queue_t _bm_ultra_q;

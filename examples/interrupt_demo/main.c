@@ -1,7 +1,7 @@
 /**
  * @file main.c
  * @brief 中断驱动示例：SysTick + TIMER1 ISR 发布事件
- * @author zeh
+ * @author zeh (china_qzh@163.com)
  * @version 1.0
  * @date 2026-06-10
  *

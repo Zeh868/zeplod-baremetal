@@ -1,7 +1,7 @@
 /**
  * @file interrupt_timer.c
  * @brief TIMER1 比较中断定时器驱动实现
- * @author zeh
+ * @author zeh (china_qzh@163.com)
  * @version 1.0
  * @date 2026-06-10
  *

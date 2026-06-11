@@ -1,6 +1,16 @@
 /**
  * @file bm_hal_hrt.h
  * @brief HAL 与 HRT 共用的硬件事件回调绑定类型
+ *
+ * @author zeh (china_qzh@163.com)
+ * @version 1.0
+ * @date 2026-06-10
+ *
+ * @par 修改日志:
+ *
+ *    Date         Version        Author          Description
+ * 2026-06-10       1.0            zeh            正式发布
+ *
  */
 #ifndef BM_HAL_HRT_H
 #define BM_HAL_HRT_H

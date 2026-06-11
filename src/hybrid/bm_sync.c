@@ -4,7 +4,7 @@
  *
  * 校验域描述后委托 HAL 完成配置、武装与触发。
  * @author zeh (china_qzh@163.com)
- * @version 1.2
+ * @version 1.3
  * @date 2026-06-11
  *
  * @par 修改日志:

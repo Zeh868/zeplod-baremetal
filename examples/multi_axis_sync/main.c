@@ -1,7 +1,7 @@
 /**
  * @file main.c
  * @brief 多轴同步示例：bm_sync 域触发三轴同时启动
- * @author zeh
+ * @author zeh (china_qzh@163.com)
  * @version 1.0
  * @date 2026-06-10
  *

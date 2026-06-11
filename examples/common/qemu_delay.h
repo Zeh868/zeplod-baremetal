@@ -1,3 +1,17 @@
+/**
+ * @file qemu_delay.h
+ * @brief QEMU 示例用忙等待延时辅助
+ *
+ * @author zeh (china_qzh@163.com)
+ * @version 1.0
+ * @date 2026-06-10
+ *
+ * @par 修改日志:
+ *
+ *    Date         Version        Author          Description
+ * 2026-06-10       1.0            zeh            正式发布
+ *
+ */
 #ifndef QEMU_DELAY_H
 #define QEMU_DELAY_H
 

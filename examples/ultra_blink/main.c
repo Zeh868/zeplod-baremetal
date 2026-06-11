@@ -1,7 +1,7 @@
 /**
  * @file main.c
  * @brief Ultra 极简域示例：定时翻转 LED 与按钮事件
- * @author zeh
+ * @author zeh (china_qzh@163.com)
  * @version 1.0
  * @date 2026-06-10
  *

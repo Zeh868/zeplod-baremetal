@@ -6,6 +6,12 @@
  * @author zeh (china_qzh@163.com)
  * @version 1.0
  * @date 2026-06-10
+ *
+ * @par 修改日志:
+ *
+ *    Date         Version        Author          Description
+ * 2026-06-10       1.0            zeh            正式发布
+ *
  */
 #ifndef BM_SAFETY_H
 #define BM_SAFETY_H
@@ -64,23 +70,23 @@ static inline bool bm_index_in_range_u32(uint32_t index, uint32_t limit) {
 }
 
 /**
- * @brief Saturating increment for diagnostic counters.
+ * @brief 诊断计数器饱和自增
  */
 static inline uint32_t bm_u32_saturating_inc(uint32_t value) {
     return (value < UINT32_MAX) ? (value + 1u) : UINT32_MAX;
 }
 
 /**
- * @brief Saturating addition for diagnostic counter aggregation.
+ * @brief 诊断计数器饱和加法
  */
 static inline uint32_t bm_u32_saturating_add(uint32_t a, uint32_t b) {
     return (a > (UINT32_MAX - b)) ? UINT32_MAX : (a + b);
 }
 
 /**
- * @brief Compare wrapping 32-bit timer values.
+ * @brief 比较 32 位回绕定时器时刻是否已到达
  *
- * Valid when the scheduled interval is no greater than INT32_MAX ticks.
+ * 调度间隔不超过 INT32_MAX tick 时结果有效。
  */
 static inline bool bm_time_reached_u32(uint32_t now, uint32_t deadline) {
     return (uint32_t)(now - deadline) <= (uint32_t)INT32_MAX;

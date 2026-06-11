@@ -93,8 +93,7 @@ void test_ultra_queue_overflow(void) {
     while (bm_ultra_process()) {
         processed++;
     }
-    /* Queue depth 8, but we use one slot to distinguish full/empty,
-       so max storable = 7 */
+    /* 队列深度 8，保留 1 槽区分满/空，故最多可存 7 条 */
     TEST_ASSERT_EQUAL(BM_CONFIG_ULTRA_QUEUE_DEPTH - 1, processed);
 }
 

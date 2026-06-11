@@ -34,7 +34,7 @@ int mod_b_start(void) {
     return g_fail_mod_b_start ? BM_ERR_INVALID : BM_OK;
 }
 
-/* Explicit module table (compatible with all toolchains) */
+/* 显式模块表（兼容各工具链） */
 const bm_module_t _bm_module_table[] = {
     { .name = "mod_b", .priority = 5, .init = mod_b_init, .start = mod_b_start },
     { .name = "mod_a", .priority = 1, .init = mod_a_init, .start = mod_a_start,
@@ -79,7 +79,7 @@ void test_module_lifecycle_order(void) {
     TEST_ASSERT_EQUAL(2, g_start_count);
 
     TEST_ASSERT_EQUAL(BM_OK, bm_module_stop_all());
-    TEST_ASSERT_EQUAL(1, g_stop_count); /* only mod_a has stop */
+    TEST_ASSERT_EQUAL(1, g_stop_count); /* 仅 mod_a 注册了 stop */
 
     TEST_ASSERT_EQUAL(BM_OK, bm_module_deinit_all());
 }

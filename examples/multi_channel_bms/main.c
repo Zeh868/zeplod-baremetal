@@ -1,7 +1,7 @@
 /**
  * @file main.c
  * @brief 多通道 BMS 示例：Pack 采样 + 16 路电芯快照与过压检测
- * @author zeh
+ * @author zeh (china_qzh@163.com)
  * @version 1.0
  * @date 2026-06-10
  *

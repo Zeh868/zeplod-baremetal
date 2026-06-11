@@ -3,6 +3,15 @@
  * @brief 发布-订阅事件总线实现
  *
  * 按优先级分 FIFO 队列 + 链表订阅者；临界区保护多生产者/消费者。
+ * @author zeh (china_qzh@163.com)
+ * @version 1.0
+ * @date 2026-06-10
+ *
+ * @par 修改日志:
+ *
+ *    Date         Version        Author          Description
+ * 2026-06-10       1.0            zeh            正式发布
+ *
  */
 #include "bm_event.h"
 #include "bm_critical_wrap.h"
@@ -17,12 +26,12 @@
 #endif
 
 #if BM_CONFIG_EVENT_PRIORITY_BURST_MAX < 1
-#error "BM_CONFIG_EVENT_PRIORITY_BURST_MAX must be at least 1"
+#error "BM_CONFIG_EVENT_PRIORITY_BURST_MAX 至少为 1"
 #endif
 
 #if BM_CONFIG_EVENT_QUEUE_SIZE < BM_CONFIG_EVENT_PRIORITIES || \
     (BM_CONFIG_EVENT_QUEUE_SIZE % BM_CONFIG_EVENT_PRIORITIES) != 0
-#error "BM_CONFIG_EVENT_QUEUE_SIZE must be divisible by BM_CONFIG_EVENT_PRIORITIES"
+#error "BM_CONFIG_EVENT_QUEUE_SIZE 须能被 BM_CONFIG_EVENT_PRIORITIES 整除"
 #endif
 
 #define BM_EVENT_QUEUE_DEPTH_PER_PRIO \
@@ -30,7 +39,7 @@
 
 #if BM_EVENT_QUEUE_DEPTH_PER_PRIO < 2 || \
     ((BM_EVENT_QUEUE_DEPTH_PER_PRIO & (BM_EVENT_QUEUE_DEPTH_PER_PRIO - 1)) != 0)
-#error "BM_EVENT_QUEUE_DEPTH_PER_PRIO must be a power of two and at least 2"
+#error "BM_EVENT_QUEUE_DEPTH_PER_PRIO 须为 2 的幂且至少为 2"
 #endif
 
 /** 订阅者节点 */

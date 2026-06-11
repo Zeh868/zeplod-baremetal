@@ -4,7 +4,7 @@
  *
  * 基于 HAL 定时器 ISR 按周期触发回调；支持 deadline 错过弱钩子。
  * @author zeh (china_qzh@163.com)
- * @version 1.1
+ * @version 1.2
  * @date 2026-06-11
  *
  * @par 修改日志:
@@ -25,7 +25,7 @@
 #include <string.h>
 
 #if BM_CONFIG_HRT_TICK_US == 0u || (1000000u % BM_CONFIG_HRT_TICK_US) != 0u
-#error "BM_CONFIG_HRT_TICK_US must divide 1000000 evenly and be non-zero"
+#error "BM_CONFIG_HRT_TICK_US 须非零且能整除 1000000"
 #endif
 
 /** 运行时槽：公开描述 + 周期 tick 与下次触发时刻 */

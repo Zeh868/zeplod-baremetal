@@ -1,7 +1,7 @@
 /**
  * @file main.c
  * @brief 全系统集成示例：模块、事件风暴优先级、看门狗与故障处理
- * @author zeh
+ * @author zeh (china_qzh@163.com)
  * @version 1.0
  * @date 2026-06-10
  *
