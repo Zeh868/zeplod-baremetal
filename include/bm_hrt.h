@@ -65,6 +65,8 @@ void bm_hrt_reset(void);
 /**
  * @brief 错过 deadline 时的弱符号钩子（可覆盖）
  *
+ * 默认实现为空。钩子在定时器 ISR 中执行，覆盖实现必须有界且不得记录日志。
+ *
  * @param slot 触发 miss 的 slot 描述指针
  */
 void bm_hrt_deadline_missed_hook(const bm_hrt_slot_t *slot);
@@ -73,7 +75,7 @@ void bm_hrt_deadline_missed_hook(const bm_hrt_slot_t *slot);
  * @brief 校验 period_us 是否为合法 HRT 定时器周期
  *
  * @param period_us 周期（微秒）
- * @return BM_OK 有效；BM_ERR_INVALID 无效
+ * @return BM_OK 有效；BM_ERR_INVALID 无效或换算后超过 INT32_MAX tick
  */
 int bm_hrt_validate_period_us(uint32_t period_us);
 

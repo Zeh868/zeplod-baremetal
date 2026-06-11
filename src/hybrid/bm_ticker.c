@@ -38,17 +38,10 @@ static uint32_t g_slot_count;
 static int g_initialized;
 
 /**
- * @brief 计算下次 ticker 触发时刻；溢出时从 now 重新对齐
+ * @brief 使用 uint32_t 模加法计算下次 ticker 触发时刻
  */
-static uint32_t ticker_deadline_from(uint32_t base, uint32_t period, uint32_t now) {
-    uint32_t next = 0u;
-
-    if (bm_add_u32_overflow(base, period, &next)) {
-        if (bm_add_u32_overflow(now, period, &next)) {
-            return now;
-        }
-    }
-    return next;
+static uint32_t ticker_deadline_from(uint32_t base, uint32_t period) {
+    return base + period;
 }
 
 /**
@@ -110,9 +103,17 @@ int bm_ticker_init(const bm_ticker_slot_t *slots, uint32_t slot_count) {
             g_initialized = 0;
             return BM_ERR_INVALID;
         }
+        if (period_ticks > (uint32_t)INT32_MAX) {
+            BM_LOGE("ticker", "init slot %u period exceeds timer range",
+                    (unsigned)i);
+            memset(g_slots, 0, sizeof(g_slots));
+            g_slot_count = 0u;
+            g_initialized = 0;
+            return BM_ERR_INVALID;
+        }
         g_slots[i].pub = slots[i];
         g_slots[i].period_ticks = period_ticks;
-        g_slots[i].next_tick = ticker_deadline_from(now, period_ticks, now);
+        g_slots[i].next_tick = ticker_deadline_from(now, period_ticks);
     }
 
     g_slot_count = slot_count;
@@ -142,26 +143,32 @@ int bm_ticker_poll(void) {
 
         {
             uint32_t catchup = 0u;
-            while ((int32_t)(now - slot->next_tick) >= 0 &&
+            while (bm_time_reached_u32(now, slot->next_tick) &&
                    catchup < BM_CONFIG_TICKER_MAX_CATCHUP) {
                 int rc = bm_event_publish_copy(slot->pub.event_type,
                                                slot->pub.priority,
                                                NULL, 0u);
-                if (rc != BM_OK) {
-                    slot->dropped++;
+                if (rc == BM_ERR_OVERFLOW) {
+                    slot->dropped = bm_u32_saturating_inc(slot->dropped);
                     BM_LOGW("ticker", "slot %u drop event type=%u total=%u",
                             (unsigned)i, (unsigned)slot->pub.event_type,
                             (unsigned)slot->dropped);
                     slot->next_tick = ticker_deadline_from(
-                        slot->next_tick, slot->period_ticks, now);
+                        slot->next_tick, slot->period_ticks);
                     break;
+                }
+                if (rc != BM_OK) {
+                    BM_LOGE("ticker", "slot %u publish failed rc=%d",
+                            (unsigned)i, rc);
+                    return rc;
                 }
                 published++;
                 catchup++;
                 slot->next_tick = ticker_deadline_from(
-                    slot->next_tick, slot->period_ticks, now);
+                    slot->next_tick, slot->period_ticks);
                 if ((uint32_t)(now - slot->next_tick) >= slot->period_ticks) {
-                    slot->next_tick = ticker_deadline_from(now, slot->period_ticks, now);
+                    slot->next_tick =
+                        ticker_deadline_from(now, slot->period_ticks);
                     break;
                 }
             }

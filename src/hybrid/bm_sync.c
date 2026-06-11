@@ -34,6 +34,7 @@ static bool g_armed;
  */
 static int validate_domain(const bm_sync_domain_t *domain) {
     uint32_t i;
+    uint32_t j;
 
     if (!domain || !domain->master_timer || !domain->members ||
         !domain->phase_ticks || domain->member_count == 0u) {
@@ -54,6 +55,13 @@ static int validate_domain(const bm_sync_domain_t *domain) {
             BM_LOGE("sync", "phase_ticks[%u] overflow %u",
                     (unsigned)i, (unsigned)domain->phase_ticks[i]);
             return BM_ERR_INVALID;
+        }
+        for (j = i + 1u; j < domain->member_count; ++j) {
+            if (domain->members[i] == domain->members[j]) {
+                BM_LOGE("sync", "duplicate member at index %u",
+                        (unsigned)j);
+                return BM_ERR_INVALID;
+            }
         }
     }
     return BM_OK;
@@ -78,6 +86,9 @@ int bm_sync_configure(const bm_sync_domain_t *domain) {
     rc = bm_sync_hal_configure(domain);
     if (rc != BM_OK) {
         BM_LOGE("sync", "hal configure failed rc=%d", rc);
+        bm_sync_hal_safe_stop(domain);
+        g_active_domain = NULL;
+        g_armed = false;
         return rc;
     }
     g_active_domain = domain;
@@ -104,6 +115,8 @@ int bm_sync_arm(const bm_sync_domain_t *domain) {
     rc = bm_sync_hal_arm(domain);
     if (rc != BM_OK) {
         BM_LOGE("sync", "hal arm failed rc=%d", rc);
+        bm_sync_hal_safe_stop(domain);
+        g_active_domain = NULL;
         g_armed = false;
     } else {
         g_armed = true;
@@ -134,6 +147,8 @@ int bm_sync_trigger(const bm_sync_domain_t *domain) {
     rc = bm_sync_hal_trigger(domain);
     if (rc != BM_OK) {
         BM_LOGE("sync", "hal trigger failed rc=%d", rc);
+        bm_sync_hal_safe_stop(domain);
+        g_active_domain = NULL;
         g_armed = false;
     } else {
         g_armed = false;
@@ -148,17 +163,17 @@ int bm_sync_trigger(const bm_sync_domain_t *domain) {
  * @param domain 同步域描述符指针（可为 NULL，仅清除活动域）
  */
 void bm_sync_safe_stop(const bm_sync_domain_t *domain) {
-    if (domain) {
-        bm_sync_hal_safe_stop(domain);
-        if (g_active_domain == domain) {
-            g_active_domain = NULL;
-        }
-    } else {
-        if (g_active_domain) {
-            bm_sync_hal_safe_stop(g_active_domain);
-        }
-        g_active_domain = NULL;
+    const bm_sync_domain_t *target = g_active_domain;
+
+    if (!target) {
+        target = domain;
+    } else if (domain && domain != target) {
+        BM_LOGW("sync", "safe_stop ignored mismatched domain");
     }
+    if (target) {
+        bm_sync_hal_safe_stop(target);
+    }
+    g_active_domain = NULL;
     g_armed = false;
     BM_LOGI("sync", "safe stop");
 }

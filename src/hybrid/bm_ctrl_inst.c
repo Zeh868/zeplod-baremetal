@@ -17,6 +17,7 @@
  *
  */
 #include "bm_ctrl_inst.h"
+#include "bm_critical_wrap.h"
 #include "bm_hrt.h"
 #include "bm_log.h"
 
@@ -26,7 +27,8 @@
 typedef enum {
     BM_CTRL_SESSION_NONE = 0,
     BM_CTRL_SESSION_INITED,
-    BM_CTRL_SESSION_STARTED
+    BM_CTRL_SESSION_STARTED,
+    BM_CTRL_SESSION_STOPPING
 } bm_ctrl_session_t;
 
 /** 实例槽位绑定：用于 HRT/硬件回调上下文 */
@@ -42,7 +44,14 @@ static uint32_t g_binding_count;
 static bm_hrt_slot_t g_hrt_slots[BM_CONFIG_HRT_MAX_SLOTS];
 static uint32_t g_hrt_slot_count;
 static uint32_t g_init_done_count;
-static bm_ctrl_session_t g_session;
+static volatile bm_ctrl_session_t g_session;
+
+static void ctrl_set_session(bm_ctrl_session_t session) {
+    bm_irq_state_t irq_state = BM_CRITICAL_ENTER();
+
+    g_session = session;
+    BM_CRITICAL_EXIT(irq_state);
+}
 
 /**
  * @brief HRT/硬件回调入口，执行绑定槽位的 step 函数
@@ -55,8 +64,7 @@ static void bm_ctrl_run_binding(void *context) {
     if (!binding || !binding->slot || !binding->slot->step || !binding->instance) {
         return;
     }
-    if (binding->slot->kind == BM_CTRL_SLOT_SCHEDULED &&
-        g_session != BM_CTRL_SESSION_STARTED) {
+    if (g_session != BM_CTRL_SESSION_STARTED) {
         return;
     }
     binding->slot->step(binding->instance);
@@ -78,7 +86,7 @@ static void ctrl_clear_runtime(void) {
     memset(g_hrt_slots, 0, sizeof(g_hrt_slots));
     g_hrt_slot_count = 0u;
     g_init_done_count = 0u;
-    g_session = BM_CTRL_SESSION_NONE;
+    ctrl_set_session(BM_CTRL_SESSION_NONE);
 }
 
 /**
@@ -105,7 +113,9 @@ static void ctrl_unbind_all_hardware(void) {
 static void ctrl_teardown_session(void) {
     uint32_t i;
 
+    ctrl_set_session(BM_CTRL_SESSION_STOPPING);
     bm_hrt_stop();
+    ctrl_unbind_all_hardware();
 
     if (g_instance_count > 0u) {
         for (i = g_instance_count; i > 0u; --i) {
@@ -116,7 +126,6 @@ static void ctrl_teardown_session(void) {
         }
     }
 
-    ctrl_unbind_all_hardware();
     bm_hrt_reset();
     ctrl_clear_runtime();
 }
@@ -138,9 +147,10 @@ static void ctrl_rollback_inits(void) {
  * @brief start/init 失败回滚：安全停机全部已 init 实例并释放资源
  */
 static void ctrl_abort_session(void) {
-    ctrl_rollback_inits();
+    ctrl_set_session(BM_CTRL_SESSION_STOPPING);
     bm_hrt_stop();
     ctrl_unbind_all_hardware();
+    ctrl_rollback_inits();
     bm_hrt_reset();
     ctrl_clear_runtime();
 }
@@ -381,7 +391,7 @@ int bm_ctrl_init_all(const bm_ctrl_inst_t *const *instances, uint32_t count) {
         }
     }
 
-    g_session = BM_CTRL_SESSION_INITED;
+    ctrl_set_session(BM_CTRL_SESSION_INITED);
     BM_LOGI("ctrl", "init_all ok count=%u hrt_slots=%u",
             (unsigned)count, (unsigned)g_hrt_slot_count);
     return BM_OK;
@@ -434,6 +444,7 @@ int bm_ctrl_start_all(const bm_ctrl_inst_t *const *instances, uint32_t count) {
         }
     }
 
+    ctrl_set_session(BM_CTRL_SESSION_STARTED);
     rc = ctrl_ensure_hrt_started();
     if (rc != BM_OK) {
         BM_LOGE("ctrl", "hrt start failed rc=%d", rc);
@@ -441,7 +452,6 @@ int bm_ctrl_start_all(const bm_ctrl_inst_t *const *instances, uint32_t count) {
         return rc;
     }
 
-    g_session = BM_CTRL_SESSION_STARTED;
     BM_LOGI("ctrl", "start_all ok count=%u", (unsigned)count);
     return BM_OK;
 }
@@ -454,24 +464,12 @@ int bm_ctrl_start_all(const bm_ctrl_inst_t *const *instances, uint32_t count) {
  */
 void bm_ctrl_safe_stop_all(const bm_ctrl_inst_t *const *instances,
                            uint32_t count) {
-    uint32_t i;
-
-    bm_hrt_stop();
-
-    if (instances && count > 0u) {
-        for (i = count; i > 0u; --i) {
-            const bm_ctrl_inst_t *inst = instances[i - 1u];
-            if (inst && inst->ops && inst->ops->safe_stop) {
-                inst->ops->safe_stop(inst);
-            }
-        }
-        ctrl_unbind_all_hardware();
-        bm_hrt_reset();
-        ctrl_clear_runtime();
-    } else {
-        ctrl_teardown_session();
+    if ((instances == NULL && count > 0u) ||
+        (instances != NULL && count != g_instance_count)) {
+        BM_LOGW("ctrl", "safe_stop_all ignored external instance table");
     }
 
+    ctrl_teardown_session();
     BM_LOGI("ctrl", "safe_stop_all done");
 }
 

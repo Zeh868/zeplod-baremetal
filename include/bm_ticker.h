@@ -39,7 +39,7 @@ int bm_ticker_init(const bm_ticker_slot_t *slots, uint32_t slot_count);
 /**
  * @brief 轮询 ticker 并发布到期事件
  *
- * @return 本次发布的事件数；BM_ERR_NOT_INIT 未初始化
+ * @return 本次发布的事件数；负值为未初始化或事件发布错误
  */
 int bm_ticker_poll(void);
 

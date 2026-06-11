@@ -23,6 +23,8 @@ static uint32_t g_hw_step_count;
 static uint32_t g_safe_stop_count;
 static uint32_t g_inst2_started;
 static uint32_t g_inst2_premature_steps;
+static uint32_t g_fire_hardware_during_stop;
+static uint32_t g_wrong_safe_stop_count;
 
 static int mock_init(const bm_ctrl_inst_t *instance) {
     (void)instance;
@@ -37,6 +39,14 @@ static int mock_start(const bm_ctrl_inst_t *instance) {
 static void mock_safe_stop(const bm_ctrl_inst_t *instance) {
     (void)instance;
     g_safe_stop_count++;
+    if (g_fire_hardware_during_stop) {
+        bm_hal_adc_sim_fire_complete(&BM_HAL_ADC_SIM0);
+    }
+}
+
+static void wrong_safe_stop(const bm_ctrl_inst_t *instance) {
+    (void)instance;
+    g_wrong_safe_stop_count++;
 }
 
 static int init_fail_id2(const bm_ctrl_inst_t *instance) {
@@ -193,6 +203,10 @@ static const bm_ctrl_ops_t fail_bind_ops = {
     mock_init, mock_start, mock_safe_stop
 };
 
+static const bm_ctrl_ops_t wrong_ops = {
+    mock_init, mock_start, wrong_safe_stop
+};
+
 static const bm_ctrl_slot_t bind_fail_slots[] = {
     {
         BM_CTRL_SLOT_HARDWARE,
@@ -225,11 +239,20 @@ static const bm_ctrl_inst_t bind_fail_inst = {
     NULL, 0u, &fail_bind_ops
 };
 
+static const bm_ctrl_inst_t wrong_inst = {
+    99u, "wrong", NULL, NULL, NULL,
+    NULL, 0u, NULL, 0u, &wrong_ops
+};
+
 void setUp(void) {
     BM_LOGI("test_ctrl", "setUp: reset counters and HRT");
     g_step_count = 0u;
     g_hw_step_count = 0u;
     g_safe_stop_count = 0u;
+    g_inst2_started = 0u;
+    g_inst2_premature_steps = 0u;
+    g_fire_hardware_during_stop = 0u;
+    g_wrong_safe_stop_count = 0u;
     bm_hal_timer_native_reset_ticks();
     bm_hrt_reset();
 }
@@ -256,6 +279,9 @@ void test_ctrl_hardware_bind_fires_step(void) {
 
     TEST_ASSERT_EQUAL(BM_OK, bm_ctrl_init_all(instances, 1u));
     bm_hal_adc_sim_fire_complete(&BM_HAL_ADC_SIM0);
+    TEST_ASSERT_EQUAL(0u, g_hw_step_count);
+    TEST_ASSERT_EQUAL(BM_OK, bm_ctrl_start_all(instances, 1u));
+    bm_hal_adc_sim_fire_complete(&BM_HAL_ADC_SIM0);
     TEST_ASSERT_EQUAL(1u, g_hw_step_count);
 
     bm_ctrl_safe_stop_all(instances, 1u);
@@ -266,6 +292,9 @@ void test_ctrl_hardware_only_hrt_start_ok(void) {
 
     TEST_ASSERT_EQUAL(BM_OK, bm_ctrl_init_all(instances, 1u));
     TEST_ASSERT_EQUAL(BM_OK, bm_hrt_start());
+    bm_hal_adc_sim_fire_complete(&BM_HAL_ADC_SIM0);
+    TEST_ASSERT_EQUAL(0u, g_hw_step_count);
+    TEST_ASSERT_EQUAL(BM_OK, bm_ctrl_start_all(instances, 1u));
     bm_hal_adc_sim_fire_complete(&BM_HAL_ADC_SIM0);
     TEST_ASSERT_EQUAL(1u, g_hw_step_count);
     bm_ctrl_safe_stop_all(instances, 1u);
@@ -351,6 +380,28 @@ void test_ctrl_reinit_teardowns_previous_session(void) {
     bm_ctrl_safe_stop_all(instances, 1u);
 }
 
+void test_ctrl_stop_blocks_hardware_callback_before_safe_stop(void) {
+    const bm_ctrl_inst_t *const instances[] = { &hw_inst };
+
+    TEST_ASSERT_EQUAL(BM_OK, bm_ctrl_init_all(instances, 1u));
+    TEST_ASSERT_EQUAL(BM_OK, bm_ctrl_start_all(instances, 1u));
+    g_fire_hardware_during_stop = 1u;
+    bm_ctrl_safe_stop_all(instances, 1u);
+    TEST_ASSERT_EQUAL(0u, g_hw_step_count);
+    TEST_ASSERT_EQUAL(1u, g_safe_stop_count);
+}
+
+void test_ctrl_safe_stop_uses_registered_instances_on_mismatch(void) {
+    const bm_ctrl_inst_t *const instances[] = { &hw_inst };
+    const bm_ctrl_inst_t *const wrong_instances[] = { &wrong_inst };
+
+    TEST_ASSERT_EQUAL(BM_OK, bm_ctrl_init_all(instances, 1u));
+    TEST_ASSERT_EQUAL(BM_OK, bm_ctrl_start_all(instances, 1u));
+    bm_ctrl_safe_stop_all(wrong_instances, 1u);
+    TEST_ASSERT_EQUAL(1u, g_safe_stop_count);
+    TEST_ASSERT_EQUAL(0u, g_wrong_safe_stop_count);
+}
+
 int main(void) {
     UNITY_BEGIN();
     RUN_TEST(test_ctrl_init_and_scheduled_slot);
@@ -365,5 +416,7 @@ int main(void) {
     RUN_TEST(test_ctrl_start_all_without_init_fails);
     RUN_TEST(test_ctrl_init_rejects_null_instance);
     RUN_TEST(test_ctrl_rejects_double_start);
+    RUN_TEST(test_ctrl_stop_blocks_hardware_callback_before_safe_stop);
+    RUN_TEST(test_ctrl_safe_stop_uses_registered_instances_on_mismatch);
     return UNITY_END();
 }

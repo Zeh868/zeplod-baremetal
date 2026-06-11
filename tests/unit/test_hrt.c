@@ -101,11 +101,17 @@ void test_hrt_tick_wraparound(void) {
         { 1000u, BM_HRT_TRIGGER_TIMER, slot_a_cb, NULL, "a" },
     };
 
-    bm_hal_timer_native_advance_ticks(0xFFFFFFF0u);
+    bm_hal_timer_native_jump_ticks(0xFFFFFFFBu);
     TEST_ASSERT_EQUAL(BM_OK, bm_hrt_init(slots, 1u));
     TEST_ASSERT_EQUAL(BM_OK, bm_hrt_start());
-    bm_hal_timer_native_advance_ticks(20u);
-    TEST_ASSERT_GREATER_THAN(0u, g_slot_a);
+    bm_hal_timer_native_advance_ticks(9u);
+    TEST_ASSERT_EQUAL(0u, g_slot_a);
+    bm_hal_timer_native_advance_ticks(1u);
+    TEST_ASSERT_EQUAL(1u, g_slot_a);
+    bm_hal_timer_native_advance_ticks(9u);
+    TEST_ASSERT_EQUAL(1u, g_slot_a);
+    bm_hal_timer_native_advance_ticks(1u);
+    TEST_ASSERT_EQUAL(2u, g_slot_a);
 }
 
 void test_hrt_rejects_init_while_started(void) {

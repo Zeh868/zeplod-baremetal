@@ -10,6 +10,7 @@
  */
 
 #include "bm_sync.h"
+#include "bm_sync_hal_native.h"
 #include "bm_log.h"
 
 #define TAG "hal_sync"
@@ -17,6 +18,10 @@
 static int g_configured;
 static int g_armed;
 static int g_triggered;
+static int g_fail_configure;
+static int g_fail_arm;
+static int g_fail_trigger;
+static int g_safe_stop_count;
 
 /** 配置同步域并重置状态 */
 int bm_sync_hal_configure(const bm_sync_domain_t *domain) {
@@ -24,6 +29,9 @@ int bm_sync_hal_configure(const bm_sync_domain_t *domain) {
     g_configured = 1;
     g_armed = 0;
     g_triggered = 0;
+    if (g_fail_configure) {
+        return BM_ERR_INVALID;
+    }
     BM_LOGI(TAG, "configure");
     return BM_OK;
 }
@@ -36,6 +44,9 @@ int bm_sync_hal_arm(const bm_sync_domain_t *domain) {
         return BM_ERR_NOT_INIT;
     }
     g_armed = 1;
+    if (g_fail_arm) {
+        return BM_ERR_INVALID;
+    }
     BM_LOGI(TAG, "arm");
     return BM_OK;
 }
@@ -48,6 +59,9 @@ int bm_sync_hal_trigger(const bm_sync_domain_t *domain) {
         return BM_ERR_NOT_INIT;
     }
     g_triggered = 1;
+    if (g_fail_trigger) {
+        return BM_ERR_INVALID;
+    }
     BM_LOGI(TAG, "trigger");
     return BM_OK;
 }
@@ -58,10 +72,37 @@ void bm_sync_hal_safe_stop(const bm_sync_domain_t *domain) {
     g_configured = 0;
     g_armed = 0;
     g_triggered = 0;
+    g_safe_stop_count++;
     BM_LOGI(TAG, "safe_stop");
 }
 
 /** 测试辅助：查询是否已触发 */
 int bm_sync_hal_native_triggered(void) {
     return g_triggered;
+}
+
+void bm_sync_hal_native_reset(void) {
+    g_configured = 0;
+    g_armed = 0;
+    g_triggered = 0;
+    g_fail_configure = 0;
+    g_fail_arm = 0;
+    g_fail_trigger = 0;
+    g_safe_stop_count = 0;
+}
+
+void bm_sync_hal_native_fail_configure(int enabled) {
+    g_fail_configure = enabled != 0;
+}
+
+void bm_sync_hal_native_fail_arm(int enabled) {
+    g_fail_arm = enabled != 0;
+}
+
+void bm_sync_hal_native_fail_trigger(int enabled) {
+    g_fail_trigger = enabled != 0;
+}
+
+int bm_sync_hal_native_safe_stop_count(void) {
+    return g_safe_stop_count;
 }

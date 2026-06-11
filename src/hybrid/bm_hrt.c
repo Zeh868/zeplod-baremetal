@@ -49,12 +49,7 @@ __attribute__((weak))
  * @param slot 触发 deadline 错过的槽描述符
  */
 void bm_hrt_deadline_missed_hook(const bm_hrt_slot_t *slot) {
-#if BM_CONFIG_HRT_DEADLINE_MISS_LOG
-    BM_LOGE("hrt", "deadline missed slot=%s",
-            (slot && slot->name) ? slot->name : "?");
-#else
     (void)slot;
-#endif
 }
 
 /**
@@ -67,17 +62,10 @@ static uint32_t hrt_tick_hz(void) {
 }
 
 /**
- * @brief 计算下次触发 tick；溢出时从 now 重新对齐
+ * @brief 使用 uint32_t 模加法计算下次触发 tick
  */
-static uint32_t hrt_deadline_from(uint32_t base, uint32_t period, uint32_t now) {
-    uint32_t next = 0u;
-
-    if (bm_add_u32_overflow(base, period, &next)) {
-        if (bm_add_u32_overflow(now, period, &next)) {
-            return now;
-        }
-    }
-    return next;
+static uint32_t hrt_deadline_from(uint32_t base, uint32_t period) {
+    return base + period;
 }
 
 /**
@@ -108,22 +96,24 @@ static void hrt_dispatch(void) {
         if (slot->period_ticks == 0u) {
             continue;
         }
-        if ((int32_t)(now - slot->next_tick) < 0) {
+        if (!bm_time_reached_u32(now, slot->next_tick)) {
             continue;
         }
         if ((uint32_t)(now - slot->next_tick) >= slot->period_ticks) {
-            slot->deadline_missed++;
+            slot->deadline_missed =
+                bm_u32_saturating_inc(slot->deadline_missed);
             bm_hrt_deadline_missed_hook(&slot->pub);
             if (slot->pub.callback) {
                 slot->pub.callback(slot->pub.context);
             }
-            slot->next_tick = hrt_deadline_from(now, slot->period_ticks, now);
+            slot->next_tick = hrt_deadline_from(now, slot->period_ticks);
             continue;
         }
         if (slot->pub.callback) {
             slot->pub.callback(slot->pub.context);
         }
-        slot->next_tick = hrt_deadline_from(slot->next_tick, slot->period_ticks, now);
+        slot->next_tick =
+            hrt_deadline_from(slot->next_tick, slot->period_ticks);
     }
 }
 
@@ -135,11 +125,14 @@ static void hrt_timer_isr(void) {
 }
 
 int bm_hrt_validate_period_us(uint32_t period_us) {
+    uint32_t period_ticks;
+
     if (period_us == 0u ||
         (period_us % BM_CONFIG_HRT_TICK_US) != 0u) {
         return BM_ERR_INVALID;
     }
-    if ((period_us / BM_CONFIG_HRT_TICK_US) == 0u) {
+    period_ticks = period_us / BM_CONFIG_HRT_TICK_US;
+    if (period_ticks == 0u || period_ticks > (uint32_t)INT32_MAX) {
         return BM_ERR_INVALID;
     }
     return BM_OK;
@@ -201,7 +194,7 @@ int bm_hrt_init(const bm_hrt_slot_t *slots, uint32_t slot_count) {
         g_slots[i].pub = slots[i];
         g_slots[i].period_ticks = slots[i].period_us / BM_CONFIG_HRT_TICK_US;
         g_slots[i].next_tick =
-            hrt_deadline_from(now, g_slots[i].period_ticks, now);
+            hrt_deadline_from(now, g_slots[i].period_ticks);
     }
 
     BM_LOGI("hrt", "init %u slots tick_us=%u", (unsigned)slot_count,
@@ -254,8 +247,8 @@ int bm_hrt_start(void) {
         uint32_t i;
 
         for (i = 0u; i < g_slot_count; ++i) {
-            g_slots[i].next_tick = hrt_deadline_from(
-                now, g_slots[i].period_ticks, now);
+            g_slots[i].next_tick =
+                hrt_deadline_from(now, g_slots[i].period_ticks);
         }
     }
 
@@ -311,7 +304,8 @@ uint32_t bm_hrt_get_deadline_missed_total(void) {
     uint32_t i;
 
     for (i = 0u; i < g_slot_count; ++i) {
-        total += g_slots[i].deadline_missed;
+        total = bm_u32_saturating_add(
+            total, g_slots[i].deadline_missed);
     }
     BM_CRITICAL_EXIT(irq_state);
     return total;

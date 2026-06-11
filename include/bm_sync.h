@@ -57,7 +57,9 @@ int bm_sync_trigger(const bm_sync_domain_t *domain);
 /**
  * @brief 安全停止同步域并复位 HAL 状态
  *
- * @param domain 同步域描述符指针
+ * 若已有活动域，始终停止内部记录的活动域。
+ *
+ * @param domain 同步域描述符指针，可为 NULL
  */
 void bm_sync_safe_stop(const bm_sync_domain_t *domain);
 

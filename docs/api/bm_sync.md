@@ -23,17 +23,20 @@
 
 ### `bm_sync_configure(domain)`
 
-配置主从关系与相位表，委托 HAL 设置硬件触发链。  
+配置主从关系与相位表，委托 HAL 设置硬件触发链。
+重复成员会被拒绝；HAL 失败时立即执行 safe-stop 并清除活动域。
 返回：`BM_OK`；`BM_ERR_INVALID`；HAL 错误码。
 
 ### `bm_sync_arm(domain)`
 
 武装同步域，准备一次性或周期性触发。
+HAL 失败时立即执行 safe-stop 并清除活动域。
 
 ### `bm_sync_trigger(domain)`
 
 触发同步域，按 `phase_ticks` 依次启动各成员 slot。  
 QEMU 参考 HAL 在 `trigger` 时同步执行成员 `step`（仿真用）。
+HAL 失败时立即执行 safe-stop，后续必须重新 configure。
 
 ### `bm_sync_safe_stop(domain)`
 

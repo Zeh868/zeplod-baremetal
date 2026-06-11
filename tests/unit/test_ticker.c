@@ -11,6 +11,7 @@
 
 #include "unity.h"
 #include "bm_ticker.h"
+#include "bm_hal_timer.h"
 #include "bm_log.h"
 #include "bm_hal_timer_native.h"
 
@@ -120,14 +121,35 @@ void test_ticker_wraparound(void) {
     bm_event_register_type(TICKER_EVT, "TICK");
     bm_event_subscribe(TICKER_EVT, ticker_cb, NULL, &id);
 
-    bm_hal_timer_native_advance_ticks(0xFFFFFFF0u);
+    bm_hal_timer_native_jump_ticks(0xFFFFFFFBu);
     TEST_ASSERT_EQUAL(BM_OK, bm_ticker_init(slots, 1u));
-    bm_hal_timer_native_advance_ticks(10u);
-    TEST_ASSERT_GREATER_OR_EQUAL(1, bm_ticker_poll());
-    TEST_ASSERT_GREATER_OR_EQUAL(1, bm_event_process(4));
-    TEST_ASSERT_GREATER_OR_EQUAL(1, g_event_count);
+    bm_hal_timer_native_advance_ticks(9u);
+    TEST_ASSERT_EQUAL(0, bm_ticker_poll());
+    bm_hal_timer_native_advance_ticks(1u);
+    TEST_ASSERT_EQUAL(1, bm_ticker_poll());
+    TEST_ASSERT_EQUAL(1, bm_event_process(4));
+    TEST_ASSERT_EQUAL(1, g_event_count);
+    bm_hal_timer_native_advance_ticks(9u);
+    TEST_ASSERT_EQUAL(0, bm_ticker_poll());
+    bm_hal_timer_native_advance_ticks(1u);
+    TEST_ASSERT_EQUAL(1, bm_ticker_poll());
+    TEST_ASSERT_EQUAL(1, bm_event_process(4));
+    TEST_ASSERT_EQUAL(2, g_event_count);
 
     bm_event_unsubscribe(TICKER_EVT, id);
+}
+
+void test_ticker_propagates_non_overflow_publish_error(void) {
+    static const bm_ticker_slot_t slots[] = {
+        { 10u, TICKER_EVT, 1u, "10ms" },
+    };
+
+    bm_event_register_type(TICKER_EVT, "TICK");
+    TEST_ASSERT_EQUAL(BM_OK, bm_ticker_init(slots, 1u));
+    bm_event_reset();
+    bm_hal_timer_native_advance_ticks(10u);
+    TEST_ASSERT_EQUAL(BM_ERR_NOT_INIT, bm_ticker_poll());
+    TEST_ASSERT_EQUAL(0u, bm_ticker_get_dropped(0u));
 }
 
 int main(void) {
@@ -138,5 +160,6 @@ int main(void) {
     RUN_TEST(test_ticker_rejects_invalid_event_type);
     RUN_TEST(test_ticker_rejects_timer_not_configured);
     RUN_TEST(test_ticker_wraparound);
+    RUN_TEST(test_ticker_propagates_non_overflow_publish_error);
     return UNITY_END();
 }

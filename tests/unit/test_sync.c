@@ -13,6 +13,7 @@
 #include "bm_sync.h"
 #include "bm_config.h"
 #include "bm_log.h"
+#include "bm_sync_hal_native.h"
 
 /* 占位 HAL 定时器与成员，满足 bm_sync_domain_t 字段要求 */
 struct bm_hal_timer {
@@ -39,6 +40,7 @@ void setUp(void) {
     BM_LOGI("test_sync", "setUp: init domain and safe_stop");
     init_domain();
     bm_sync_safe_stop(&domain);
+    bm_sync_hal_native_reset();
 }
 
 void tearDown(void) {
@@ -99,6 +101,44 @@ void test_sync_configure_switches_active_domain(void) {
     TEST_ASSERT_EQUAL(BM_OK, bm_sync_arm(&domain_b));
 }
 
+void test_sync_rejects_duplicate_members(void) {
+    static const bm_ctrl_inst_t *const duplicate_members[] = {
+        &dummy_member, &dummy_member
+    };
+    static const uint32_t duplicate_phases[] = { 0u, 1u };
+
+    init_domain();
+    domain.members = duplicate_members;
+    domain.phase_ticks = duplicate_phases;
+    domain.member_count = 2u;
+    TEST_ASSERT_EQUAL(BM_ERR_INVALID, bm_sync_configure(&domain));
+}
+
+void test_sync_configure_failure_safe_stops_hal(void) {
+    bm_sync_hal_native_fail_configure(1);
+    TEST_ASSERT_EQUAL(BM_ERR_INVALID, bm_sync_configure(&domain));
+    TEST_ASSERT_EQUAL(1, bm_sync_hal_native_safe_stop_count());
+    TEST_ASSERT_EQUAL(BM_ERR_NOT_INIT, bm_sync_arm(&domain));
+}
+
+void test_sync_arm_failure_safe_stops_hal(void) {
+    TEST_ASSERT_EQUAL(BM_OK, bm_sync_configure(&domain));
+    bm_sync_hal_native_fail_arm(1);
+    TEST_ASSERT_EQUAL(BM_ERR_INVALID, bm_sync_arm(&domain));
+    TEST_ASSERT_EQUAL(1, bm_sync_hal_native_safe_stop_count());
+    TEST_ASSERT_EQUAL(BM_ERR_NOT_INIT, bm_sync_trigger(&domain));
+}
+
+void test_sync_trigger_failure_safe_stops_hal(void) {
+    TEST_ASSERT_EQUAL(BM_OK, bm_sync_configure(&domain));
+    TEST_ASSERT_EQUAL(BM_OK, bm_sync_arm(&domain));
+    bm_sync_hal_native_fail_trigger(1);
+    TEST_ASSERT_EQUAL(BM_ERR_INVALID, bm_sync_trigger(&domain));
+    TEST_ASSERT_EQUAL(1, bm_sync_hal_native_safe_stop_count());
+    TEST_ASSERT_EQUAL(0, bm_sync_hal_native_triggered());
+    TEST_ASSERT_EQUAL(BM_ERR_NOT_INIT, bm_sync_arm(&domain));
+}
+
 int main(void) {
     UNITY_BEGIN();
     RUN_TEST(test_sync_configure_arm_trigger);
@@ -108,5 +148,9 @@ int main(void) {
     RUN_TEST(test_sync_rejects_excessive_member_count);
     RUN_TEST(test_sync_rejects_excessive_phase_ticks);
     RUN_TEST(test_sync_configure_switches_active_domain);
+    RUN_TEST(test_sync_rejects_duplicate_members);
+    RUN_TEST(test_sync_configure_failure_safe_stops_hal);
+    RUN_TEST(test_sync_arm_failure_safe_stops_hal);
+    RUN_TEST(test_sync_trigger_failure_safe_stops_hal);
     return UNITY_END();
 }

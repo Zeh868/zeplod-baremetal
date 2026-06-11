@@ -19,7 +19,7 @@ HRT（High-Resolution Timer）管理微秒级周期 slot，支持定时器、PWM
 
 ### `bm_hrt_init(slots, slot_count)`
 
-注册 slot 表。`slots` 在调度器生命周期内必须保持有效。  
+注册并复制 slot 表。周期换算后须不超过 `INT32_MAX` tick。
 返回：`BM_OK`；`BM_ERR_INVALID`（空表或超限）。
 
 ### `bm_hrt_start()`
@@ -33,11 +33,12 @@ HRT（High-Resolution Timer）管理微秒级周期 slot，支持定时器、PWM
 
 ### `bm_hrt_deadline_missed_hook(slot)`
 
-弱符号钩子，slot 错过 deadline 时调用；默认空实现（`BM_CONFIG_HRT_DEADLINE_MISS_LOG=1` 时打错误日志），应用可覆盖用于统计或告警。
+弱符号钩子，slot 错过 deadline 时在 ISR 中调用。默认空实现；覆盖实现必须有界且不得记录日志。
 
 ### `bm_hrt_get_deadline_missed(slot_index)` / `bm_hrt_get_deadline_missed_total()`
 
-查询单槽或全部槽累计 deadline 错过次数（临界区内读取）。
+查询单槽或全部槽累计 deadline 错过次数（临界区内读取，达到
+`UINT32_MAX` 后饱和）。
 
 ## 使用示例
 

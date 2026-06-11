@@ -22,10 +22,10 @@
 
 /** 展平后的资源声明条目 */
 typedef struct {
-    bm_resource_kind_t kind;
     uintptr_t key;
-    bm_resource_access_t access;
     uintptr_t share_group;
+    bm_resource_kind_t kind;
+    bm_resource_access_t access;
     uint32_t instance_index;
 } flat_claim_t;
 
@@ -200,10 +200,11 @@ int bm_resource_check_conflicts(const bm_resource_claim_t *const *claims,
                 BM_LOGE("resource", "claim table overflow");
                 return BM_ERR_OVERFLOW;
             }
-            if (claims[i][j].kind > BM_RESOURCE_IRQ) {
+            if ((unsigned)claims[i][j].kind > (unsigned)BM_RESOURCE_IRQ) {
                 return BM_ERR_INVALID;
             }
-            if (claims[i][j].access > BM_RESOURCE_SHARED_COORDINATED) {
+            if ((unsigned)claims[i][j].access >
+                (unsigned)BM_RESOURCE_SHARED_COORDINATED) {
                 return BM_ERR_INVALID;
             }
             flat[flat_count].kind = claims[i][j].kind;

@@ -63,4 +63,27 @@ static inline bool bm_index_in_range_u32(uint32_t index, uint32_t limit) {
     return index < limit;
 }
 
+/**
+ * @brief Saturating increment for diagnostic counters.
+ */
+static inline uint32_t bm_u32_saturating_inc(uint32_t value) {
+    return (value < UINT32_MAX) ? (value + 1u) : UINT32_MAX;
+}
+
+/**
+ * @brief Saturating addition for diagnostic counter aggregation.
+ */
+static inline uint32_t bm_u32_saturating_add(uint32_t a, uint32_t b) {
+    return (a > (UINT32_MAX - b)) ? UINT32_MAX : (a + b);
+}
+
+/**
+ * @brief Compare wrapping 32-bit timer values.
+ *
+ * Valid when the scheduled interval is no greater than INT32_MAX ticks.
+ */
+static inline bool bm_time_reached_u32(uint32_t now, uint32_t deadline) {
+    return (uint32_t)(now - deadline) <= (uint32_t)INT32_MAX;
+}
+
 #endif /* BM_SAFETY_H */

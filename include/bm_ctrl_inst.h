@@ -78,7 +78,7 @@ int bm_ctrl_init_all(const bm_ctrl_inst_t *const *instances, uint32_t count);
  * @brief 批量启动控制实例
  *
  * 先对各实例调用 ops->start，全部成功后再 bm_hrt_start（若存在 Scheduled 槽）。
- * Scheduled 槽的 step 仅在会话进入 STARTED 后执行。
+ * 所有 Scheduled / Hardware 槽的 step 仅在会话进入 STARTED 后执行。
  *
  * @param instances 控制实例指针数组（须与 init_all 时一致）
  * @param count 实例数量
@@ -90,8 +90,11 @@ int bm_ctrl_start_all(const bm_ctrl_inst_t *const *instances, uint32_t count);
 /**
  * @brief 批量安全停止控制实例
  *
- * @param instances 控制实例指针数组
- * @param count 实例数量
+ * 始终使用 init_all 保存的内部实例表执行停机。外部数组仅保留用于 API
+ * 兼容，不会被解引用，也不会决定实际停止对象。
+ *
+ * @param instances 可为 NULL；不参与实际停机
+ * @param count 外部实例数量，仅用于参数一致性诊断
  */
 void bm_ctrl_safe_stop_all(const bm_ctrl_inst_t *const *instances,
                            uint32_t count);

@@ -26,11 +26,14 @@
 
 ### `bm_ctrl_start_all(instances, count)`
 
-启动前执行 `bm_resource_check_conflicts`；通过后注册 HRT slot 并调用 `ops->start`。失败时逆序 `safe_stop` + 解绑 HRT。
+实例初始化阶段已完成资源冲突检查和 HRT slot 注册；本 API 依次调用
+`ops->start`，全部成功后开放会话门并启动 Scheduled HRT。失败时关闭
+会话门、解绑 Hardware slot，并逆序 `safe_stop`。
 
 ### `bm_ctrl_safe_stop_all(instances, count)`
 
-逆序调用 `ops->safe_stop`，解除 HRT 绑定。
+关闭会话门、停止 HRT、解绑 Hardware slot，再对内部注册实例逆序调用
+`ops->safe_stop`。传入数组不会被解引用，也不会决定实际停止对象。
 
 ### `bm_ctrl_find(instances, count, id)`
 
