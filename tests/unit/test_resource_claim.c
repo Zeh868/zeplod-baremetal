@@ -11,6 +11,7 @@
 
 #include "unity.h"
 #include "bm_resource.h"
+#include "bm_config.h"
 #include "bm_log.h"
 
 /* 两实例争抢同一 PWM 通道（独占） */
@@ -90,6 +91,30 @@ void test_resource_duplicate_claim_same_instance_fails(void) {
                       bm_resource_check_conflicts(claims, counts, 1u));
 }
 
+void test_resource_rejects_invalid_access(void) {
+    static const bm_resource_claim_t bad_access_claims[] = {
+        { BM_RESOURCE_PWM, 1u,
+          (bm_resource_access_t)(BM_RESOURCE_SHARED_COORDINATED + 1u),
+          0u, "bad" },
+    };
+    const bm_resource_claim_t *claims[] = { bad_access_claims };
+    uint32_t counts[] = { 1u };
+
+    TEST_ASSERT_EQUAL(BM_ERR_INVALID,
+                      bm_resource_check_conflicts(claims, counts, 1u));
+}
+
+void test_resource_rejects_excessive_claim_count(void) {
+    static const bm_resource_claim_t one_claim[] = {
+        { BM_RESOURCE_PWM, 1u, BM_RESOURCE_EXCLUSIVE, 0u, "pwm" },
+    };
+    const bm_resource_claim_t *claims[] = { one_claim };
+    uint32_t counts[] = { BM_CONFIG_MAX_RESOURCE_CLAIMS + 1u };
+
+    TEST_ASSERT_EQUAL(BM_ERR_OVERFLOW,
+                      bm_resource_check_conflicts(claims, counts, 1u));
+}
+
 void test_resource_rejects_invalid_kind(void) {
     static const bm_resource_claim_t bad_kind_claims[] = {
         { (bm_resource_kind_t)(BM_RESOURCE_IRQ + 1u),
@@ -128,6 +153,8 @@ int main(void) {
     RUN_TEST(test_resource_reader_without_owner_fails);
     RUN_TEST(test_resource_coordinated_shared);
     RUN_TEST(test_resource_duplicate_claim_same_instance_fails);
+    RUN_TEST(test_resource_rejects_excessive_claim_count);
+    RUN_TEST(test_resource_rejects_invalid_access);
     RUN_TEST(test_resource_rejects_invalid_kind);
     RUN_TEST(test_resource_shared_read_vs_coordinated_conflict);
     return UNITY_END();

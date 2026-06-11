@@ -4,16 +4,18 @@
  *
  * 将多实例资源声明展平后检查互斥、共享读与协调访问规则。
  * @author zeh (china_qzh@163.com)
- * @version 1.0
- * @date 2026-06-10
+ * @version 1.1
+ * @date 2026-06-11
  *
  * @par 修改日志:
  *
  *    Date         Version        Author          Description
  * 2026-06-10       1.0            zeh            正式发布
+ * 2026-06-11       1.1            zeh            claim_count 上界与显式兼容矩阵
  *
  */
 #include "bm_resource.h"
+#include "bm_config.h"
 #include "bm_log.h"
 
 #include <stddef.h>
@@ -36,6 +38,33 @@ typedef struct {
 #endif
 
 /**
+ * @brief 判断同资源跨实例的 access 组合是否兼容
+ */
+static int access_pair_compatible(bm_resource_access_t a,
+                                  bm_resource_access_t b,
+                                  uintptr_t share_a,
+                                  uintptr_t share_b) {
+    if (a == BM_RESOURCE_EXCLUSIVE || b == BM_RESOURCE_EXCLUSIVE) {
+        return 0;
+    }
+    if (a == BM_RESOURCE_OWNER && b == BM_RESOURCE_OWNER) {
+        return 0;
+    }
+    if ((a == BM_RESOURCE_OWNER && b == BM_RESOURCE_SHARED_READ) ||
+        (a == BM_RESOURCE_SHARED_READ && b == BM_RESOURCE_OWNER)) {
+        return (share_a != 0u && share_a == share_b);
+    }
+    if (a == BM_RESOURCE_SHARED_READ && b == BM_RESOURCE_SHARED_READ) {
+        return 1;
+    }
+    if (a == BM_RESOURCE_SHARED_COORDINATED &&
+        b == BM_RESOURCE_SHARED_COORDINATED) {
+        return (share_a != 0u && share_a == share_b);
+    }
+    return 0;
+}
+
+/**
  * @brief 判断两条资源声明是否兼容
  *
  * @param a 第一条展平声明
@@ -49,34 +78,8 @@ static int claims_compatible(const flat_claim_t *a, const flat_claim_t *b) {
     if (a->instance_index == b->instance_index) {
         return 1;
     }
-
-    if (a->access == BM_RESOURCE_EXCLUSIVE ||
-        b->access == BM_RESOURCE_EXCLUSIVE) {
-        return 0;
-    }
-
-    if (a->access == BM_RESOURCE_OWNER && b->access == BM_RESOURCE_OWNER) {
-        return 0;
-    }
-
-    if ((a->access == BM_RESOURCE_OWNER &&
-         b->access == BM_RESOURCE_SHARED_READ) ||
-        (a->access == BM_RESOURCE_SHARED_READ &&
-         b->access == BM_RESOURCE_OWNER)) {
-        return (a->share_group != 0u && a->share_group == b->share_group);
-    }
-
-    if (a->access == BM_RESOURCE_SHARED_READ &&
-        b->access == BM_RESOURCE_SHARED_READ) {
-        return 1;
-    }
-
-    if (a->access == BM_RESOURCE_SHARED_COORDINATED &&
-        b->access == BM_RESOURCE_SHARED_COORDINATED) {
-        return (a->share_group != 0u && a->share_group == b->share_group);
-    }
-
-    return 0;
+    return access_pair_compatible(a->access, b->access,
+                                  a->share_group, b->share_group);
 }
 
 /**
@@ -187,13 +190,20 @@ int bm_resource_check_conflicts(const bm_resource_claim_t *const *claims,
         if (claim_counts[i] > 0u && !claims[i]) {
             return BM_ERR_INVALID;
         }
+        if (claim_counts[i] > BM_CONFIG_MAX_RESOURCE_CLAIMS) {
+            BM_LOGE("resource", "instance %u claim_count overflow",
+                    (unsigned)i);
+            return BM_ERR_OVERFLOW;
+        }
         for (j = 0u; j < claim_counts[i]; ++j) {
             if (flat_count >= BM_CONFIG_MAX_RESOURCE_CLAIMS) {
                 BM_LOGE("resource", "claim table overflow");
                 return BM_ERR_OVERFLOW;
             }
-            if (claims[i][j].kind > BM_RESOURCE_IRQ ||
-                claims[i][j].access > BM_RESOURCE_SHARED_COORDINATED) {
+            if (claims[i][j].kind > BM_RESOURCE_IRQ) {
+                return BM_ERR_INVALID;
+            }
+            if (claims[i][j].access > BM_RESOURCE_SHARED_COORDINATED) {
                 return BM_ERR_INVALID;
             }
             flat[flat_count].kind = claims[i][j].kind;

@@ -131,6 +131,9 @@ if(BM_ENABLE_CTRL_INST)
             target_sources(bm_ctrl_inst PRIVATE
                 hal_reference/qemu_cortex_m0/bm_sync_hal_qemu.c)
         else()
+            message(WARNING
+                "BM_ENABLE_SYNC without BM_SYNC_HAL_NATIVE/QEMU: "
+                "linking bm_sync_hal_stub.c (not for production)")
             target_sources(bm_ctrl_inst PRIVATE src/hybrid/bm_sync_hal_stub.c)
         endif()
     endif()

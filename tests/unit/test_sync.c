@@ -11,6 +11,7 @@
 
 #include "unity.h"
 #include "bm_sync.h"
+#include "bm_config.h"
 #include "bm_log.h"
 
 /* 占位 HAL 定时器与成员，满足 bm_sync_domain_t 字段要求 */
@@ -72,6 +73,20 @@ void test_sync_retrigger_requires_rearm(void) {
     TEST_ASSERT_EQUAL(BM_OK, bm_sync_trigger(&domain));
 }
 
+void test_sync_rejects_excessive_member_count(void) {
+    init_domain();
+    domain.member_count = BM_CONFIG_MAX_SYNC_MEMBERS + 1u;
+    TEST_ASSERT_EQUAL(BM_ERR_INVALID, bm_sync_configure(&domain));
+}
+
+void test_sync_rejects_excessive_phase_ticks(void) {
+    static uint32_t bad_phases[] = { BM_CONFIG_SYNC_MAX_PHASE_TICKS + 1u };
+
+    init_domain();
+    domain.phase_ticks = bad_phases;
+    TEST_ASSERT_EQUAL(BM_ERR_INVALID, bm_sync_configure(&domain));
+}
+
 void test_sync_configure_switches_active_domain(void) {
     init_domain();
     domain_b = domain;
@@ -90,6 +105,8 @@ int main(void) {
     RUN_TEST(test_sync_trigger_before_arm_fails);
     RUN_TEST(test_sync_safe_stop_null_clears_active);
     RUN_TEST(test_sync_retrigger_requires_rearm);
+    RUN_TEST(test_sync_rejects_excessive_member_count);
+    RUN_TEST(test_sync_rejects_excessive_phase_ticks);
     RUN_TEST(test_sync_configure_switches_active_domain);
     return UNITY_END();
 }

@@ -4,7 +4,7 @@
  *
  * 校验域描述后委托 HAL 完成配置、武装与触发。
  * @author zeh (china_qzh@163.com)
- * @version 1.1
+ * @version 1.2
  * @date 2026-06-11
  *
  * @par 修改日志:
@@ -12,9 +12,12 @@
  *    Date         Version        Author          Description
  * 2026-06-10       1.0            zeh            正式发布
  * 2026-06-11       1.1            zeh            域切换清理与框架层 armed 状态
+ * 2026-06-11       1.2            zeh            member_count 上界校验
+ * 2026-06-11       1.3            zeh            phase_ticks 上界校验
  *
  */
 #include "bm_sync.h"
+#include "bm_config.h"
 #include "bm_sync_hal.h"
 #include "bm_log.h"
 
@@ -37,9 +40,19 @@ static int validate_domain(const bm_sync_domain_t *domain) {
         BM_LOGE("sync", "invalid domain descriptor");
         return BM_ERR_INVALID;
     }
+    if (domain->member_count > BM_CONFIG_MAX_SYNC_MEMBERS) {
+        BM_LOGE("sync", "member_count overflow %u",
+                (unsigned)domain->member_count);
+        return BM_ERR_INVALID;
+    }
     for (i = 0u; i < domain->member_count; ++i) {
         if (!domain->members[i]) {
             BM_LOGE("sync", "null member at index %u", (unsigned)i);
+            return BM_ERR_INVALID;
+        }
+        if (domain->phase_ticks[i] > BM_CONFIG_SYNC_MAX_PHASE_TICKS) {
+            BM_LOGE("sync", "phase_ticks[%u] overflow %u",
+                    (unsigned)i, (unsigned)domain->phase_ticks[i]);
             return BM_ERR_INVALID;
         }
     }
