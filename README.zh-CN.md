@@ -302,7 +302,11 @@ Zeplod Baremetal 被设计为机器人/电子系统三层架构的底层：
 
 ## 许可证
 
-[待确定]
+Zeplod Baremetal 以 [GNU General Public License v3.0](LICENSE)（GPL-3.0）发布。版权与免责声明见 [NOTICE](NOTICE)。
+
+在裸机上静态链接本框架并对外发布固件时，GPL-3.0 的传染性条款可能适用于该组合产物；具体合规请以法务意见为准。
+
+第三方组件可能使用其他许可证，见其文件头（例如 `tests/unit/unity/` 中的 Unity 为 MIT）。
 
 ---
 
