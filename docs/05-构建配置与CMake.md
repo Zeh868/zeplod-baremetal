@@ -77,6 +77,9 @@ target_link_libraries(my_app PRIVATE bm_hal_native bm_framework)
 #define BM_CONFIG_HRT_MAX_SLOTS              16
 #define BM_CONFIG_MAX_CTRL_INSTANCES         16
 #define BM_CONFIG_MAX_RESOURCE_CLAIMS        64
+#define BM_CONFIG_MAX_SYNC_MEMBERS           BM_CONFIG_MAX_CTRL_INSTANCES
+#define BM_CONFIG_SYNC_MAX_PHASE_TICKS       1000000000u
+#define BM_CONFIG_HRT_DEADLINE_MISS_LOG      0   /* 1=弱钩子默认打错误日志 */
 ```
 
 模板见仓库根 `bm_config.h.template`。CMake 会 **force-include** 该头，保证框架与应用宏一致。
