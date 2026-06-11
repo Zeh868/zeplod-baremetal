@@ -143,8 +143,8 @@ zeplod-baremetal/
 │   ├── unit/             # Unity-based unit tests (PC native)
 │   └── qemu/             # QEMU smoke tests
 ├── docs/
-│   ├── README.md         # Doc index (00–09 guides)
-│   ├── 00-快速开始.md … 09-安全与可靠性.md
+│   ├── README.md         # Doc index (00–11 guides)
+│   ├── 00-快速开始.md … 11-安全与可靠性.md
 │   ├── architecture.md   # Framework architecture overview (English)
 │   ├── api/              # API reference docs
 │   └── porting/          # Keil / IAR toolchain appendices
@@ -252,17 +252,17 @@ Zeplod Baremetal is designed as the bottom layer of a three-tier robot/electroni
 - **Core → Core+Module**: Scatter-gather logic is wrapped into modules with lifecycle management.
 - **Baremetal → Zephyr**: Module code is largely reusable; event API semantics are aligned. `bm-channel` must be replaced with Zeplod Data Bus.
 
-See [docs/08-迁移与演进.md](docs/08-迁移与演进.md) for detailed guides.
+See [docs/10-迁移与演进.md](docs/10-迁移与演进.md) for detailed guides.
 
 ---
 
 ## Documentation
 
-Start at [`docs/README.md`](docs/README.md) (numbered guides 00–09 in Chinese).
+Start at [`docs/README.md`](docs/README.md) (numbered guides 00–11 in Chinese).
 
-- [`docs/06-HAL移植指南.md`](docs/06-HAL移植指南.md) — HAL contracts, reference platforms, PWM/ADC porting
-- [`docs/08-迁移与演进.md`](docs/08-迁移与演进.md) — Ultra→Core→Hybrid→Zephyr migration
-- [`docs/09-安全与可靠性.md`](docs/09-安全与可靠性.md) — Safety posture and requirements traceability
+- [`docs/08-HAL移植指南.md`](docs/08-HAL移植指南.md) — HAL contracts, reference platforms, PWM/ADC porting
+- [`docs/10-迁移与演进.md`](docs/10-迁移与演进.md) — Ultra→Core→Hybrid→Zephyr migration
+- [`docs/11-安全与可靠性.md`](docs/11-安全与可靠性.md) — Safety posture and requirements traceability
 - [`docs/architecture.md`](docs/architecture.md) — Framework architecture (English)
 - [`docs/api/`](docs/api/) — API reference for hybrid-domain components
 - [`docs/porting/`](docs/porting/) — Keil / IAR integration appendices

@@ -1,4 +1,4 @@
-# 06 HAL 移植指南
+# 08 HAL 移植指南
 
 框架通过 **HAL 契约**隔离寄存器细节。应用与 `src/` 只依赖 `include/bm_hal_*.h`，具体驱动在 `hal_reference/` 或你的板级工程。
 
@@ -50,7 +50,7 @@ target_link_libraries(my_app PRIVATE bm_hal_ch32v003 bm_framework)
 
 链接顺序：平台 HAL 与 `bm_framework` 同链即可；GNU/LLVM 链接器优先选用强符号覆盖弱符号。
 
-**务必链接平台库**，否则弱符号桩静默 fail-open（见 [09-安全与可靠性](09-安全与可靠性.md)）。
+**务必链接平台库**，否则弱符号桩静默 fail-open（见 [11-安全与可靠性](11-安全与可靠性.md)）。
 
 ## 移植检查清单
 
