@@ -209,19 +209,19 @@ static int _prio_push_copy(bm_event_priority_t prio, const bm_event_t *event,
         return BM_ERR_OVERFLOW;
     }
 
+    if (data && len > sizeof(_prio_items[prio][0].inline_data)) {
+        BM_CRITICAL_EXIT(s);
+        BM_LOGE("event", "payload too large len=%u", (unsigned)len);
+        return BM_ERR_NO_MEM;
+    }
+
     item = &_prio_items[prio][_prio_write[prio] & mask];
     item->event = *event;
 
     if (data && len > 0u) {
-        if (len <= sizeof(item->inline_data)) {
-            memcpy(item->inline_data, data, len);
-            item->event.data = item->inline_data;
-            item->event.data_len = len;
-        } else {
-            BM_CRITICAL_EXIT(s);
-            BM_LOGE("event", "payload too large len=%u", (unsigned)len);
-            return BM_ERR_NO_MEM;
-        }
+        memcpy(item->inline_data, data, len);
+        item->event.data = item->inline_data;
+        item->event.data_len = len;
     } else {
         item->event.data = NULL;
         item->event.data_len = 0;
@@ -325,6 +325,13 @@ int bm_event_process(uint32_t max_events) {
         int rc = _queue_pop_highest_prio(&item);
         int j;
 
+        if (rc == BM_ERR_INVALID) {
+            bm_irq_state_t s = BM_CRITICAL_ENTER();
+            _dispatch_skipped++;
+            BM_CRITICAL_EXIT(s);
+            BM_LOGE("event", "process corrupt queue");
+            break;
+        }
         if (rc != BM_OK) {
             break;
         }
@@ -342,13 +349,13 @@ int bm_event_process(uint32_t max_events) {
         {
             bm_irq_state_t s = BM_CRITICAL_ENTER();
             bm_subscriber_t *sub = _event_types[item.event.type].head;
+            bool snap_truncated = false;
 
             while (sub) {
                 if (sub->cb) {
                     if (snap_count >= BM_CONFIG_MAX_EVENT_SUBSCRIBERS) {
                         _dispatch_skipped++;
-                        BM_LOGW("event", "dispatch snap truncated type=%u",
-                                (unsigned)item.event.type);
+                        snap_truncated = true;
                     } else {
                         _dispatch_snap[snap_count].cb = sub->cb;
                         _dispatch_snap[snap_count].user_data = sub->user_data;
@@ -356,6 +363,10 @@ int bm_event_process(uint32_t max_events) {
                     }
                 }
                 sub = sub->next;
+            }
+            if (snap_truncated) {
+                BM_LOGW("event", "dispatch snap truncated type=%u",
+                        (unsigned)item.event.type);
             }
             BM_CRITICAL_EXIT(s);
         }
@@ -367,4 +378,11 @@ int bm_event_process(uint32_t max_events) {
     }
     BM_LOGT("event", "processed %u events", (unsigned)processed);
     return (int)processed;
+}
+
+int bm_event_test_inject(const bm_event_t *event, bm_event_priority_t prio) {
+    if (!event || prio >= BM_CONFIG_EVENT_PRIORITIES) {
+        return BM_ERR_INVALID;
+    }
+    return _prio_push_copy(prio, event, event->data, event->data_len);
 }

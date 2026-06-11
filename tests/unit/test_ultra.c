@@ -47,10 +47,22 @@ void test_ultra_publish_and_process(void) {
 
 void test_ultra_rejects_invalid_event_type(void) {
     uint8_t data = 1u;
+    bm_ultra_queue_item_t bad = { .event_type = 255u, .data_len = 1u };
 
+    bad.data[0] = data;
     TEST_ASSERT_EQUAL(BM_ERR_INVALID,
                       bm_ultra_publish((bm_event_type_t)255, &data, 1u));
+    TEST_ASSERT_EQUAL(BM_ERR_INVALID, bm_ultra_queue_push(&bad));
     TEST_ASSERT_EQUAL(0u, bm_ultra_event_count());
+}
+
+void test_ultra_dispatch_skipped_invalid_type(void) {
+    bm_ultra_queue_item_t bad = { .event_type = 255u, .data_len = 0u };
+
+    TEST_ASSERT_EQUAL(0u, bm_ultra_get_dispatch_skipped_count());
+    TEST_ASSERT_EQUAL(BM_OK, bm_ultra_test_inject(&bad));
+    TEST_ASSERT_EQUAL(1u, bm_ultra_process());
+    TEST_ASSERT_EQUAL(1u, bm_ultra_get_dispatch_skipped_count());
 }
 
 void test_ultra_queue_overflow(void) {
@@ -75,6 +87,7 @@ int main(void) {
     UNITY_BEGIN();
     RUN_TEST(test_ultra_publish_and_process);
     RUN_TEST(test_ultra_rejects_invalid_event_type);
+    RUN_TEST(test_ultra_dispatch_skipped_invalid_type);
     RUN_TEST(test_ultra_queue_overflow);
     return UNITY_END();
 }

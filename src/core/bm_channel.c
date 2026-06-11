@@ -241,8 +241,14 @@ bool bm_channel_is_full(const bm_channel_t *ch) {
     }
 
     bm_irq_state_t s = BM_CRITICAL_ENTER();
+    uint32_t count = channel_count_locked(ch);
     uint32_t next = (ch->write_idx + 1u) % ch->capacity;
     bool full = (next == ch->read_idx);
+
+    if (channel_logical_count_valid(ch, count) != BM_OK) {
+        BM_CRITICAL_EXIT(s);
+        return true;
+    }
     BM_CRITICAL_EXIT(s);
     return full;
 }

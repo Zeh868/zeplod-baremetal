@@ -14,6 +14,7 @@
 
 static bm_ultra_queue_t _bm_ultra_q;
 static uint32_t         _bm_ultra_dropped;
+static uint32_t         _bm_ultra_dispatch_skipped;
 
 static int ultra_indices_valid(uint8_t read_idx, uint8_t write_idx) {
     uint8_t mask = (uint8_t)(BM_CONFIG_ULTRA_QUEUE_DEPTH - 1u);
@@ -26,6 +27,9 @@ int bm_ultra_queue_push(const bm_ultra_queue_item_t *item) {
     bm_irq_state_t s;
 
     if (!item) {
+        return BM_ERR_INVALID;
+    }
+    if (item->event_type >= BM_CONFIG_ULTRA_MAX_EVENT_TYPES) {
         return BM_ERR_INVALID;
     }
 
@@ -76,7 +80,15 @@ void bm_ultra_queue_reset(void) {
     bm_irq_state_t s = BM_CRITICAL_ENTER();
     memset(&_bm_ultra_q, 0, sizeof(_bm_ultra_q));
     _bm_ultra_dropped = 0u;
+    _bm_ultra_dispatch_skipped = 0u;
     BM_CRITICAL_EXIT(s);
+}
+
+uint32_t bm_ultra_get_dispatch_skipped_count(void) {
+    bm_irq_state_t s = BM_CRITICAL_ENTER();
+    uint32_t skipped = _bm_ultra_dispatch_skipped;
+    BM_CRITICAL_EXIT(s);
+    return skipped;
 }
 
 uint32_t bm_ultra_get_dropped_count(void) {
@@ -113,6 +125,9 @@ uint8_t bm_ultra_process(void) {
         return 0u;
     }
     if (item.event_type >= BM_CONFIG_ULTRA_MAX_EVENT_TYPES) {
+        bm_irq_state_t s = BM_CRITICAL_ENTER();
+        _bm_ultra_dispatch_skipped++;
+        BM_CRITICAL_EXIT(s);
         return 1u;
     }
     cb = _bm_ultra_callbacks[item.event_type];
@@ -120,4 +135,31 @@ uint8_t bm_ultra_process(void) {
         cb(item.data, item.data_len);
     }
     return 1u;
+}
+
+int bm_ultra_test_inject(const bm_ultra_queue_item_t *item) {
+    uint8_t next;
+    bm_irq_state_t s;
+
+    if (!item) {
+        return BM_ERR_INVALID;
+    }
+
+    s = BM_CRITICAL_ENTER();
+    if (ultra_indices_valid(_bm_ultra_q.read_idx, _bm_ultra_q.write_idx) !=
+        BM_OK) {
+        BM_CRITICAL_EXIT(s);
+        return BM_ERR_INVALID;
+    }
+    next = (uint8_t)((_bm_ultra_q.write_idx + 1u) &
+                     (BM_CONFIG_ULTRA_QUEUE_DEPTH - 1u));
+    if (next == _bm_ultra_q.read_idx) {
+        _bm_ultra_dropped++;
+        BM_CRITICAL_EXIT(s);
+        return BM_ERR_OVERFLOW;
+    }
+    _bm_ultra_q.items[_bm_ultra_q.write_idx] = *item;
+    _bm_ultra_q.write_idx = next;
+    BM_CRITICAL_EXIT(s);
+    return BM_OK;
 }

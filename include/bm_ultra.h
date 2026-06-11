@@ -44,6 +44,7 @@ int      bm_ultra_queue_push(const bm_ultra_queue_item_t *item);
 int      bm_ultra_queue_pop(bm_ultra_queue_item_t *item);
 void     bm_ultra_queue_reset(void);
 uint32_t bm_ultra_get_dropped_count(void);
+uint32_t bm_ultra_get_dispatch_skipped_count(void);
 uint8_t  bm_ultra_queue_count(void);
 uint8_t  bm_ultra_process(void);
 /** 仅调试只读；并发下可能撕裂，禁止在 ISR 与队列操作并行时读取 */
@@ -82,5 +83,10 @@ static inline uint8_t bm_ultra_event_count(void) {
 }
 
 extern const bm_ultra_callback_t _bm_ultra_callbacks[BM_CONFIG_ULTRA_MAX_EVENT_TYPES];
+
+#ifdef BM_ENABLE_ULTRA_TEST_HOOK
+/** 单元测试专用：绕过 type 校验向队列注入元素（生产固件勿定义此宏） */
+int bm_ultra_test_inject(const bm_ultra_queue_item_t *item);
+#endif
 
 #endif /* BM_ULTRA_H */

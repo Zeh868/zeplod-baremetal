@@ -139,4 +139,9 @@ uint32_t bm_event_get_dropped_count(void);
  */
 uint32_t bm_event_get_dispatch_skipped_count(void);
 
+#ifdef BM_ENABLE_EVENT_TEST_HOOK
+/** 单元测试专用：绕过发布校验向队列注入事件（生产固件勿定义此宏） */
+int bm_event_test_inject(const bm_event_t *event, bm_event_priority_t prio);
+#endif
+
 #endif /* BM_EVENT_H */
