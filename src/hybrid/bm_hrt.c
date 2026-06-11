@@ -4,18 +4,21 @@
  *
  * 基于 HAL 定时器 ISR 按周期触发回调；支持 deadline 错过弱钩子。
  * @author zeh (china_qzh@163.com)
- * @version 1.0
- * @date 2026-06-10
+ * @version 1.1
+ * @date 2026-06-11
  *
  * @par 修改日志:
  *
  *    Date         Version        Author          Description
  * 2026-06-10       1.0            zeh            正式发布
+ * 2026-06-11       1.1            zeh            SIL-2 临界区、tick 算术与 miss 计数
  *
  */
 #include "bm_hrt.h"
+#include "bm_critical_wrap.h"
 #include "bm_hal_timer.h"
 #include "bm_log.h"
+#include "bm_safety.h"
 
 #include <string.h>
 
@@ -28,6 +31,7 @@ typedef struct {
     bm_hrt_slot_t pub;
     uint32_t period_ticks;
     uint32_t next_tick;
+    uint32_t deadline_missed;
 } bm_hrt_runtime_slot_t;
 
 static bm_hrt_runtime_slot_t g_slots[BM_CONFIG_HRT_MAX_SLOTS];
@@ -56,6 +60,32 @@ static uint32_t hrt_tick_hz(void) {
 }
 
 /**
+ * @brief 计算下次触发 tick；溢出时从 now 重新对齐
+ */
+static uint32_t hrt_deadline_from(uint32_t base, uint32_t period, uint32_t now) {
+    uint32_t next = 0u;
+
+    if (bm_add_u32_overflow(base, period, &next)) {
+        if (bm_add_u32_overflow(now, period, &next)) {
+            return now;
+        }
+    }
+    return next;
+}
+
+/**
+ * @brief 在已持锁或 ISR 内停止定时器（不进出临界区）
+ */
+static void hrt_stop_locked(void) {
+    if (!g_started) {
+        return;
+    }
+    bm_hal_timer_stop();
+    bm_hal_timer_set_callback(NULL);
+    g_started = 0;
+}
+
+/**
  * @brief 扫描所有槽并触发到期回调
  */
 static void hrt_dispatch(void) {
@@ -75,17 +105,18 @@ static void hrt_dispatch(void) {
             continue;
         }
         if ((uint32_t)(now - slot->next_tick) >= slot->period_ticks) {
+            slot->deadline_missed++;
             bm_hrt_deadline_missed_hook(&slot->pub);
             if (slot->pub.callback) {
                 slot->pub.callback(slot->pub.context);
             }
-            slot->next_tick = now + slot->period_ticks;
+            slot->next_tick = hrt_deadline_from(now, slot->period_ticks, now);
             continue;
         }
         if (slot->pub.callback) {
             slot->pub.callback(slot->pub.context);
         }
-        slot->next_tick += slot->period_ticks;
+        slot->next_tick = hrt_deadline_from(slot->next_tick, slot->period_ticks, now);
     }
 }
 
@@ -125,28 +156,33 @@ static int validate_slot(const bm_hrt_slot_t *slot) {
  * @return BM_OK 成功；BM_ERR_INVALID 参数无效；BM_ERR_OVERFLOW 槽数超限
  */
 int bm_hrt_init(const bm_hrt_slot_t *slots, uint32_t slot_count) {
+    bm_irq_state_t irq_state = BM_CRITICAL_ENTER();
     uint32_t i;
     uint32_t now;
+    int rc = BM_OK;
 
     if (g_started) {
         BM_LOGE("hrt", "init while started");
-        return BM_ERR_ALREADY;
+        rc = BM_ERR_ALREADY;
+        goto out;
     }
 
     if (!slots && slot_count > 0u) {
         BM_LOGE("hrt", "init invalid slots pointer");
-        return BM_ERR_INVALID;
+        rc = BM_ERR_INVALID;
+        goto out;
     }
     if (slot_count > BM_CONFIG_HRT_MAX_SLOTS) {
         BM_LOGE("hrt", "init slot overflow count=%u", (unsigned)slot_count);
-        return BM_ERR_OVERFLOW;
+        rc = BM_ERR_OVERFLOW;
+        goto out;
     }
 
     for (i = 0u; i < slot_count; ++i) {
-        int rc = validate_slot(&slots[i]);
+        rc = validate_slot(&slots[i]);
         if (rc != BM_OK) {
             BM_LOGE("hrt", "init slot %u validation failed", (unsigned)i);
-            return rc;
+            goto out;
         }
     }
 
@@ -157,12 +193,16 @@ int bm_hrt_init(const bm_hrt_slot_t *slots, uint32_t slot_count) {
     for (i = 0u; i < slot_count; ++i) {
         g_slots[i].pub = slots[i];
         g_slots[i].period_ticks = slots[i].period_us / BM_CONFIG_HRT_TICK_US;
-        g_slots[i].next_tick = now + g_slots[i].period_ticks;
+        g_slots[i].next_tick =
+            hrt_deadline_from(now, g_slots[i].period_ticks, now);
     }
 
     BM_LOGI("hrt", "init %u slots tick_us=%u", (unsigned)slot_count,
             (unsigned)BM_CONFIG_HRT_TICK_US);
-    return BM_OK;
+
+out:
+    BM_CRITICAL_EXIT(irq_state);
+    return rc;
 }
 
 /**
@@ -171,19 +211,35 @@ int bm_hrt_init(const bm_hrt_slot_t *slots, uint32_t slot_count) {
  * @return BM_OK 成功；BM_ERR_ALREADY 已启动；BM_ERR_INVALID HAL 初始化失败
  */
 int bm_hrt_start(void) {
+    bm_irq_state_t irq_state = BM_CRITICAL_ENTER();
+    int rc = BM_OK;
+
     if (g_started) {
         BM_LOGW("hrt", "already started");
-        return BM_ERR_ALREADY;
+        rc = BM_ERR_ALREADY;
+        goto out;
     }
     if (g_slot_count == 0u) {
         BM_LOGI("hrt", "start with zero slots");
-        return BM_OK;
+        goto out;
     }
+
+    BM_CRITICAL_EXIT(irq_state);
 
     if (bm_hal_timer_init(hrt_tick_hz()) != 0) {
         BM_LOGE("hrt", "hal timer init failed");
         return BM_ERR_INVALID;
     }
+
+    irq_state = BM_CRITICAL_ENTER();
+    if (g_started) {
+        bm_hal_timer_stop();
+        bm_hal_timer_set_callback(NULL);
+        BM_CRITICAL_EXIT(irq_state);
+        BM_LOGW("hrt", "already started");
+        return BM_ERR_ALREADY;
+    }
+
     bm_hal_timer_set_callback(hrt_timer_isr);
 
     {
@@ -191,35 +247,51 @@ int bm_hrt_start(void) {
         uint32_t i;
 
         for (i = 0u; i < g_slot_count; ++i) {
-            g_slots[i].next_tick = now + g_slots[i].period_ticks;
+            g_slots[i].next_tick = hrt_deadline_from(
+                now, g_slots[i].period_ticks, now);
         }
     }
 
     g_started = 1;
     BM_LOGI("hrt", "started %u slots at %u Hz",
             (unsigned)g_slot_count, (unsigned)hrt_tick_hz());
-    return BM_OK;
+
+out:
+    BM_CRITICAL_EXIT(irq_state);
+    return rc;
 }
 
 /**
  * @brief 停止 HRT 定时器并注销 ISR 回调
  */
 void bm_hrt_stop(void) {
-    if (!g_started) {
-        return;
-    }
-    bm_hal_timer_stop();
-    bm_hal_timer_set_callback(NULL);
-    g_started = 0;
+    bm_irq_state_t irq_state = BM_CRITICAL_ENTER();
+
+    hrt_stop_locked();
     BM_LOGI("hrt", "stopped");
+    BM_CRITICAL_EXIT(irq_state);
 }
 
 /**
  * @brief 停止调度器并清空全部槽位状态
  */
 void bm_hrt_reset(void) {
-    bm_hrt_stop();
+    bm_irq_state_t irq_state = BM_CRITICAL_ENTER();
+
+    hrt_stop_locked();
     memset(g_slots, 0, sizeof(g_slots));
     g_slot_count = 0u;
     BM_LOGI("hrt", "reset");
+    BM_CRITICAL_EXIT(irq_state);
+}
+
+uint32_t bm_hrt_get_deadline_missed(uint32_t slot_index) {
+    bm_irq_state_t irq_state = BM_CRITICAL_ENTER();
+    uint32_t count = 0u;
+
+    if (bm_index_in_range_u32(slot_index, g_slot_count)) {
+        count = g_slots[slot_index].deadline_missed;
+    }
+    BM_CRITICAL_EXIT(irq_state);
+    return count;
 }

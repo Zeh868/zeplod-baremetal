@@ -121,7 +121,9 @@ int bm_sync_trigger(const bm_sync_domain_t *domain) {
     rc = bm_sync_hal_trigger(domain);
     if (rc != BM_OK) {
         BM_LOGE("sync", "hal trigger failed rc=%d", rc);
+        g_armed = false;
     } else {
+        g_armed = false;
         BM_LOGD("sync", "triggered");
     }
     return rc;

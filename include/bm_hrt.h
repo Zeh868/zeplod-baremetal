@@ -77,4 +77,12 @@ void bm_hrt_deadline_missed_hook(const bm_hrt_slot_t *slot);
  */
 int bm_hrt_validate_period_us(uint32_t period_us);
 
+/**
+ * @brief 查询指定槽累计 deadline 错过次数
+ *
+ * @param slot_index 槽索引
+ * @return 错过次数；索引无效返回 0
+ */
+uint32_t bm_hrt_get_deadline_missed(uint32_t slot_index);
+
 #endif /* BM_HRT_H */

@@ -59,5 +59,5 @@ int bm_sync_hal_trigger(const bm_sync_domain_t *domain) {
  */
 void bm_sync_hal_safe_stop(const bm_sync_domain_t *domain) {
     (void)domain;
-    BM_LOGD("sync_hal", "stub safe_stop");
+    BM_LOGW("sync_hal", "stub safe_stop: no HAL linked");
 }

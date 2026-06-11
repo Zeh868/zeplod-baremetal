@@ -63,6 +63,15 @@ void test_sync_trigger_before_arm_fails(void) {
     TEST_ASSERT_EQUAL(BM_ERR_NOT_INIT, bm_sync_trigger(&domain));
 }
 
+void test_sync_retrigger_requires_rearm(void) {
+    TEST_ASSERT_EQUAL(BM_OK, bm_sync_configure(&domain));
+    TEST_ASSERT_EQUAL(BM_OK, bm_sync_arm(&domain));
+    TEST_ASSERT_EQUAL(BM_OK, bm_sync_trigger(&domain));
+    TEST_ASSERT_EQUAL(BM_ERR_NOT_INIT, bm_sync_trigger(&domain));
+    TEST_ASSERT_EQUAL(BM_OK, bm_sync_arm(&domain));
+    TEST_ASSERT_EQUAL(BM_OK, bm_sync_trigger(&domain));
+}
+
 void test_sync_configure_switches_active_domain(void) {
     init_domain();
     domain_b = domain;
@@ -80,6 +89,7 @@ int main(void) {
     RUN_TEST(test_sync_configure_arm_trigger);
     RUN_TEST(test_sync_trigger_before_arm_fails);
     RUN_TEST(test_sync_safe_stop_null_clears_active);
+    RUN_TEST(test_sync_retrigger_requires_rearm);
     RUN_TEST(test_sync_configure_switches_active_domain);
     return UNITY_END();
 }

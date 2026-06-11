@@ -4,13 +4,14 @@
  *
  * 校验实例与资源声明，组装 HRT 调度表，协调 init/start/stop 与硬件绑定。
  * @author zeh (china_qzh@163.com)
- * @version 1.0
- * @date 2026-06-10
+ * @version 1.1
+ * @date 2026-06-11
  *
  * @par 修改日志:
  *
  *    Date         Version        Author          Description
  * 2026-06-10       1.0            zeh            正式发布
+ * 2026-06-11       1.1            zeh            SIL-2 会话状态与 start 失败回滚
  *
  */
 #include "bm_ctrl_inst.h"
@@ -18,6 +19,13 @@
 #include "bm_log.h"
 
 #include <string.h>
+
+/** 控制实例批次会话状态 */
+typedef enum {
+    BM_CTRL_SESSION_NONE = 0,
+    BM_CTRL_SESSION_INITED,
+    BM_CTRL_SESSION_STARTED
+} bm_ctrl_session_t;
 
 /** 实例槽位绑定：用于 HRT/硬件回调上下文 */
 typedef struct {
@@ -32,6 +40,7 @@ static uint32_t g_binding_count;
 static bm_hrt_slot_t g_hrt_slots[BM_CONFIG_HRT_MAX_SLOTS];
 static uint32_t g_hrt_slot_count;
 static uint32_t g_init_done_count;
+static bm_ctrl_session_t g_session;
 
 /**
  * @brief HRT/硬件回调入口，执行绑定槽位的 step 函数
@@ -63,6 +72,7 @@ static void ctrl_clear_runtime(void) {
     memset(g_hrt_slots, 0, sizeof(g_hrt_slots));
     g_hrt_slot_count = 0u;
     g_init_done_count = 0u;
+    g_session = BM_CTRL_SESSION_NONE;
 }
 
 /**
@@ -119,6 +129,17 @@ static void ctrl_rollback_inits(void) {
 }
 
 /**
+ * @brief start/init 失败回滚：安全停机全部已 init 实例并释放资源
+ */
+static void ctrl_abort_session(void) {
+    ctrl_rollback_inits();
+    bm_hrt_stop();
+    ctrl_unbind_all_hardware();
+    bm_hrt_reset();
+    ctrl_clear_runtime();
+}
+
+/**
  * @brief 校验单个控制实例描述符与槽位配置
  *
  * @param inst 控制实例指针
@@ -137,6 +158,9 @@ static int validate_instance(const bm_ctrl_inst_t *inst) {
         return BM_ERR_INVALID;
     }
     if (!inst->ops->init || !inst->ops->start || !inst->ops->safe_stop) {
+        return BM_ERR_INVALID;
+    }
+    if (inst->claim_count > 0u && !inst->claims) {
         return BM_ERR_INVALID;
     }
 
@@ -304,11 +328,7 @@ int bm_ctrl_init_all(const bm_ctrl_inst_t *const *instances, uint32_t count) {
         if (rc != BM_OK) {
             BM_LOGE("ctrl", "init failed inst id=%u rc=%d",
                     (unsigned)instances[i]->id, rc);
-            ctrl_rollback_inits();
-            bm_hrt_stop();
-            ctrl_unbind_all_hardware();
-            bm_hrt_reset();
-            ctrl_clear_runtime();
+            ctrl_abort_session();
             return rc;
         }
         g_init_done_count++;
@@ -341,16 +361,13 @@ int bm_ctrl_init_all(const bm_ctrl_inst_t *const *instances, uint32_t count) {
                 rc = slot->bind_hardware(inst, &hal_binding);
             }
             if (rc != BM_OK) {
-                ctrl_rollback_inits();
-                bm_hrt_stop();
-                ctrl_unbind_all_hardware();
-                bm_hrt_reset();
-                ctrl_clear_runtime();
+                ctrl_abort_session();
                 return rc;
             }
         }
     }
 
+    g_session = BM_CTRL_SESSION_INITED;
     BM_LOGI("ctrl", "init_all ok count=%u hrt_slots=%u",
             (unsigned)count, (unsigned)g_hrt_slot_count);
     return BM_OK;
@@ -383,6 +400,12 @@ int bm_ctrl_start_all(const bm_ctrl_inst_t *const *instances, uint32_t count) {
     if (!instances || count == 0u || count != g_instance_count) {
         return BM_ERR_INVALID;
     }
+    if (g_session == BM_CTRL_SESSION_STARTED) {
+        return BM_ERR_ALREADY;
+    }
+    if (g_session != BM_CTRL_SESSION_INITED) {
+        return BM_ERR_NOT_INIT;
+    }
 
     rc = ctrl_ensure_hrt_started();
     if (rc != BM_OK) {
@@ -398,20 +421,12 @@ int bm_ctrl_start_all(const bm_ctrl_inst_t *const *instances, uint32_t count) {
         if (rc != BM_OK) {
             BM_LOGE("ctrl", "start failed inst id=%u rc=%d",
                     (unsigned)instances[i]->id, rc);
-            bm_hrt_stop();
-            for (uint32_t j = 0u; j < i; j++) {
-                const bm_ctrl_inst_t *inst = instances[j];
-                if (inst && inst->ops && inst->ops->safe_stop) {
-                    inst->ops->safe_stop(inst);
-                }
-            }
-            ctrl_unbind_all_hardware();
-            bm_hrt_reset();
-            ctrl_clear_runtime();
+            ctrl_abort_session();
             return rc;
         }
     }
 
+    g_session = BM_CTRL_SESSION_STARTED;
     BM_LOGI("ctrl", "start_all ok count=%u", (unsigned)count);
     return BM_OK;
 }

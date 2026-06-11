@@ -58,6 +58,14 @@ void bm_hal_timer_native_advance_ticks(uint32_t delta) {
     }
 }
 
+/** 测试辅助：跳跃推进 tick 后仅分派一次（模拟长时间阻塞导致的 deadline 错过） */
+void bm_hal_timer_native_jump_ticks(uint32_t delta) {
+    tick_count += delta;
+    if (tick_callback) {
+        tick_callback();
+    }
+}
+
 /** 测试辅助：清零 tick 计数 */
 void bm_hal_timer_native_reset_ticks(void) {
     tick_count = 0u;

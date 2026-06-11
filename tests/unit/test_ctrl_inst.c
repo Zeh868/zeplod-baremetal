@@ -229,8 +229,16 @@ void test_ctrl_start_failure_rolls_back_safe_stop(void) {
 
     TEST_ASSERT_EQUAL(BM_OK, bm_ctrl_init_all(instances, 2u));
     TEST_ASSERT_EQUAL(BM_ERR_INVALID, bm_ctrl_start_all(instances, 2u));
-    TEST_ASSERT_EQUAL(1u, g_safe_stop_count);
-    bm_ctrl_safe_stop_all(instances, 2u);
+    TEST_ASSERT_EQUAL(2u, g_safe_stop_count);
+}
+
+void test_ctrl_rejects_double_start(void) {
+    const bm_ctrl_inst_t *const instances[] = { &sched_inst };
+
+    TEST_ASSERT_EQUAL(BM_OK, bm_ctrl_init_all(instances, 1u));
+    TEST_ASSERT_EQUAL(BM_OK, bm_ctrl_start_all(instances, 1u));
+    TEST_ASSERT_EQUAL(BM_ERR_ALREADY, bm_ctrl_start_all(instances, 1u));
+    bm_ctrl_safe_stop_all(instances, 1u);
 }
 
 void test_ctrl_bind_failure_rolls_back(void) {
@@ -268,5 +276,6 @@ int main(void) {
     RUN_TEST(test_ctrl_bind_failure_rolls_back);
     RUN_TEST(test_ctrl_find_instance);
     RUN_TEST(test_ctrl_reinit_teardowns_previous_session);
+    RUN_TEST(test_ctrl_rejects_double_start);
     return UNITY_END();
 }

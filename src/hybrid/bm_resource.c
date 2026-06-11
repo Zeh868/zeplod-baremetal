@@ -192,7 +192,8 @@ int bm_resource_check_conflicts(const bm_resource_claim_t *const *claims,
                 BM_LOGE("resource", "claim table overflow");
                 return BM_ERR_OVERFLOW;
             }
-            if (claims[i][j].access > BM_RESOURCE_SHARED_COORDINATED) {
+            if (claims[i][j].kind > BM_RESOURCE_IRQ ||
+                claims[i][j].access > BM_RESOURCE_SHARED_COORDINATED) {
                 return BM_ERR_INVALID;
             }
             flat[flat_count].kind = claims[i][j].kind;

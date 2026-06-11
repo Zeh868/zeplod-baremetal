@@ -16,6 +16,8 @@
 
 /** 手动推进 delta 个 tick */
 void bm_hal_timer_native_advance_ticks(uint32_t delta);
+/** 跳跃 delta 个 tick 后仅触发一次回调（模拟 deadline 错过） */
+void bm_hal_timer_native_jump_ticks(uint32_t delta);
 /** 重置 tick 计数为 0 */
 void bm_hal_timer_native_reset_ticks(void);
 /** 测试辅助：复位定时器为未初始化状态（freq=0） */
