@@ -59,4 +59,13 @@ void *bm_mempool_alloc(bm_mempool_t *pool);
  */
 void bm_mempool_free(bm_mempool_t *pool, void *obj);
 
+/**
+ * @brief 将内存池位图复位为全部空闲（不修改池内对象内容）
+ *
+ * 仅用于测试或受控停机；调用方须保证无悬空指针仍引用池中对象。
+ *
+ * @param pool 内存池控制块指针
+ */
+void bm_mempool_reset(bm_mempool_t *pool);
+
 #endif /* BM_MEMPOOL_H */

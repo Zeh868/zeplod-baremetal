@@ -65,6 +65,18 @@ void test_wdg_feed_expired_module_blocks_hw_feed(void) {
     TEST_ASSERT_EQUAL(0u, bm_hal_wdg_native_get_feed_count());
 }
 
+void test_wdg_feed_blocks_when_timer_not_ready(void) {
+    bm_wdg_reset();
+    bm_hal_timer_native_deinit();
+    bm_hal_wdg_native_reset_feed_count();
+
+    TEST_ASSERT_EQUAL(BM_OK, bm_wdg_register("mod"));
+    bm_wdg_feed_module("mod");
+    bm_wdg_feed();
+
+    TEST_ASSERT_EQUAL(0u, bm_hal_wdg_native_get_feed_count());
+}
+
 int main(void) {
     UNITY_BEGIN();
     RUN_TEST(test_wdg_register_rejects_null);
@@ -73,5 +85,6 @@ int main(void) {
     RUN_TEST(test_wdg_blocks_hw_feed_until_module_fed);
     RUN_TEST(test_wdg_feed_at_tick_zero);
     RUN_TEST(test_wdg_feed_expired_module_blocks_hw_feed);
+    RUN_TEST(test_wdg_feed_blocks_when_timer_not_ready);
     return UNITY_END();
 }

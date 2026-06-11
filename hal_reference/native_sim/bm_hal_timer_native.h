@@ -18,5 +18,7 @@
 void bm_hal_timer_native_advance_ticks(uint32_t delta);
 /** 重置 tick 计数为 0 */
 void bm_hal_timer_native_reset_ticks(void);
+/** 测试辅助：复位定时器为未初始化状态（freq=0） */
+void bm_hal_timer_native_deinit(void);
 
 #endif /* BM_HAL_TIMER_NATIVE_H */

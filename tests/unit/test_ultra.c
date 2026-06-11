@@ -65,6 +65,15 @@ void test_ultra_dispatch_skipped_invalid_type(void) {
     TEST_ASSERT_EQUAL(1u, bm_ultra_get_dispatch_skipped_count());
 }
 
+void test_ultra_dispatch_skipped_corrupt_queue(void) {
+    bm_ultra_queue_t *q = (bm_ultra_queue_t *)bm_ultra_queue_state();
+
+    TEST_ASSERT_EQUAL(0u, bm_ultra_get_dispatch_skipped_count());
+    q->read_idx = (uint8_t)(BM_CONFIG_ULTRA_QUEUE_DEPTH + 1u);
+    TEST_ASSERT_EQUAL(0u, bm_ultra_process());
+    TEST_ASSERT_EQUAL(1u, bm_ultra_get_dispatch_skipped_count());
+}
+
 void test_ultra_queue_overflow(void) {
     uint32_t dropped_before = bm_ultra_get_dropped_count();
 
@@ -88,6 +97,7 @@ int main(void) {
     RUN_TEST(test_ultra_publish_and_process);
     RUN_TEST(test_ultra_rejects_invalid_event_type);
     RUN_TEST(test_ultra_dispatch_skipped_invalid_type);
+    RUN_TEST(test_ultra_dispatch_skipped_corrupt_queue);
     RUN_TEST(test_ultra_queue_overflow);
     return UNITY_END();
 }

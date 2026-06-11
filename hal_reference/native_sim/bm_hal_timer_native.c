@@ -62,3 +62,10 @@ void bm_hal_timer_native_advance_ticks(uint32_t delta) {
 void bm_hal_timer_native_reset_ticks(void) {
     tick_count = 0u;
 }
+
+/** 测试辅助：复位为未初始化状态 */
+void bm_hal_timer_native_deinit(void) {
+    tick_freq = 0u;
+    tick_count = 0u;
+    tick_callback = NULL;
+}

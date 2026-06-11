@@ -64,6 +64,12 @@ add_library(bm_core STATIC
     src/core/bm_ultra.c
 )
 target_link_libraries(bm_core PUBLIC bm_config bm_hal)
+if(BM_BUILD_TESTS)
+    target_compile_definitions(bm_core PRIVATE
+        BM_ENABLE_EVENT_TEST_HOOK=1
+        BM_ENABLE_ULTRA_TEST_HOOK=1
+    )
+endif()
 
 add_library(bm_framework INTERFACE)
 target_link_libraries(bm_framework INTERFACE bm_core bm_hal)

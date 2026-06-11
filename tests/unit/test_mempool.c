@@ -67,6 +67,31 @@ void test_mempool_free_out_of_range(void) {
     TEST_ASSERT_NOT_NULL(bm_mempool_alloc(&pool));
 }
 
+void test_mempool_free_misaligned(void) {
+    BM_MEMPOOL_DEFINE(pool, test_obj_t, 2);
+
+    memset(pool.bitmap, 0, pool.bitmap_words * sizeof(uint32_t));
+    test_obj_t *a = (test_obj_t *)bm_mempool_alloc(&pool);
+    TEST_ASSERT_NOT_NULL(a);
+    bm_mempool_free(&pool, (void *)((uint8_t *)a + 1u));
+    test_obj_t *b = (test_obj_t *)bm_mempool_alloc(&pool);
+    TEST_ASSERT_NOT_NULL(b);
+    TEST_ASSERT_NOT_EQUAL(a, b);
+    TEST_ASSERT_NULL(bm_mempool_alloc(&pool));
+    bm_mempool_reset(&pool);
+    TEST_ASSERT_NOT_NULL(bm_mempool_alloc(&pool));
+}
+
+void test_mempool_reset(void) {
+    BM_MEMPOOL_DEFINE(pool, test_obj_t, 2);
+
+    memset(pool.bitmap, 0, pool.bitmap_words * sizeof(uint32_t));
+    TEST_ASSERT_NOT_NULL(bm_mempool_alloc(&pool));
+    bm_mempool_reset(&pool);
+    TEST_ASSERT_NOT_NULL(bm_mempool_alloc(&pool));
+    TEST_ASSERT_NOT_NULL(bm_mempool_alloc(&pool));
+}
+
 void test_mempool_exhausted(void) {
     BM_MEMPOOL_DEFINE(pool, test_obj_t, 2);
     memset(pool.bitmap, 0, pool.bitmap_words * sizeof(uint32_t));
@@ -82,6 +107,8 @@ int main(void) {
     RUN_TEST(test_mempool_alloc_free);
     RUN_TEST(test_mempool_alloc_zeroed);
     RUN_TEST(test_mempool_free_out_of_range);
+    RUN_TEST(test_mempool_free_misaligned);
+    RUN_TEST(test_mempool_reset);
     RUN_TEST(test_mempool_exhausted);
     RUN_TEST(test_mempool_double_free_ignored);
     return UNITY_END();

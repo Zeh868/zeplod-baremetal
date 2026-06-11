@@ -152,3 +152,15 @@ void bm_mempool_free(bm_mempool_t *pool, void *obj) {
     BM_CRITICAL_EXIT(s);
     BM_LOGT("mempool", "free slot %u", (unsigned)idx);
 }
+
+void bm_mempool_reset(bm_mempool_t *pool) {
+    if (mempool_validate_pool(pool) != BM_OK) {
+        BM_LOGE("mempool", "reset invalid pool");
+        return;
+    }
+
+    bm_irq_state_t s = BM_CRITICAL_ENTER();
+    memset(pool->bitmap, 0, pool->bitmap_words * sizeof(uint32_t));
+    BM_CRITICAL_EXIT(s);
+    BM_LOGT("mempool", "reset all slots free");
+}

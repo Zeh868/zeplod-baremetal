@@ -120,8 +120,16 @@ const bm_ultra_queue_t *bm_ultra_queue_state(void) {
 uint8_t bm_ultra_process(void) {
     bm_ultra_queue_item_t item;
     bm_ultra_callback_t cb;
+    int rc;
 
-    if (bm_ultra_queue_pop(&item) != BM_OK) {
+    rc = bm_ultra_queue_pop(&item);
+    if (rc == BM_ERR_INVALID) {
+        bm_irq_state_t s = BM_CRITICAL_ENTER();
+        _bm_ultra_dispatch_skipped++;
+        BM_CRITICAL_EXIT(s);
+        return 0u;
+    }
+    if (rc != BM_OK) {
         return 0u;
     }
     if (item.event_type >= BM_CONFIG_ULTRA_MAX_EVENT_TYPES) {
@@ -137,6 +145,7 @@ uint8_t bm_ultra_process(void) {
     return 1u;
 }
 
+#ifdef BM_ENABLE_ULTRA_TEST_HOOK
 int bm_ultra_test_inject(const bm_ultra_queue_item_t *item) {
     uint8_t next;
     bm_irq_state_t s;
@@ -163,3 +172,4 @@ int bm_ultra_test_inject(const bm_ultra_queue_item_t *item) {
     BM_CRITICAL_EXIT(s);
     return BM_OK;
 }
+#endif /* BM_ENABLE_ULTRA_TEST_HOOK */

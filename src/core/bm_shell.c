@@ -160,6 +160,9 @@ void bm_shell_feed(bm_shell_t *shell, char c) {
         if (shell->cursor < BM_CONFIG_SHELL_BUF_SIZE - 1) {
             shell->buf[shell->cursor++] = c;
             bm_hal_uart_send((const uint8_t *)&c, 1);
+        } else {
+            BM_LOGW("shell", "line buffer full");
+            (void)bm_hal_uart_send((const uint8_t *)"\a", 1);
         }
         return;
     }

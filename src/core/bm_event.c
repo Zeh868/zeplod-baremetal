@@ -380,9 +380,11 @@ int bm_event_process(uint32_t max_events) {
     return (int)processed;
 }
 
+#ifdef BM_ENABLE_EVENT_TEST_HOOK
 int bm_event_test_inject(const bm_event_t *event, bm_event_priority_t prio) {
     if (!event || prio >= BM_CONFIG_EVENT_PRIORITIES) {
         return BM_ERR_INVALID;
     }
     return _prio_push_copy(prio, event, event->data, event->data_len);
 }
+#endif /* BM_ENABLE_EVENT_TEST_HOOK */
