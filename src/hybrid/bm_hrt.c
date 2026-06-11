@@ -12,9 +12,11 @@
  *    Date         Version        Author          Description
  * 2026-06-10       1.0            zeh            正式发布
  * 2026-06-11       1.1            zeh            SIL-2 临界区、tick 算术与 miss 计数
+ * 2026-06-11       1.2            zeh            全槽 miss 合计与可配置默认钩子日志
  *
  */
 #include "bm_hrt.h"
+#include "bm_config.h"
 #include "bm_critical_wrap.h"
 #include "bm_hal_timer.h"
 #include "bm_log.h"
@@ -47,7 +49,12 @@ __attribute__((weak))
  * @param slot 触发 deadline 错过的槽描述符
  */
 void bm_hrt_deadline_missed_hook(const bm_hrt_slot_t *slot) {
+#if BM_CONFIG_HRT_DEADLINE_MISS_LOG
+    BM_LOGE("hrt", "deadline missed slot=%s",
+            (slot && slot->name) ? slot->name : "?");
+#else
     (void)slot;
+#endif
 }
 
 /**
@@ -267,8 +274,10 @@ out:
 void bm_hrt_stop(void) {
     bm_irq_state_t irq_state = BM_CRITICAL_ENTER();
 
-    hrt_stop_locked();
-    BM_LOGI("hrt", "stopped");
+    if (g_started) {
+        hrt_stop_locked();
+        BM_LOGI("hrt", "stopped");
+    }
     BM_CRITICAL_EXIT(irq_state);
 }
 
@@ -294,4 +303,16 @@ uint32_t bm_hrt_get_deadline_missed(uint32_t slot_index) {
     }
     BM_CRITICAL_EXIT(irq_state);
     return count;
+}
+
+uint32_t bm_hrt_get_deadline_missed_total(void) {
+    bm_irq_state_t irq_state = BM_CRITICAL_ENTER();
+    uint32_t total = 0u;
+    uint32_t i;
+
+    for (i = 0u; i < g_slot_count; ++i) {
+        total += g_slots[i].deadline_missed;
+    }
+    BM_CRITICAL_EXIT(irq_state);
+    return total;
 }

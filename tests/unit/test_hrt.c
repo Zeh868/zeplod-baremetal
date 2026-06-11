@@ -67,6 +67,8 @@ void test_hrt_deadline_miss(void) {
     bm_hal_timer_native_jump_ticks(25u);
     TEST_ASSERT_GREATER_THAN(0u, g_slot_a);
     TEST_ASSERT_GREATER_THAN(0u, bm_hrt_get_deadline_missed(0u));
+    TEST_ASSERT_EQUAL(bm_hrt_get_deadline_missed(0u),
+                      bm_hrt_get_deadline_missed_total());
 }
 
 void test_hrt_rejects_invalid_period(void) {

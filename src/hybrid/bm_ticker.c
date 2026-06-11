@@ -4,7 +4,7 @@
  *
  * 主循环轮询到期槽，向事件总线发布空载荷事件；统计丢弃次数。
  * @author zeh (china_qzh@163.com)
- * @version 1.1
+ * @version 1.2
  * @date 2026-06-11
  *
  * @par 修改日志:
@@ -12,9 +12,12 @@
  *    Date         Version        Author          Description
  * 2026-06-10       1.0            zeh            正式发布
  * 2026-06-11       1.1            zeh            SIL-2 重入守卫与队列满时推进周期
+ * 2026-06-11       1.2            zeh            init 校验 event 索引与定时器频率
+ * 2026-06-11       1.3            zeh            get_dropped 临界区读取
  *
  */
 #include "bm_ticker.h"
+#include "bm_critical_wrap.h"
 #include "bm_hal_timer.h"
 #include "bm_log.h"
 #include "bm_safety.h"
@@ -78,6 +81,19 @@ int bm_ticker_init(const bm_ticker_slot_t *slots, uint32_t slot_count) {
             BM_LOGE("ticker", "init slot %u zero period", (unsigned)i);
             return BM_ERR_INVALID;
         }
+        if (slots[i].event_type >= BM_CONFIG_MAX_EVENT_TYPES) {
+            BM_LOGE("ticker", "init slot %u invalid event type", (unsigned)i);
+            return BM_ERR_INVALID;
+        }
+        if (slots[i].priority >= BM_CONFIG_EVENT_PRIORITIES) {
+            BM_LOGE("ticker", "init slot %u invalid priority", (unsigned)i);
+            return BM_ERR_INVALID;
+        }
+    }
+
+    if (bm_hal_timer_get_freq() == 0u) {
+        BM_LOGE("ticker", "init timer not configured");
+        return BM_ERR_NOT_INIT;
     }
 
     memset(g_slots, 0, sizeof(g_slots));
@@ -163,10 +179,14 @@ int bm_ticker_poll(void) {
  * @return 丢弃次数；索引无效返回 0
  */
 uint32_t bm_ticker_get_dropped(uint32_t slot_index) {
-    if (slot_index >= g_slot_count) {
-        return 0u;
+    bm_irq_state_t irq_state = BM_CRITICAL_ENTER();
+    uint32_t count = 0u;
+
+    if (bm_index_in_range_u32(slot_index, g_slot_count)) {
+        count = g_slots[slot_index].dropped;
     }
-    return g_slots[slot_index].dropped;
+    BM_CRITICAL_EXIT(irq_state);
+    return count;
 }
 
 /**

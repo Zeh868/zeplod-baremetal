@@ -83,6 +83,34 @@ void test_ticker_counts_dropped_when_queue_full(void) {
     TEST_ASSERT_GREATER_THAN(0u, bm_ticker_get_dropped(0u));
 }
 
+void test_ticker_rejects_reinit(void) {
+    static const bm_ticker_slot_t slots[] = {
+        { 10u, TICKER_EVT, 1u, "10ms" },
+    };
+
+    bm_event_register_type(TICKER_EVT, "TICK");
+    TEST_ASSERT_EQUAL(BM_OK, bm_ticker_init(slots, 1u));
+    TEST_ASSERT_EQUAL(BM_ERR_ALREADY, bm_ticker_init(slots, 1u));
+}
+
+void test_ticker_rejects_invalid_event_type(void) {
+    static const bm_ticker_slot_t slots[] = {
+        { 10u, (bm_event_type_t)BM_CONFIG_MAX_EVENT_TYPES, 1u, "bad" },
+    };
+
+    TEST_ASSERT_EQUAL(BM_ERR_INVALID, bm_ticker_init(slots, 1u));
+}
+
+void test_ticker_rejects_timer_not_configured(void) {
+    static const bm_ticker_slot_t slots[] = {
+        { 10u, TICKER_EVT, 1u, "10ms" },
+    };
+
+    bm_hal_timer_native_deinit();
+    TEST_ASSERT_EQUAL(BM_ERR_NOT_INIT, bm_ticker_init(slots, 1u));
+    bm_hal_timer_init(1000u);
+}
+
 void test_ticker_wraparound(void) {
     static const bm_ticker_slot_t slots[] = {
         { 10u, TICKER_EVT, 1u, "10ms" },
@@ -106,6 +134,9 @@ int main(void) {
     UNITY_BEGIN();
     RUN_TEST(test_ticker_publishes_on_period);
     RUN_TEST(test_ticker_counts_dropped_when_queue_full);
+    RUN_TEST(test_ticker_rejects_reinit);
+    RUN_TEST(test_ticker_rejects_invalid_event_type);
+    RUN_TEST(test_ticker_rejects_timer_not_configured);
     RUN_TEST(test_ticker_wraparound);
     return UNITY_END();
 }

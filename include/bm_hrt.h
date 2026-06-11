@@ -85,4 +85,11 @@ int bm_hrt_validate_period_us(uint32_t period_us);
  */
 uint32_t bm_hrt_get_deadline_missed(uint32_t slot_index);
 
+/**
+ * @brief 查询全部槽累计 deadline 错过次数之和
+ *
+ * @return 各槽 `bm_hrt_get_deadline_missed` 之和
+ */
+uint32_t bm_hrt_get_deadline_missed_total(void);
+
 #endif /* BM_HRT_H */
