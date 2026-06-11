@@ -63,6 +63,12 @@ void bm_log(bm_log_level_t level, const char *tag, const char *fmt, ...) {
     int prefix_len;
     va_list ap;
 
+    if (!fmt) {
+        return;
+    }
+    if (level < BM_LOG_ERROR) {
+        level = BM_LOG_ERROR;
+    }
     if (level > BM_LOG_TRACE) {
         level = BM_LOG_TRACE;
     }

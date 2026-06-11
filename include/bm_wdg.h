@@ -32,7 +32,8 @@
  * @brief 注册一个需喂狗的逻辑模块
  *
  * @param name 模块名称（非 NULL）
- * @return BM_OK 成功；BM_ERR_NO_MEM 注册表已满；BM_ERR_INVALID 参数无效
+ * @return BM_OK 成功；BM_ERR_NO_MEM 注册表已满；BM_ERR_INVALID 参数无效；
+ *         BM_ERR_ALREADY 同名模块已注册
  */
 int bm_wdg_register(const char *name);
 

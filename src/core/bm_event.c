@@ -79,8 +79,6 @@ typedef struct {
     void               *user_data;
 } bm_dispatch_snap_t;
 
-static bm_dispatch_snap_t _dispatch_snap[BM_CONFIG_MAX_EVENT_SUBSCRIBERS];
-
 /**
  * @brief 深拷贝队列项并修正内联 data 指针
  *
@@ -146,7 +144,7 @@ int bm_event_register_type(bm_event_type_t type, const char *name) {
  */
 int bm_event_subscribe(bm_event_type_t type, bm_event_callback_t cb,
                        void *user_data, bm_event_subscriber_id_t *id) {
-    if (!cb || type >= BM_CONFIG_MAX_EVENT_TYPES || !id) {
+    if (!cb || type >= BM_CONFIG_MAX_EVENT_TYPES) {
         BM_LOGE("event", "subscribe invalid args type=%u", (unsigned)type);
         return BM_ERR_INVALID;
     }
@@ -175,10 +173,12 @@ int bm_event_subscribe(bm_event_type_t type, bm_event_callback_t cb,
     sub->id = _next_subscriber_id++;
     sub->next = _event_types[type].head;
     _event_types[type].head = sub;
-    *id = sub->id;
+    if (id) {
+        *id = sub->id;
+    }
 
     BM_CRITICAL_EXIT(s);
-    BM_LOGD("event", "subscribed id=%u type=%u", (unsigned)*id, (unsigned)type);
+    BM_LOGD("event", "subscribed id=%u type=%u", (unsigned)sub->id, (unsigned)type);
     return BM_OK;
 }
 
@@ -396,18 +396,19 @@ int bm_event_process(uint32_t max_events) {
     uint32_t processed = 0;
     for (uint32_t i = 0; i < max_events; i++) {
         bm_queue_item_t item;
+        bm_dispatch_snap_t dispatch_snap[BM_CONFIG_MAX_EVENT_SUBSCRIBERS];
+        int snap_count = 0;
         int rc = _queue_pop_highest_prio(&item);
         if (rc != BM_OK) {
             break;
         }
 
-        int snap_count = 0;
         bm_irq_state_t s = BM_CRITICAL_ENTER();
         bm_subscriber_t *sub = _event_types[item.event.type].head;
         while (sub && snap_count < BM_CONFIG_MAX_EVENT_SUBSCRIBERS) {
             if (sub->cb) {
-                _dispatch_snap[snap_count].cb = sub->cb;
-                _dispatch_snap[snap_count].user_data = sub->user_data;
+                dispatch_snap[snap_count].cb = sub->cb;
+                dispatch_snap[snap_count].user_data = sub->user_data;
                 snap_count++;
             }
             sub = sub->next;
@@ -415,7 +416,7 @@ int bm_event_process(uint32_t max_events) {
         BM_CRITICAL_EXIT(s);
 
         for (int j = 0; j < snap_count; j++) {
-            _dispatch_snap[j].cb(&item.event, _dispatch_snap[j].user_data);
+            dispatch_snap[j].cb(&item.event, dispatch_snap[j].user_data);
         }
         processed++;
     }

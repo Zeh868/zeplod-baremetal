@@ -258,10 +258,14 @@ See [docs/08-迁移与演进.md](docs/08-迁移与演进.md) for detailed guides
 
 ## Documentation
 
-- [`docs/architecture.md`](docs/architecture.md) — Framework architecture and dependency direction
-- [`docs/api/`](docs/api/) — API reference for HRT, ticker, snapshot, control instances, sync, and resource claims
-- [`docs/migration/`](docs/migration/) — Migration guides between tiers and to Zephyr
-- [`docs/porting/`](docs/porting/) — HAL porting, Keil/IAR integration
+Start at [`docs/README.md`](docs/README.md) (numbered guides 00–09 in Chinese).
+
+- [`docs/06-HAL移植指南.md`](docs/06-HAL移植指南.md) — HAL contracts, reference platforms, PWM/ADC porting
+- [`docs/08-迁移与演进.md`](docs/08-迁移与演进.md) — Ultra→Core→Hybrid→Zephyr migration
+- [`docs/09-安全与可靠性.md`](docs/09-安全与可靠性.md) — Safety posture and requirements traceability
+- [`docs/architecture.md`](docs/architecture.md) — Framework architecture (English)
+- [`docs/api/`](docs/api/) — API reference for hybrid-domain components
+- [`docs/porting/`](docs/porting/) — Keil / IAR integration appendices
 - [`examples/PORTING.md`](examples/PORTING.md) — Example porting guide for custom hardware
 
 ---

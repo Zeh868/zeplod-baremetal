@@ -145,6 +145,18 @@ void test_event_rejects_invalid_payload_and_priority(void) {
         bm_event_publish_copy(EVENT_TEST, 4, NULL, 0));
 }
 
+void test_event_subscribe_null_id(void) {
+    TEST_ASSERT_EQUAL(BM_OK, bm_event_register_type(EVENT_TEST, "TEST"));
+    TEST_ASSERT_EQUAL(BM_OK, bm_event_subscribe(EVENT_TEST, test_cb, &g_count, NULL));
+
+    uint8_t data = 7;
+    TEST_ASSERT_EQUAL(BM_OK,
+        bm_event_publish_copy(EVENT_TEST, 0, &data, sizeof(data)));
+    TEST_ASSERT_EQUAL(1, bm_event_process(8));
+    TEST_ASSERT_EQUAL(1, g_count);
+    TEST_ASSERT_EQUAL(7, g_seen_data[0]);
+}
+
 int main(void) {
     UNITY_BEGIN();
     RUN_TEST(test_event_publish_copy_and_process);
@@ -154,5 +166,6 @@ int main(void) {
     RUN_TEST(test_event_rejects_invalid_payload_and_priority);
     RUN_TEST(test_event_queue_overflow_counts_dropped);
     RUN_TEST(test_event_register_type_rejects_duplicate);
+    RUN_TEST(test_event_subscribe_null_id);
     return UNITY_END();
 }

@@ -5,11 +5,13 @@
 #include "unity.h"
 #include "bm_wdg.h"
 #include "bm_hal_timer_native.h"
+#include "bm_hal_wdg_native.h"
 #include "bm_log.h"
 
 void setUp(void) {
     bm_wdg_reset();
     bm_hal_timer_native_reset_ticks();
+    bm_hal_wdg_native_reset_feed_count();
     (void)bm_hal_timer_init(1000u);
 }
 
@@ -19,23 +21,45 @@ void test_wdg_register_rejects_null(void) {
     TEST_ASSERT_EQUAL(BM_ERR_INVALID, bm_wdg_register(NULL));
 }
 
+void test_wdg_register_rejects_duplicate(void) {
+    TEST_ASSERT_EQUAL(BM_OK, bm_wdg_register("mod_a"));
+    TEST_ASSERT_EQUAL(BM_ERR_ALREADY, bm_wdg_register("mod_a"));
+}
+
 void test_wdg_feed_module_null_safe(void) {
     TEST_ASSERT_EQUAL(BM_OK, bm_wdg_register("mod_a"));
     bm_wdg_feed_module(NULL);
     bm_wdg_feed();
+    TEST_ASSERT_EQUAL(0u, bm_hal_wdg_native_get_feed_count());
 }
 
 void test_wdg_blocks_hw_feed_until_module_fed(void) {
     TEST_ASSERT_EQUAL(BM_OK, bm_wdg_register("alive"));
+
     bm_wdg_feed();
+    TEST_ASSERT_EQUAL(0u, bm_hal_wdg_native_get_feed_count());
+
     bm_wdg_feed_module("alive");
     bm_wdg_feed();
+    TEST_ASSERT_EQUAL(1u, bm_hal_wdg_native_get_feed_count());
+}
+
+void test_wdg_feed_at_tick_zero(void) {
+    TEST_ASSERT_EQUAL(BM_OK, bm_wdg_register("zero_tick"));
+
+    bm_hal_timer_native_reset_ticks();
+    bm_wdg_feed_module("zero_tick");
+    bm_wdg_feed();
+
+    TEST_ASSERT_EQUAL(1u, bm_hal_wdg_native_get_feed_count());
 }
 
 int main(void) {
     UNITY_BEGIN();
     RUN_TEST(test_wdg_register_rejects_null);
+    RUN_TEST(test_wdg_register_rejects_duplicate);
     RUN_TEST(test_wdg_feed_module_null_safe);
     RUN_TEST(test_wdg_blocks_hw_feed_until_module_fed);
+    RUN_TEST(test_wdg_feed_at_tick_zero);
     return UNITY_END();
 }
