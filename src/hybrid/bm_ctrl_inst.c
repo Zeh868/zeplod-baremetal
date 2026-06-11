@@ -19,22 +19,6 @@
 
 #include <string.h>
 
-#ifndef BM_CONFIG_HRT_TICK_US
-#define BM_CONFIG_HRT_TICK_US 100u
-#endif
-
-#ifndef BM_CONFIG_HRT_MAX_SLOTS
-#define BM_CONFIG_HRT_MAX_SLOTS 16u
-#endif
-
-#ifndef BM_CONFIG_MAX_CTRL_SLOTS
-#define BM_CONFIG_MAX_CTRL_SLOTS 32u
-#endif
-
-#ifndef BM_CONFIG_MAX_CTRL_INSTANCES
-#define BM_CONFIG_MAX_CTRL_INSTANCES 16u
-#endif
-
 /** 实例槽位绑定：用于 HRT/硬件回调上下文 */
 typedef struct {
     const bm_ctrl_inst_t *instance;
@@ -168,8 +152,7 @@ static int validate_instance(const bm_ctrl_inst_t *inst) {
             if (slot->trigger != BM_HRT_TRIGGER_TIMER) {
                 return BM_ERR_INVALID;
             }
-            if (slot->period_us == 0u ||
-                (slot->period_us % BM_CONFIG_HRT_TICK_US) != 0u) {
+            if (bm_hrt_validate_period_us(slot->period_us) != BM_OK) {
                 return BM_ERR_INVALID;
             }
         } else if (slot->kind == BM_CTRL_SLOT_HARDWARE) {
@@ -380,12 +363,31 @@ int bm_ctrl_init_all(const bm_ctrl_inst_t *const *instances, uint32_t count) {
  * @param count 实例数量
  * @return BM_OK 成功；BM_ERR_INVALID 参数不匹配；负值为 start 失败码
  */
+static int ctrl_ensure_hrt_started(void) {
+    int rc;
+
+    if (g_hrt_slot_count == 0u) {
+        return BM_OK;
+    }
+    rc = bm_hrt_start();
+    if (rc == BM_ERR_ALREADY) {
+        return BM_OK;
+    }
+    return rc;
+}
+
 int bm_ctrl_start_all(const bm_ctrl_inst_t *const *instances, uint32_t count) {
     uint32_t i;
     int rc;
 
     if (!instances || count == 0u || count != g_instance_count) {
         return BM_ERR_INVALID;
+    }
+
+    rc = ctrl_ensure_hrt_started();
+    if (rc != BM_OK) {
+        BM_LOGE("ctrl", "hrt start failed rc=%d", rc);
+        return rc;
     }
 
     for (i = 0u; i < count; ++i) {

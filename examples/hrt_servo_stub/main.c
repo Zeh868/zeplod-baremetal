@@ -201,18 +201,13 @@ int main(void) {
         return 1;
     }
 
-    rc = bm_hrt_start();
-    if (rc != BM_OK) {
-        BM_LOGE(TAG, "hrt start failed, rc=%d", rc);
-        hybrid_print("EXAMPLE_HRT_SERVO_STUB: FAIL hrt\n");
-        return 1;
-    }
-
     rc = bm_ctrl_start_all(g_instances,
                            (uint32_t)(sizeof(g_instances) / sizeof(g_instances[0])));
     if (rc != BM_OK) {
         BM_LOGE(TAG, "ctrl start failed, rc=%d", rc);
         hybrid_print("EXAMPLE_HRT_SERVO_STUB: FAIL start\n");
+        bm_ctrl_safe_stop_all(g_instances,
+                              (uint32_t)(sizeof(g_instances) / sizeof(g_instances[0])));
         return 1;
     }
 

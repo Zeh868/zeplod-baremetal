@@ -19,16 +19,8 @@
 
 #include <string.h>
 
-#ifndef BM_CONFIG_HRT_TICK_US
-#define BM_CONFIG_HRT_TICK_US 100u
-#endif
-
 #if BM_CONFIG_HRT_TICK_US == 0u || (1000000u % BM_CONFIG_HRT_TICK_US) != 0u
 #error "BM_CONFIG_HRT_TICK_US must divide 1000000 evenly and be non-zero"
-#endif
-
-#ifndef BM_CONFIG_HRT_MAX_SLOTS
-#define BM_CONFIG_HRT_MAX_SLOTS 16u
 #endif
 
 /** 运行时槽：公开描述 + 周期 tick 与下次触发时刻 */
@@ -83,9 +75,10 @@ static void hrt_dispatch(void) {
             continue;
         }
         if ((uint32_t)(now - slot->next_tick) >= slot->period_ticks) {
-            BM_LOGW("hrt", "deadline missed slot '%s'",
-                    slot->pub.name ? slot->pub.name : "(null)");
             bm_hrt_deadline_missed_hook(&slot->pub);
+            if (slot->pub.callback) {
+                slot->pub.callback(slot->pub.context);
+            }
             slot->next_tick = now + slot->period_ticks;
             continue;
         }
@@ -103,12 +96,17 @@ static void hrt_timer_isr(void) {
     hrt_dispatch();
 }
 
-/**
- * @brief 校验 HRT 槽描述符字段合法性
- *
- * @param slot 槽描述符指针
- * @return BM_OK 有效；BM_ERR_INVALID 字段无效
- */
+int bm_hrt_validate_period_us(uint32_t period_us) {
+    if (period_us == 0u ||
+        (period_us % BM_CONFIG_HRT_TICK_US) != 0u) {
+        return BM_ERR_INVALID;
+    }
+    if ((period_us / BM_CONFIG_HRT_TICK_US) == 0u) {
+        return BM_ERR_INVALID;
+    }
+    return BM_OK;
+}
+
 static int validate_slot(const bm_hrt_slot_t *slot) {
     if (!slot || !slot->callback) {
         return BM_ERR_INVALID;
@@ -116,14 +114,7 @@ static int validate_slot(const bm_hrt_slot_t *slot) {
     if (slot->trigger != BM_HRT_TRIGGER_TIMER) {
         return BM_ERR_INVALID;
     }
-    if (slot->period_us == 0u ||
-        (slot->period_us % BM_CONFIG_HRT_TICK_US) != 0u) {
-        return BM_ERR_INVALID;
-    }
-    if ((slot->period_us / BM_CONFIG_HRT_TICK_US) == 0u) {
-        return BM_ERR_INVALID;
-    }
-    return BM_OK;
+    return bm_hrt_validate_period_us(slot->period_us);
 }
 
 /**

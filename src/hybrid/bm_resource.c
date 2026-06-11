@@ -163,10 +163,12 @@ static int validate_no_duplicate_claims(const flat_claim_t *flat,
  * @param instance_count 实例数量
  * @return BM_OK 无冲突；BM_ERR_INVALID 参数无效；BM_ERR_OVERFLOW 声明表溢出；BM_ERR_BUSY 存在冲突
  */
+static flat_claim_t s_flat_claims[BM_CONFIG_MAX_RESOURCE_CLAIMS];
+
 int bm_resource_check_conflicts(const bm_resource_claim_t *const *claims,
                                 const uint32_t *claim_counts,
                                 uint32_t instance_count) {
-    flat_claim_t flat[BM_CONFIG_MAX_RESOURCE_CLAIMS];
+    flat_claim_t *flat = s_flat_claims;
     uint32_t flat_count = 0u;
     uint32_t i;
     uint32_t j;

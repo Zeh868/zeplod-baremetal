@@ -2,7 +2,8 @@
  * @file bm_hrt.h
  * @brief 高分辨率定时（HRT）调度器
  *
- * 管理微秒级周期 slot，支持定时器、PWM 更新、ADC 完成等多种触发源。
+ * 管理微秒级周期 slot。当前调度器仅实现 BM_HRT_TRIGGER_TIMER；
+ * PWM/ADC 硬件槽通过 HAL bind 路径（见 bm_ctrl_inst）接入。
  * @author zeh (china_qzh@163.com)
  * @version 1.0
  * @date 2026-06-10
@@ -16,16 +17,14 @@
 #ifndef BM_HRT_H
 #define BM_HRT_H
 
+#include "bm_hal_hrt.h"
 #include "bm_types.h"
 
-/** HRT slot 到期回调 */
-typedef void (*bm_hrt_callback_t)(void *context);
-
-/** 硬件触发源类型 */
+/** 硬件触发源类型（调度器当前仅处理 TIMER） */
 typedef enum {
     BM_HRT_TRIGGER_TIMER,
-    BM_HRT_TRIGGER_PWM_UPDATE,
-    BM_HRT_TRIGGER_ADC_COMPLETE
+    BM_HRT_TRIGGER_PWM_UPDATE,    /**< 预留：由 HAL bind 实现 */
+    BM_HRT_TRIGGER_ADC_COMPLETE   /**< 预留：由 HAL bind 实现 */
 } bm_hrt_trigger_t;
 
 /** HRT 调度 slot 描述 */
@@ -69,5 +68,13 @@ void bm_hrt_reset(void);
  * @param slot 触发 miss 的 slot 描述指针
  */
 void bm_hrt_deadline_missed_hook(const bm_hrt_slot_t *slot);
+
+/**
+ * @brief 校验 period_us 是否为合法 HRT 定时器周期
+ *
+ * @param period_us 周期（微秒）
+ * @return BM_OK 有效；BM_ERR_INVALID 无效
+ */
+int bm_hrt_validate_period_us(uint32_t period_us);
 
 #endif /* BM_HRT_H */

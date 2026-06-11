@@ -20,7 +20,7 @@
 #include "bm_hal_timer.h"
 #include "bm_hal_wdg.h"
 #include "bm_log.h"
-#include "bm_safety.h"
+#include "bm_time.h"
 
 #include <stdbool.h>
 #include <string.h>
@@ -43,16 +43,14 @@ static uint32_t        _wdg_module_count = 0;
  * @brief 将毫秒超时转换为定时器 tick（溢出安全）
  */
 static int wdg_timeout_ticks(uint32_t *ticks_out) {
-    uint32_t freq = bm_hal_timer_get_freq();
-    uint32_t product = 0u;
+    int rc = bm_time_ms_to_ticks(BM_CONFIG_WDG_MODULE_TIMEOUT_MS, ticks_out);
 
-    if (freq == 0u) {
+    if (rc == BM_ERR_INVALID) {
         return BM_ERR_NOT_INIT;
     }
-    if (bm_mul_u32_overflow(BM_CONFIG_WDG_MODULE_TIMEOUT_MS, freq, &product)) {
-        return BM_ERR_INVALID;
+    if (rc != BM_OK) {
+        return rc;
     }
-    *ticks_out = product / 1000u;
     if (*ticks_out == 0u) {
         *ticks_out = 1u;
     }

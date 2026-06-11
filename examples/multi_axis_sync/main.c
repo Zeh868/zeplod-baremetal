@@ -133,26 +133,25 @@ int main(void) {
     rc = bm_sync_configure(&g_domain);
     if (rc != BM_OK) {
         BM_LOGE(TAG, "sync configure failed, rc=%d", rc);
+        bm_ctrl_safe_stop_all(g_instances, 3u);
         return 1;
     }
     rc = bm_sync_arm(&g_domain);
     if (rc != BM_OK) {
         BM_LOGE(TAG, "sync arm failed, rc=%d", rc);
-        return 1;
-    }
-    rc = bm_hrt_start();
-    if (rc != BM_OK) {
-        BM_LOGE(TAG, "hrt start failed, rc=%d", rc);
+        bm_ctrl_safe_stop_all(g_instances, 3u);
         return 1;
     }
     rc = bm_ctrl_start_all(g_instances, 3u);
     if (rc != BM_OK) {
         BM_LOGE(TAG, "ctrl start failed, rc=%d", rc);
+        bm_ctrl_safe_stop_all(g_instances, 3u);
         return 1;
     }
     rc = bm_sync_trigger(&g_domain);
     if (rc != BM_OK) {
         BM_LOGE(TAG, "sync trigger failed, rc=%d", rc);
+        bm_ctrl_safe_stop_all(g_instances, 3u);
         return 1;
     }
     BM_LOGI(TAG, "sync domain triggered");

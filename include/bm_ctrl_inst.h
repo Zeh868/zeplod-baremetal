@@ -16,7 +16,7 @@
 #ifndef BM_CTRL_INST_H
 #define BM_CTRL_INST_H
 
-#include "bm_hal_pwm.h"
+#include "bm_hal_hrt.h"
 #include "bm_hrt.h"
 #include "bm_resource.h"
 #include "bm_types.h"
@@ -74,7 +74,7 @@ struct bm_ctrl_inst {
 int bm_ctrl_init_all(const bm_ctrl_inst_t *const *instances, uint32_t count);
 
 /**
- * @brief 批量启动控制实例
+ * @brief 批量启动控制实例（若存在 Scheduled 槽则自动 bm_hrt_start）
  *
  * @param instances 控制实例指针数组
  * @param count 实例数量

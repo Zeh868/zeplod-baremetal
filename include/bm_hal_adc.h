@@ -16,7 +16,7 @@
 #ifndef BM_HAL_ADC_H
 #define BM_HAL_ADC_H
 
-#include "bm_hal_pwm.h"
+#include "bm_hal_hrt.h"
 #include "bm_types.h"
 
 typedef struct bm_hal_adc bm_hal_adc_t;

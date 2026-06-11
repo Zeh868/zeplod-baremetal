@@ -29,6 +29,7 @@
 #define BM_CONFIG_EVENT_QUEUE_SIZE          16
 #define BM_CONFIG_EVENT_PRIORITIES          4
 #define BM_CONFIG_EVENT_INLINE_DATA_SIZE     8
+/* EVENT_QUEUE_SIZE 须能被 EVENT_PRIORITIES 整除，且商为 2 的幂 */
 
 /* Optional components */
 #define BM_CONFIG_MAX_MODULES                8
@@ -49,6 +50,7 @@
 #define BM_CONFIG_HRT_TICK_US                100
 #define BM_CONFIG_HRT_MAX_SLOTS              16
 #define BM_CONFIG_TICKER_MAX_SLOTS           8
+#define BM_CONFIG_TICKER_MAX_CATCHUP         4
 #define BM_CONFIG_MAX_CTRL_SLOTS             32
 #define BM_CONFIG_MAX_CTRL_INSTANCES         16
 #define BM_CONFIG_MAX_RESOURCE_CLAIMS        64

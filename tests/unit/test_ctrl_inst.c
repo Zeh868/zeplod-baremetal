@@ -183,7 +183,7 @@ void test_ctrl_init_and_scheduled_slot(void) {
     const bm_ctrl_inst_t *const instances[] = { &sched_inst };
 
     TEST_ASSERT_EQUAL(BM_OK, bm_ctrl_init_all(instances, 1u));
-    TEST_ASSERT_EQUAL(BM_OK, bm_hrt_start());
+    TEST_ASSERT_EQUAL(BM_OK, bm_ctrl_start_all(instances, 1u));
 
     bm_hal_timer_native_advance_ticks(10u);
     TEST_ASSERT_GREATER_THAN(0u, g_step_count);
@@ -218,7 +218,7 @@ void test_ctrl_init_failure_rolls_back_safe_stop(void) {
     TEST_ASSERT_EQUAL(BM_ERR_INVALID, bm_ctrl_init_all(instances, 2u));
     TEST_ASSERT_EQUAL(1u, g_safe_stop_count);
     TEST_ASSERT_EQUAL(BM_OK, bm_ctrl_init_all(&instances[0], 1u));
-    TEST_ASSERT_EQUAL(BM_OK, bm_hrt_start());
+    TEST_ASSERT_EQUAL(BM_OK, bm_ctrl_start_all(&instances[0], 1u));
     bm_hal_timer_native_advance_ticks(10u);
     TEST_ASSERT_GREATER_THAN(0u, g_step_count);
     bm_ctrl_safe_stop_all(&instances[0], 1u);

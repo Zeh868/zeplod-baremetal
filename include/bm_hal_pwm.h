@@ -16,16 +16,10 @@
 #ifndef BM_HAL_PWM_H
 #define BM_HAL_PWM_H
 
-#include "bm_hrt.h"
+#include "bm_hal_hrt.h"
 #include "bm_types.h"
 
 typedef struct bm_hal_pwm bm_hal_pwm_t;
-
-/** HRT 硬件事件绑定参数 */
-typedef struct bm_hal_hrt_binding {
-    bm_hrt_callback_t callback;
-    void *context;
-} bm_hal_hrt_binding_t;
 
 /**
  * @brief 设置指定相位的 PWM 占空比

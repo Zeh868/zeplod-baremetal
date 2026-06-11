@@ -16,17 +16,9 @@
 #include "bm_ticker.h"
 #include "bm_hal_timer.h"
 #include "bm_log.h"
-#include "bm_safety.h"
+#include "bm_time.h"
 
 #include <string.h>
-
-#ifndef BM_CONFIG_TICKER_MAX_CATCHUP
-#define BM_CONFIG_TICKER_MAX_CATCHUP 4u
-#endif
-
-#ifndef BM_CONFIG_TICKER_MAX_SLOTS
-#define BM_CONFIG_TICKER_MAX_SLOTS 8u
-#endif
 
 /** 运行时槽：公开描述 + 周期与丢弃计数 */
 typedef struct {
@@ -39,29 +31,6 @@ typedef struct {
 static bm_ticker_runtime_slot_t g_slots[BM_CONFIG_TICKER_MAX_SLOTS];
 static uint32_t g_slot_count;
 static int g_initialized;
-
-/**
- * @brief 将毫秒周期转换为 HAL 定时器 tick 数
- *
- * @param period_ms 周期（毫秒）
- * @return tick 数；频率为 0 时返回 0
- */
-static int ms_to_ticks(uint32_t period_ms, uint32_t *ticks_out) {
-    uint32_t freq = bm_hal_timer_get_freq();
-    uint32_t product = 0u;
-
-    if (freq == 0u || !ticks_out) {
-        return BM_ERR_INVALID;
-    }
-    if (bm_mul_u32_overflow(period_ms, freq, &product)) {
-        return BM_ERR_INVALID;
-    }
-    *ticks_out = product / 1000u;
-    if (*ticks_out == 0u) {
-        return BM_ERR_INVALID;
-    }
-    return BM_OK;
-}
 
 /**
  * @brief 初始化毫秒级周期事件发布器
@@ -96,7 +65,7 @@ int bm_ticker_init(const bm_ticker_slot_t *slots, uint32_t slot_count) {
 
     for (i = 0u; i < slot_count; ++i) {
         uint32_t period_ticks = 0u;
-        int trc = ms_to_ticks(slots[i].period_ms, &period_ticks);
+        int trc = bm_time_ms_to_ticks(slots[i].period_ms, &period_ticks);
         if (trc != BM_OK) {
             BM_LOGE("ticker", "init slot %u tick conversion failed", (unsigned)i);
             memset(g_slots, 0, sizeof(g_slots));

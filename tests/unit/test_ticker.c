@@ -69,12 +69,12 @@ void test_ticker_counts_dropped_when_queue_full(void) {
 
     bm_event_register_type(TICKER_EVT, "TICK");
     i = 0u;
-    while (bm_event_publish_copy(TICKER_EVT, 0u, NULL, 0u) == BM_OK) {
+    while (bm_event_publish_copy(TICKER_EVT, 1u, NULL, 0u) == BM_OK) {
         i++;
     }
     TEST_ASSERT_GREATER_THAN(0u, i);
     TEST_ASSERT_EQUAL(BM_ERR_OVERFLOW,
-                      bm_event_publish_copy(TICKER_EVT, 0u, NULL, 0u));
+                      bm_event_publish_copy(TICKER_EVT, 1u, NULL, 0u));
 
     TEST_ASSERT_EQUAL(BM_OK, bm_ticker_init(slots, 1u));
     bm_hal_timer_native_advance_ticks(20u);

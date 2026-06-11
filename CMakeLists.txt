@@ -61,6 +61,7 @@ add_library(bm_core STATIC
     src/core/bm_critical.c
     src/core/bm_event.c
     src/core/bm_log.c
+    src/core/bm_ultra.c
 )
 target_link_libraries(bm_core PUBLIC bm_config bm_hal)
 

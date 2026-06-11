@@ -15,14 +15,10 @@
  *
  */
 #include "bm_sync.h"
+#include "bm_sync_hal.h"
 #include "bm_log.h"
 
 #include <stdbool.h>
-
-int bm_sync_hal_configure(const bm_sync_domain_t *domain);
-int bm_sync_hal_arm(const bm_sync_domain_t *domain);
-int bm_sync_hal_trigger(const bm_sync_domain_t *domain);
-void bm_sync_hal_safe_stop(const bm_sync_domain_t *domain);
 
 static const bm_sync_domain_t *g_active_domain;
 static bool g_armed;

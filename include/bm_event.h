@@ -96,10 +96,10 @@ int bm_event_publish_copy_from_isr(bm_event_type_t type, bm_event_priority_t pri
                                    const void *data, size_t len);
 
 /**
- * @brief 发布完整事件结构
+ * @brief 发布完整事件结构（载荷拷贝到内联缓冲，≤ BM_CONFIG_EVENT_INLINE_DATA_SIZE）
  *
  * @param event 事件描述指针
- * @return BM_OK 成功；BM_ERR_OVERFLOW 队列已满；BM_ERR_INVALID 参数无效
+ * @return BM_OK 成功；BM_ERR_OVERFLOW 队列已满；BM_ERR_NO_MEM 载荷过大；BM_ERR_INVALID 参数无效
  */
 int bm_event_publish_event(const bm_event_t *event);
 

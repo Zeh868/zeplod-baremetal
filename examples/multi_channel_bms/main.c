@@ -219,14 +219,10 @@ int main(void) {
         hybrid_print("EXAMPLE_MULTI_CHANNEL_BMS: FAIL init\n");
         return 1;
     }
-    rc = bm_hrt_start();
-    if (rc != BM_OK) {
-        BM_LOGE(TAG, "hrt start failed, rc=%d", rc);
-        return 1;
-    }
     rc = bm_ctrl_start_all(g_instance_table, CELL_COUNT + 1u);
     if (rc != BM_OK) {
         BM_LOGE(TAG, "ctrl start failed, rc=%d", rc);
+        bm_ctrl_safe_stop_all(g_instance_table, CELL_COUNT + 1u);
         return 1;
     }
 #ifdef BM_EXAMPLE_QEMU
@@ -236,6 +232,7 @@ int main(void) {
     rc = bm_ticker_init(g_check_ticker, 1u);
     if (rc != BM_OK) {
         BM_LOGE(TAG, "ticker init failed, rc=%d", rc);
+        bm_ctrl_safe_stop_all(g_instance_table, CELL_COUNT + 1u);
         return 1;
     }
 
