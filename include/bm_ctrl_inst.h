@@ -4,13 +4,14 @@
  *
  * 定义混合域控制实例的 slot、ops 及资源声明，支持多实例统一 init/start/stop。
  * @author zeh (china_qzh@163.com)
- * @version 1.0
- * @date 2026-06-10
+ * @version 1.1
+ * @date 2026-06-11
  *
  * @par 修改日志:
  *
  *    Date         Version        Author          Description
  * 2026-06-10       1.0            zeh            正式发布
+ * 2026-06-11       1.1            zeh            补充 start_all 会话语义
  *
  */
 #ifndef BM_CTRL_INST_H
@@ -74,11 +75,15 @@ struct bm_ctrl_inst {
 int bm_ctrl_init_all(const bm_ctrl_inst_t *const *instances, uint32_t count);
 
 /**
- * @brief 批量启动控制实例（若存在 Scheduled 槽则自动 bm_hrt_start）
+ * @brief 批量启动控制实例
  *
- * @param instances 控制实例指针数组
+ * 先对各实例调用 ops->start，全部成功后再 bm_hrt_start（若存在 Scheduled 槽）。
+ * Scheduled 槽的 step 仅在会话进入 STARTED 后执行。
+ *
+ * @param instances 控制实例指针数组（须与 init_all 时一致）
  * @param count 实例数量
- * @return BM_OK 全部成功；否则为首个失败实例的错误码
+ * @return BM_OK 全部成功；BM_ERR_ALREADY 已启动；BM_ERR_NOT_INIT 未 init；
+ *         BM_ERR_INVALID 参数不匹配；否则为首个失败实例的错误码
  */
 int bm_ctrl_start_all(const bm_ctrl_inst_t *const *instances, uint32_t count);
 

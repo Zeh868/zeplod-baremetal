@@ -4,7 +4,7 @@
  *
  * 校验实例与资源声明，组装 HRT 调度表，协调 init/start/stop 与硬件绑定。
  * @author zeh (china_qzh@163.com)
- * @version 1.1
+ * @version 1.3
  * @date 2026-06-11
  *
  * @par 修改日志:
@@ -12,6 +12,8 @@
  *    Date         Version        Author          Description
  * 2026-06-10       1.0            zeh            正式发布
  * 2026-06-11       1.1            zeh            SIL-2 会话状态与 start 失败回滚
+ * 2026-06-11       1.2            zeh            start_all 先启实例后启 HRT；NULL 前置校验
+ * 2026-06-11       1.3            zeh            Scheduled 槽会话守卫与 slot_count 上界
  *
  */
 #include "bm_ctrl_inst.h"
@@ -51,6 +53,10 @@ static void bm_ctrl_run_binding(void *context) {
     const bm_ctrl_binding_t *binding = (const bm_ctrl_binding_t *)context;
 
     if (!binding || !binding->slot || !binding->slot->step || !binding->instance) {
+        return;
+    }
+    if (binding->slot->kind == BM_CTRL_SLOT_SCHEDULED &&
+        g_session != BM_CTRL_SESSION_STARTED) {
         return;
     }
     binding->slot->step(binding->instance);
@@ -163,6 +169,9 @@ static int validate_instance(const bm_ctrl_inst_t *inst) {
     if (inst->claim_count > 0u && !inst->claims) {
         return BM_ERR_INVALID;
     }
+    if (inst->slot_count > BM_CONFIG_MAX_CTRL_SLOTS) {
+        return BM_ERR_INVALID;
+    }
 
     for (s = 0u; s < inst->slot_count; ++s) {
         const bm_ctrl_slot_t *slot = &inst->slots[s];
@@ -203,6 +212,11 @@ static int validate_unique_ids(const bm_ctrl_inst_t *const *instances,
     uint32_t i;
     uint32_t j;
 
+    for (i = 0u; i < count; ++i) {
+        if (!instances[i]) {
+            return BM_ERR_INVALID;
+        }
+    }
     for (i = 0u; i < count; ++i) {
         for (j = i + 1u; j < count; ++j) {
             if (instances[i]->id == instances[j]->id) {
@@ -407,12 +421,6 @@ int bm_ctrl_start_all(const bm_ctrl_inst_t *const *instances, uint32_t count) {
         return BM_ERR_NOT_INIT;
     }
 
-    rc = ctrl_ensure_hrt_started();
-    if (rc != BM_OK) {
-        BM_LOGE("ctrl", "hrt start failed rc=%d", rc);
-        return rc;
-    }
-
     for (i = 0u; i < count; ++i) {
         if (!instances[i] || instances[i] != g_instances[i]) {
             return BM_ERR_INVALID;
@@ -424,6 +432,13 @@ int bm_ctrl_start_all(const bm_ctrl_inst_t *const *instances, uint32_t count) {
             ctrl_abort_session();
             return rc;
         }
+    }
+
+    rc = ctrl_ensure_hrt_started();
+    if (rc != BM_OK) {
+        BM_LOGE("ctrl", "hrt start failed rc=%d", rc);
+        ctrl_abort_session();
+        return rc;
     }
 
     g_session = BM_CTRL_SESSION_STARTED;

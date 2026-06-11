@@ -21,6 +21,8 @@
 static uint32_t g_step_count;
 static uint32_t g_hw_step_count;
 static uint32_t g_safe_stop_count;
+static uint32_t g_inst2_started;
+static uint32_t g_inst2_premature_steps;
 
 static int mock_init(const bm_ctrl_inst_t *instance) {
     (void)instance;
@@ -63,6 +65,27 @@ static void scheduled_step(const bm_ctrl_inst_t *instance) {
     g_step_count++;
 }
 
+static void inst2_scheduled_step(const bm_ctrl_inst_t *instance) {
+    if (instance->id == 2u && g_inst2_started == 0u) {
+        g_inst2_premature_steps++;
+    }
+    g_step_count++;
+}
+
+static int inst1_start_advance_ticks(const bm_ctrl_inst_t *instance) {
+    if (instance->id == 1u) {
+        bm_hal_timer_native_advance_ticks(15u);
+    }
+    return BM_OK;
+}
+
+static int inst2_start_mark(const bm_ctrl_inst_t *instance) {
+    if (instance->id == 2u) {
+        g_inst2_started = 1u;
+    }
+    return BM_OK;
+}
+
 static void hardware_step(const bm_ctrl_inst_t *instance) {
     (void)instance;
     g_hw_step_count++;
@@ -80,6 +103,18 @@ static int bind_adc(const bm_ctrl_inst_t *instance,
 static const bm_ctrl_ops_t mock_ops = {
     mock_init,
     mock_start,
+    mock_safe_stop
+};
+
+static const bm_ctrl_ops_t inst1_advance_ops = {
+    mock_init,
+    inst1_start_advance_ticks,
+    mock_safe_stop
+};
+
+static const bm_ctrl_ops_t inst2_mark_ops = {
+    mock_init,
+    inst2_start_mark,
     mock_safe_stop
 };
 
@@ -111,6 +146,31 @@ static const bm_ctrl_inst_t sched_inst = {
     scheduled_slots,
     (uint32_t)(sizeof(scheduled_slots) / sizeof(scheduled_slots[0])),
     NULL, 0u, &mock_ops
+};
+
+static const bm_ctrl_slot_t inst2_scheduled_slots[] = {
+    {
+        BM_CTRL_SLOT_SCHEDULED,
+        1000u,
+        BM_HRT_TRIGGER_TIMER,
+        inst2_scheduled_step,
+        NULL,
+        "sched2"
+    },
+};
+
+static const bm_ctrl_inst_t sched_inst_advance = {
+    1u, "sched_adv", NULL, NULL, NULL,
+    scheduled_slots,
+    (uint32_t)(sizeof(scheduled_slots) / sizeof(scheduled_slots[0])),
+    NULL, 0u, &inst1_advance_ops
+};
+
+static const bm_ctrl_inst_t sched_inst2 = {
+    2u, "sched2", NULL, NULL, NULL,
+    inst2_scheduled_slots,
+    (uint32_t)(sizeof(inst2_scheduled_slots) / sizeof(inst2_scheduled_slots[0])),
+    NULL, 0u, &inst2_mark_ops
 };
 
 /* 硬件触发槽实例（ADC 完成中断） */
@@ -232,6 +292,31 @@ void test_ctrl_start_failure_rolls_back_safe_stop(void) {
     TEST_ASSERT_EQUAL(2u, g_safe_stop_count);
 }
 
+void test_ctrl_start_all_starts_hrt_after_all_instances(void) {
+    const bm_ctrl_inst_t *const instances[] = {
+        &sched_inst_advance, &sched_inst2
+    };
+
+    g_inst2_started = 0u;
+    g_inst2_premature_steps = 0u;
+    TEST_ASSERT_EQUAL(BM_OK, bm_ctrl_init_all(instances, 2u));
+    TEST_ASSERT_EQUAL(BM_OK, bm_ctrl_start_all(instances, 2u));
+    TEST_ASSERT_EQUAL(0u, g_inst2_premature_steps);
+    bm_ctrl_safe_stop_all(instances, 2u);
+}
+
+void test_ctrl_start_all_without_init_fails(void) {
+    const bm_ctrl_inst_t *const instances[] = { &sched_inst };
+
+    TEST_ASSERT_EQUAL(BM_ERR_INVALID, bm_ctrl_start_all(instances, 1u));
+}
+
+void test_ctrl_init_rejects_null_instance(void) {
+    const bm_ctrl_inst_t *const instances[] = { &sched_inst, NULL };
+
+    TEST_ASSERT_EQUAL(BM_ERR_INVALID, bm_ctrl_init_all(instances, 2u));
+}
+
 void test_ctrl_rejects_double_start(void) {
     const bm_ctrl_inst_t *const instances[] = { &sched_inst };
 
@@ -276,6 +361,9 @@ int main(void) {
     RUN_TEST(test_ctrl_bind_failure_rolls_back);
     RUN_TEST(test_ctrl_find_instance);
     RUN_TEST(test_ctrl_reinit_teardowns_previous_session);
+    RUN_TEST(test_ctrl_start_all_starts_hrt_after_all_instances);
+    RUN_TEST(test_ctrl_start_all_without_init_fails);
+    RUN_TEST(test_ctrl_init_rejects_null_instance);
     RUN_TEST(test_ctrl_rejects_double_start);
     return UNITY_END();
 }
