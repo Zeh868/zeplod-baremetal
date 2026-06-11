@@ -19,6 +19,8 @@
 #include "bm_log.h"
 #include "bm_safety.h"
 
+#include <string.h>
+
 /**
  * @brief 校验内存池描述符基本字段
  */
@@ -77,10 +79,13 @@ void *bm_mempool_alloc(bm_mempool_t *pool) {
                     if (idx >= pool->count) {
                         break;
                     }
+                    void *obj = (uint8_t *)pool->pool + idx * pool->obj_size;
+
                     pool->bitmap[w] |= (1U << b);
+                    memset(obj, 0, pool->obj_size);
                     BM_CRITICAL_EXIT(s);
                     BM_LOGT("mempool", "alloc slot %u", (unsigned)idx);
-                    return (uint8_t *)pool->pool + idx * pool->obj_size;
+                    return obj;
                 }
             }
         }

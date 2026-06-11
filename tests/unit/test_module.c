@@ -16,13 +16,18 @@
 static int g_init_count = 0;
 static int g_start_count = 0;
 static int g_stop_count = 0;
+static int g_deinit_count = 0;
+static int g_fail_mod_b_init = 0;
 
 int mod_a_init(void) { g_init_count++; return BM_OK; }
 int mod_a_start(void) { g_start_count++; return BM_OK; }
 int mod_a_stop(void) { g_stop_count++; return BM_OK; }
-int mod_a_deinit(void) { return BM_OK; }
+int mod_a_deinit(void) { g_deinit_count++; return BM_OK; }
 
-int mod_b_init(void) { g_init_count++; return BM_OK; }
+int mod_b_init(void) {
+    g_init_count++;
+    return g_fail_mod_b_init ? BM_ERR_INVALID : BM_OK;
+}
 int mod_b_start(void) { g_start_count++; return BM_OK; }
 
 /* Explicit module table (compatible with all toolchains) */
@@ -38,9 +43,18 @@ void setUp(void) {
     g_init_count = 0;
     g_start_count = 0;
     g_stop_count = 0;
+    g_deinit_count = 0;
+    g_fail_mod_b_init = 0;
 }
 void tearDown(void) {
     bm_module_deinit_all();
+}
+
+void test_module_init_failure_rollback(void) {
+    g_fail_mod_b_init = 1;
+    TEST_ASSERT_EQUAL(BM_ERR_INVALID, bm_module_init_all());
+    TEST_ASSERT_EQUAL(2, g_init_count);
+    TEST_ASSERT_EQUAL(1, g_deinit_count);
 }
 
 void test_module_lifecycle_order(void) {
@@ -57,6 +71,7 @@ void test_module_lifecycle_order(void) {
 
 int main(void) {
     UNITY_BEGIN();
+    RUN_TEST(test_module_init_failure_rollback);
     RUN_TEST(test_module_lifecycle_order);
     return UNITY_END();
 }

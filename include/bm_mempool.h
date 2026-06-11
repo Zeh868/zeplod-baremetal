@@ -47,7 +47,7 @@ typedef struct {
  * @brief 从内存池分配一个对象
  *
  * @param pool 内存池控制块指针
- * @return 对象指针；池满时返回 NULL
+ * @return 对象指针（已清零）；池满时返回 NULL
  */
 void *bm_mempool_alloc(bm_mempool_t *pool);
 

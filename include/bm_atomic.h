@@ -35,10 +35,10 @@ uint32_t bm_atomic_load(bm_atomic_t *value);
 void bm_atomic_store(bm_atomic_t *value, uint32_t new_value);
 
 /**
- * @brief 原子自增并返回递增后的值
+ * @brief 原子自增并返回递增后的值（UINT32_MAX 处饱和）
  *
  * @param value 原子变量指针
- * @return 自增后的值
+ * @return 自增后的值；已达 UINT32_MAX 时保持不变
  */
 uint32_t bm_atomic_inc(bm_atomic_t *value);
 

@@ -38,7 +38,7 @@ void tearDown(void) {}
 
 void test_ultra_publish_and_process(void) {
     uint16_t data = 42;
-    TEST_ASSERT_EQUAL(0, bm_ultra_publish(EVENT_TEST, &data, sizeof(data)));
+    TEST_ASSERT_EQUAL(BM_OK, bm_ultra_publish(EVENT_TEST, &data, sizeof(data)));
     TEST_ASSERT_EQUAL(1, bm_ultra_event_count());
     TEST_ASSERT_EQUAL(1, bm_ultra_process());
     TEST_ASSERT_EQUAL(1, g_count);
@@ -46,10 +46,14 @@ void test_ultra_publish_and_process(void) {
 }
 
 void test_ultra_queue_overflow(void) {
+    uint32_t dropped_before = bm_ultra_get_dropped_count();
+
     for (int i = 0; i < BM_CONFIG_ULTRA_QUEUE_DEPTH + 2; i++) {
         uint8_t dummy = (uint8_t)i;
         bm_ultra_publish(EVENT_TEST, &dummy, sizeof(dummy));
     }
+    TEST_ASSERT_GREATER_THAN_UINT32(dropped_before,
+                                  bm_ultra_get_dropped_count());
     uint8_t processed = 0;
     while (bm_ultra_process()) {
         processed++;

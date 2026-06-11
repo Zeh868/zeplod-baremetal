@@ -84,7 +84,9 @@ int bm_event_publish_copy(bm_event_type_t type, bm_event_priority_t prio,
                           const void *data, size_t len);
 
 /**
- * @brief ISR 上下文发布事件（内部拷贝数据）
+ * @brief SRT 域 ISR 上下文发布事件（内部拷贝数据）
+ *
+ * 单核下通过关中断临界区实现；禁止在 HRT ISR 中调用。
  *
  * @param type 事件类型 ID
  * @param prio 事件优先级
@@ -104,7 +106,9 @@ int bm_event_publish_copy_from_isr(bm_event_type_t type, bm_event_priority_t pri
 int bm_event_publish_event(const bm_event_t *event);
 
 /**
- * @brief ISR 上下文发布完整事件结构
+ * @brief SRT 域 ISR 上下文发布完整事件结构
+ *
+ * 单核下通过关中断临界区实现；禁止在 HRT ISR 中调用。
  *
  * @param event 事件描述指针
  * @return BM_OK 成功；BM_ERR_OVERFLOW 队列已满；BM_ERR_INVALID 参数无效

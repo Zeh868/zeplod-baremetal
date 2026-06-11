@@ -69,6 +69,10 @@ void test_channel_invalid_args(void) {
     my_chan.write_idx = 99u;
     TEST_ASSERT_EQUAL(BM_ERR_INVALID, bm_channel_send(&my_chan, &msg));
     bm_channel_reset(&my_chan);
+
+    my_chan.read_idx = 99u;
+    TEST_ASSERT_EQUAL(BM_ERR_INVALID, bm_channel_recv(&my_chan, &out));
+    bm_channel_reset(&my_chan);
 }
 
 void test_channel_reset_and_capacity(void) {

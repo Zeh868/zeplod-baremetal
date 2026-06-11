@@ -15,6 +15,7 @@
  *
  */
 #include "bm_module.h"
+#include "bm_critical_wrap.h"
 #include "bm_log.h"
 
 #include <string.h>
@@ -77,10 +78,14 @@ static void _rollback_starts(uint32_t through_index) {
  * @return BM_OK 全部成功；负值为首个失败模块的错误码
  */
 int bm_module_init_all(void) {
+    bm_irq_state_t s = BM_CRITICAL_ENTER();
+
     if (_modules_initialized) {
+        BM_CRITICAL_EXIT(s);
         BM_LOGW("module", "init_all already done");
         return BM_ERR_ALREADY;
     }
+    BM_CRITICAL_EXIT(s);
 
     if (_bm_module_count > BM_CONFIG_MAX_MODULES) {
         BM_LOGE("module", "module table truncated: %u > %u",
@@ -111,7 +116,9 @@ int bm_module_init_all(void) {
             }
         }
     }
+    s = BM_CRITICAL_ENTER();
     _modules_initialized = 1;
+    BM_CRITICAL_EXIT(s);
     return BM_OK;
 }
 
@@ -121,7 +128,11 @@ int bm_module_init_all(void) {
  * @return BM_OK 全部成功；负值为首个失败模块的错误码
  */
 int bm_module_start_all(void) {
-    if (!_modules_initialized) {
+    bm_irq_state_t s = BM_CRITICAL_ENTER();
+    int initialized = _modules_initialized;
+
+    BM_CRITICAL_EXIT(s);
+    if (!initialized) {
         return BM_ERR_NOT_INIT;
     }
 
@@ -171,7 +182,9 @@ int bm_module_stop_all(void) {
  * @return BM_OK 全部成功；负值为首个失败模块的错误码
  */
 int bm_module_deinit_all(void) {
+    bm_irq_state_t s;
     int rc = BM_OK;
+
     for (int i = (int)_module_count - 1; i >= 0; i--) {
         if (_modules[i].deinit) {
             int r = _modules[i].deinit();
@@ -181,8 +194,10 @@ int bm_module_deinit_all(void) {
         }
         _modules[i].state = BM_MODULE_STATE_UNINIT;
     }
+    s = BM_CRITICAL_ENTER();
     _modules_initialized = 0;
     _module_count = 0u;
+    BM_CRITICAL_EXIT(s);
     BM_LOGI("module", "deinit_all done");
     return rc;
 }

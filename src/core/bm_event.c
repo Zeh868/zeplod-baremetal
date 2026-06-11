@@ -9,6 +9,7 @@
 #include "bm_log.h"
 
 #include <stdbool.h>
+#include <stddef.h>
 #include <string.h>
 
 #if BM_CONFIG_EVENT_QUEUE_SIZE < BM_CONFIG_EVENT_PRIORITIES || \
@@ -73,6 +74,12 @@ static void _prio_queues_reset(void) {
     memset(_prio_items, 0, sizeof(_prio_items));
     memset(_prio_read, 0, sizeof(_prio_read));
     memset(_prio_write, 0, sizeof(_prio_write));
+}
+
+/** 校验优先级队列读写索引在槽位掩码范围内（fail-stop） */
+static int _prio_indices_valid(uint32_t read_idx, uint32_t write_idx,
+                               uint32_t mask) {
+    return (read_idx <= mask && write_idx <= mask) ? BM_OK : BM_ERR_INVALID;
 }
 
 void bm_event_reset(void) {
@@ -185,6 +192,12 @@ static int _prio_push_copy(bm_event_priority_t prio, const bm_event_t *event,
     }
 
     s = BM_CRITICAL_ENTER();
+    if (_prio_indices_valid(_prio_read[prio], _prio_write[prio], mask) !=
+        BM_OK) {
+        BM_CRITICAL_EXIT(s);
+        BM_LOGE("event", "push corrupt indices prio=%u", (unsigned)prio);
+        return BM_ERR_INVALID;
+    }
     next = (_prio_write[prio] + 1u) & mask;
     if (next == _prio_read[prio]) {
         _queue_dropped++;
@@ -236,6 +249,7 @@ int bm_event_publish_copy(bm_event_type_t type, bm_event_priority_t prio,
 
 int bm_event_publish_copy_from_isr(bm_event_type_t type, bm_event_priority_t prio,
                                    const void *data, size_t len) {
+    /* SRT 域 ISR 专用：单核下关中断临界区可重入；禁止 HRT ISR 调用 */
     return bm_event_publish_copy(type, prio, data, len);
 }
 
@@ -255,6 +269,7 @@ int bm_event_publish_event(const bm_event_t *event) {
 }
 
 int bm_event_publish_event_from_isr(const bm_event_t *event) {
+    /* SRT 域 ISR 专用：单核下关中断临界区可重入；禁止 HRT ISR 调用 */
     return bm_event_publish_event(event);
 }
 
@@ -264,6 +279,12 @@ static int _queue_pop_highest_prio(bm_queue_item_t *out) {
     uint32_t mask = BM_EVENT_QUEUE_DEPTH_PER_PRIO - 1u;
 
     for (prio = 0u; prio < BM_CONFIG_EVENT_PRIORITIES; ++prio) {
+        if (_prio_indices_valid(_prio_read[prio], _prio_write[prio], mask) !=
+            BM_OK) {
+            BM_CRITICAL_EXIT(s);
+            BM_LOGE("event", "pop corrupt indices prio=%u", (unsigned)prio);
+            return BM_ERR_INVALID;
+        }
         if (_prio_read[prio] != _prio_write[prio]) {
             uint32_t slot = _prio_read[prio] & mask;
 
@@ -279,7 +300,10 @@ static int _queue_pop_highest_prio(bm_queue_item_t *out) {
 }
 
 uint32_t bm_event_get_dropped_count(void) {
-    return _queue_dropped;
+    bm_irq_state_t s = BM_CRITICAL_ENTER();
+    uint32_t dropped = _queue_dropped;
+    BM_CRITICAL_EXIT(s);
+    return dropped;
 }
 
 int bm_event_process(uint32_t max_events) {

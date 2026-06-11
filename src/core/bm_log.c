@@ -83,8 +83,15 @@ void bm_log(bm_log_level_t level, const char *tag, const char *fmt, ...) {
     }
 
     va_start(ap, fmt);
-    vsnprintf(buf + prefix_len, sizeof(buf) - (size_t)prefix_len, fmt, ap);
-    va_end(ap);
+    {
+        int body_len = vsnprintf(buf + prefix_len,
+                                 sizeof(buf) - (size_t)prefix_len, fmt, ap);
+
+        va_end(ap);
+        if (body_len < 0) {
+            return;
+        }
+    }
 
     /* 保证单行换行结尾 */
     {

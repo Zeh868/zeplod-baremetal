@@ -17,6 +17,8 @@
 #include "bm_atomic.h"
 #include "bm_critical_wrap.h"
 
+#include <stdint.h>
+
 /**
  * @brief 在临界区内原子读取 32 位值
  *
@@ -59,8 +61,12 @@ uint32_t bm_atomic_inc(bm_atomic_t *v) {
         return 0u;
     }
     bm_irq_state_t s = BM_CRITICAL_ENTER();
-    *v = *v + 1u;
     uint32_t val = *v;
+
+    if (val < UINT32_MAX) {
+        val++;
+        *v = val;
+    }
     BM_CRITICAL_EXIT(s);
     return val;
 }
