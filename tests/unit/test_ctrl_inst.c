@@ -248,6 +248,16 @@ void test_ctrl_find_instance(void) {
     TEST_ASSERT_NULL(bm_ctrl_find(instances, 2u, 99u));
 }
 
+void test_ctrl_reinit_teardowns_previous_session(void) {
+    const bm_ctrl_inst_t *const instances[] = { &sched_inst };
+
+    TEST_ASSERT_EQUAL(BM_OK, bm_ctrl_init_all(instances, 1u));
+    g_safe_stop_count = 0u;
+    TEST_ASSERT_EQUAL(BM_OK, bm_ctrl_init_all(instances, 1u));
+    TEST_ASSERT_EQUAL(1u, g_safe_stop_count);
+    bm_ctrl_safe_stop_all(instances, 1u);
+}
+
 int main(void) {
     UNITY_BEGIN();
     RUN_TEST(test_ctrl_init_and_scheduled_slot);
@@ -257,5 +267,6 @@ int main(void) {
     RUN_TEST(test_ctrl_start_failure_rolls_back_safe_stop);
     RUN_TEST(test_ctrl_bind_failure_rolls_back);
     RUN_TEST(test_ctrl_find_instance);
+    RUN_TEST(test_ctrl_reinit_teardowns_previous_session);
     return UNITY_END();
 }

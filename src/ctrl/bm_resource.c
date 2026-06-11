@@ -133,6 +133,29 @@ static int validate_owner_reader_pairs(const flat_claim_t *flat,
 }
 
 /**
+ * @brief 拒绝同一实例对同一资源的重复声明
+ */
+static int validate_no_duplicate_claims(const flat_claim_t *flat,
+                                      uint32_t flat_count) {
+    uint32_t i;
+    uint32_t j;
+
+    for (i = 0u; i < flat_count; ++i) {
+        for (j = i + 1u; j < flat_count; ++j) {
+            if (flat[i].instance_index == flat[j].instance_index &&
+                flat[i].kind == flat[j].kind &&
+                flat[i].key == flat[j].key) {
+                BM_LOGW("resource", "duplicate claim inst=%u kind=%u key=%u",
+                        (unsigned)flat[i].instance_index,
+                        (unsigned)flat[i].kind, (unsigned)flat[i].key);
+                return BM_ERR_INVALID;
+            }
+        }
+    }
+    return BM_OK;
+}
+
+/**
  * @brief 检查多实例资源声明是否存在冲突
  *
  * @param claims 各实例资源声明数组的指针数组
@@ -148,6 +171,7 @@ int bm_resource_check_conflicts(const bm_resource_claim_t *const *claims,
     uint32_t i;
     uint32_t j;
     uint32_t k;
+    int rc;
 
     if (!claims || !claim_counts) {
         return BM_ERR_INVALID;
@@ -178,6 +202,11 @@ int bm_resource_check_conflicts(const bm_resource_claim_t *const *claims,
         }
     }
 
+    rc = validate_no_duplicate_claims(flat, flat_count);
+    if (rc != BM_OK) {
+        return rc;
+    }
+
     for (i = 0u; i < flat_count; ++i) {
         for (j = i + 1u; j < flat_count; ++j) {
             if (!claims_compatible(&flat[i], &flat[j])) {
@@ -192,7 +221,6 @@ int bm_resource_check_conflicts(const bm_resource_claim_t *const *claims,
 
     for (i = 0u; i < flat_count; ++i) {
         if (flat[i].access == BM_RESOURCE_SHARED_COORDINATED) {
-            int coordinated_peer = 0;
             for (k = 0u; k < flat_count; ++k) {
                 if (i == k) {
                     continue;
@@ -203,19 +231,6 @@ int bm_resource_check_conflicts(const bm_resource_claim_t *const *claims,
                     BM_LOGW("resource", "coordinated mixed access kind=%u",
                             (unsigned)flat[i].kind);
                     return BM_ERR_BUSY;
-                }
-                if (flat[i].kind == flat[k].kind &&
-                    flat[i].key == flat[k].key &&
-                    flat[k].access == BM_RESOURCE_SHARED_COORDINATED) {
-                    coordinated_peer = 1;
-                }
-            }
-            if (!coordinated_peer && flat_count > 1u) {
-                for (k = 0u; k < flat_count; ++k) {
-                    if (i != k && flat[i].kind == flat[k].kind &&
-                        flat[i].key == flat[k].key) {
-                        break;
-                    }
                 }
             }
             if (flat[i].share_group == 0u) {

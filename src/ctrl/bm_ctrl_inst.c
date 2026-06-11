@@ -56,6 +56,10 @@ static uint32_t g_init_done_count;
  */
 static void bm_ctrl_run_binding(void *context) {
     const bm_ctrl_binding_t *binding = (const bm_ctrl_binding_t *)context;
+
+    if (!binding || !binding->slot || !binding->slot->step || !binding->instance) {
+        return;
+    }
     binding->slot->step(binding->instance);
 }
 
@@ -93,6 +97,28 @@ static void ctrl_unbind_all_hardware(void) {
             }
         }
     }
+}
+
+/**
+ * @brief 停止 HRT、安全停机、解绑硬件并清空运行时状态
+ */
+static void ctrl_teardown_session(void) {
+    uint32_t i;
+
+    bm_hrt_stop();
+
+    if (g_instance_count > 0u) {
+        for (i = g_instance_count; i > 0u; --i) {
+            const bm_ctrl_inst_t *inst = g_instances[i - 1u];
+            if (inst && inst->ops && inst->ops->safe_stop) {
+                inst->ops->safe_stop(inst);
+            }
+        }
+    }
+
+    ctrl_unbind_all_hardware();
+    bm_hrt_reset();
+    ctrl_clear_runtime();
 }
 
 /**
@@ -240,9 +266,7 @@ int bm_ctrl_init_all(const bm_ctrl_inst_t *const *instances, uint32_t count) {
     uint32_t s;
     int rc;
 
-    bm_hrt_stop();
-    bm_hrt_reset();
-    ctrl_clear_runtime();
+    ctrl_teardown_session();
 
     if (!instances || count == 0u || count > BM_CONFIG_MAX_CTRL_INSTANCES) {
         BM_LOGE("ctrl", "init_all invalid count=%u", (unsigned)count);
@@ -409,18 +433,13 @@ void bm_ctrl_safe_stop_all(const bm_ctrl_inst_t *const *instances,
                 inst->ops->safe_stop(inst);
             }
         }
-    } else if (g_instance_count > 0u) {
-        for (i = g_instance_count; i > 0u; --i) {
-            const bm_ctrl_inst_t *inst = g_instances[i - 1u];
-            if (inst && inst->ops && inst->ops->safe_stop) {
-                inst->ops->safe_stop(inst);
-            }
-        }
+        ctrl_unbind_all_hardware();
+        bm_hrt_reset();
+        ctrl_clear_runtime();
+    } else {
+        ctrl_teardown_session();
     }
 
-    ctrl_unbind_all_hardware();
-    bm_hrt_reset();
-    ctrl_clear_runtime();
     BM_LOGI("ctrl", "safe_stop_all done");
 }
 
