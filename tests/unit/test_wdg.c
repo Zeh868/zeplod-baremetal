@@ -54,6 +54,17 @@ void test_wdg_feed_at_tick_zero(void) {
     TEST_ASSERT_EQUAL(1u, bm_hal_wdg_native_get_feed_count());
 }
 
+void test_wdg_feed_expired_module_blocks_hw_feed(void) {
+    TEST_ASSERT_EQUAL(BM_OK, bm_wdg_register("stale"));
+
+    bm_hal_timer_native_reset_ticks();
+    bm_wdg_feed_module("stale");
+    bm_hal_timer_native_advance_ticks(1001u);
+    bm_wdg_feed();
+
+    TEST_ASSERT_EQUAL(0u, bm_hal_wdg_native_get_feed_count());
+}
+
 int main(void) {
     UNITY_BEGIN();
     RUN_TEST(test_wdg_register_rejects_null);
@@ -61,5 +72,6 @@ int main(void) {
     RUN_TEST(test_wdg_feed_module_null_safe);
     RUN_TEST(test_wdg_blocks_hw_feed_until_module_fed);
     RUN_TEST(test_wdg_feed_at_tick_zero);
+    RUN_TEST(test_wdg_feed_expired_module_blocks_hw_feed);
     return UNITY_END();
 }

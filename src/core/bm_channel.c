@@ -74,6 +74,11 @@ static uint32_t channel_count_locked(const bm_channel_t *ch) {
     return (w >= r) ? (w - r) : (ch->capacity - r + w);
 }
 
+/** 逻辑占用量上界：保留槽区分满/空，最大可存 capacity-1 */
+static int channel_logical_count_valid(const bm_channel_t *ch, uint32_t count) {
+    return count < ch->capacity ? BM_OK : BM_ERR_INVALID;
+}
+
 /**
  * @brief 重置 SPSC 通道读写索引
  *
@@ -112,6 +117,11 @@ int bm_channel_send(bm_channel_t *ch, const void *data) {
     bm_irq_state_t s = BM_CRITICAL_ENTER();
     if (channel_validate_indices(ch) != BM_OK) {
         BM_CRITICAL_EXIT(s);
+        return BM_ERR_INVALID;
+    }
+    if (channel_logical_count_valid(ch, channel_count_locked(ch)) != BM_OK) {
+        BM_CRITICAL_EXIT(s);
+        BM_LOGE("channel", "send corrupt occupancy");
         return BM_ERR_INVALID;
     }
 
@@ -163,6 +173,11 @@ int bm_channel_recv(bm_channel_t *ch, void *data) {
         BM_CRITICAL_EXIT(s);
         return BM_ERR_WOULD_BLOCK;
     }
+    if (channel_logical_count_valid(ch, channel_count_locked(ch)) != BM_OK) {
+        BM_CRITICAL_EXIT(s);
+        BM_LOGE("channel", "recv corrupt occupancy");
+        return BM_ERR_INVALID;
+    }
 
     {
         uint32_t offset = 0u;
@@ -192,6 +207,11 @@ uint32_t bm_channel_count(const bm_channel_t *ch) {
     }
     bm_irq_state_t s = BM_CRITICAL_ENTER();
     uint32_t count = channel_count_locked(ch);
+
+    if (channel_logical_count_valid(ch, count) != BM_OK) {
+        BM_CRITICAL_EXIT(s);
+        return 0u;
+    }
     BM_CRITICAL_EXIT(s);
     return count;
 }

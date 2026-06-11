@@ -59,6 +59,7 @@ static uint32_t             _prio_read[BM_CONFIG_EVENT_PRIORITIES];
 static uint32_t             _prio_write[BM_CONFIG_EVENT_PRIORITIES];
 static uint32_t             _next_subscriber_id = 1;
 static uint32_t             _queue_dropped = 0;
+static uint32_t             _dispatch_skipped = 0;
 static bm_dispatch_snap_t   _dispatch_snap[BM_CONFIG_MAX_EVENT_SUBSCRIBERS];
 
 static void _queue_item_copy(bm_queue_item_t *dst, const bm_queue_item_t *src) {
@@ -90,6 +91,7 @@ void bm_event_reset(void) {
     _prio_queues_reset();
     _next_subscriber_id = 1;
     _queue_dropped = 0;
+    _dispatch_skipped = 0;
     BM_CRITICAL_EXIT(s);
     BM_LOGI("event", "event bus reset");
 }
@@ -306,6 +308,13 @@ uint32_t bm_event_get_dropped_count(void) {
     return dropped;
 }
 
+uint32_t bm_event_get_dispatch_skipped_count(void) {
+    bm_irq_state_t s = BM_CRITICAL_ENTER();
+    uint32_t skipped = _dispatch_skipped;
+    BM_CRITICAL_EXIT(s);
+    return skipped;
+}
+
 int bm_event_process(uint32_t max_events) {
     uint32_t processed = 0u;
     uint32_t i;
@@ -320,15 +329,31 @@ int bm_event_process(uint32_t max_events) {
             break;
         }
 
+        if (item.event.type >= BM_CONFIG_MAX_EVENT_TYPES) {
+            BM_LOGE("event", "process invalid type=%u",
+                    (unsigned)item.event.type);
+            bm_irq_state_t s = BM_CRITICAL_ENTER();
+            _dispatch_skipped++;
+            BM_CRITICAL_EXIT(s);
+            processed++;
+            continue;
+        }
+
         {
             bm_irq_state_t s = BM_CRITICAL_ENTER();
             bm_subscriber_t *sub = _event_types[item.event.type].head;
 
-            while (sub && snap_count < BM_CONFIG_MAX_EVENT_SUBSCRIBERS) {
+            while (sub) {
                 if (sub->cb) {
-                    _dispatch_snap[snap_count].cb = sub->cb;
-                    _dispatch_snap[snap_count].user_data = sub->user_data;
-                    snap_count++;
+                    if (snap_count >= BM_CONFIG_MAX_EVENT_SUBSCRIBERS) {
+                        _dispatch_skipped++;
+                        BM_LOGW("event", "dispatch snap truncated type=%u",
+                                (unsigned)item.event.type);
+                    } else {
+                        _dispatch_snap[snap_count].cb = sub->cb;
+                        _dispatch_snap[snap_count].user_data = sub->user_data;
+                        snap_count++;
+                    }
                 }
                 sub = sub->next;
             }

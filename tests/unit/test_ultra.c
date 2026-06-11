@@ -45,6 +45,14 @@ void test_ultra_publish_and_process(void) {
     TEST_ASSERT_EQUAL(0, bm_ultra_event_count());
 }
 
+void test_ultra_rejects_invalid_event_type(void) {
+    uint8_t data = 1u;
+
+    TEST_ASSERT_EQUAL(BM_ERR_INVALID,
+                      bm_ultra_publish((bm_event_type_t)255, &data, 1u));
+    TEST_ASSERT_EQUAL(0u, bm_ultra_event_count());
+}
+
 void test_ultra_queue_overflow(void) {
     uint32_t dropped_before = bm_ultra_get_dropped_count();
 
@@ -66,6 +74,7 @@ void test_ultra_queue_overflow(void) {
 int main(void) {
     UNITY_BEGIN();
     RUN_TEST(test_ultra_publish_and_process);
+    RUN_TEST(test_ultra_rejects_invalid_event_type);
     RUN_TEST(test_ultra_queue_overflow);
     return UNITY_END();
 }

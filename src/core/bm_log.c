@@ -88,7 +88,8 @@ void bm_log(bm_log_level_t level, const char *tag, const char *fmt, ...) {
                                  sizeof(buf) - (size_t)prefix_len, fmt, ap);
 
         va_end(ap);
-        if (body_len < 0) {
+        if (body_len < 0 ||
+            (size_t)body_len >= sizeof(buf) - (size_t)prefix_len) {
             return;
         }
     }

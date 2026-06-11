@@ -45,6 +45,8 @@ int      bm_ultra_queue_pop(bm_ultra_queue_item_t *item);
 void     bm_ultra_queue_reset(void);
 uint32_t bm_ultra_get_dropped_count(void);
 uint8_t  bm_ultra_queue_count(void);
+uint8_t  bm_ultra_process(void);
+/** 仅调试只读；并发下可能撕裂，禁止在 ISR 与队列操作并行时读取 */
 const bm_ultra_queue_t *bm_ultra_queue_state(void);
 
 static inline void bm_ultra_init(void) {
@@ -55,6 +57,9 @@ static inline int bm_ultra_publish(bm_event_type_t type,
                                     const void *data, uint8_t len) {
     bm_ultra_queue_item_t item;
 
+    if (type >= BM_CONFIG_ULTRA_MAX_EVENT_TYPES) {
+        return BM_ERR_INVALID;
+    }
     if (len > BM_CONFIG_ULTRA_MAX_EVENT_DATA_SIZE) {
         return BM_ERR_NO_MEM;
     }
@@ -77,19 +82,5 @@ static inline uint8_t bm_ultra_event_count(void) {
 }
 
 extern const bm_ultra_callback_t _bm_ultra_callbacks[BM_CONFIG_ULTRA_MAX_EVENT_TYPES];
-
-static inline uint8_t bm_ultra_process(void) {
-    bm_ultra_queue_item_t item;
-    bm_ultra_callback_t cb;
-
-    if (bm_ultra_queue_pop(&item) != BM_OK) {
-        return 0u;
-    }
-    cb = _bm_ultra_callbacks[item.event_type];
-    if (cb != NULL) {
-        cb(item.data, item.data_len);
-    }
-    return 1u;
-}
 
 #endif /* BM_ULTRA_H */

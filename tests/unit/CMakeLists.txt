@@ -13,6 +13,8 @@ function(bm_add_test TEST_NAME TEST_SRC TEST_LIBRARY)
 endfunction()
 
 bm_add_test(test_skeleton test_skeleton.c bm_core)
+bm_add_test(test_critical test_critical.c bm_core)
+bm_add_test(test_log test_log.c bm_core)
 bm_add_test(test_ultra test_ultra.c bm_core)
 bm_add_test(test_mempool test_mempool.c bm_core)
 bm_add_test(test_event test_event.c bm_core)

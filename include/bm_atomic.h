@@ -2,6 +2,7 @@
  * @file bm_atomic.h
  * @brief 原子变量读写操作
  *
+ * 单核裸机下通过关中断实现；不适用于 SMP。
  * 提供对 bm_atomic_t 类型的加载、存储与自增接口。
  * @author zeh (china_qzh@163.com)
  * @version 1.0

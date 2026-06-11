@@ -118,6 +118,8 @@ int bm_event_publish_event_from_isr(const bm_event_t *event);
 /**
  * @brief 从队列取出并分发事件
  *
+ * 回调内禁止 subscribe/unsubscribe/publish/reset（非重入）。
+ *
  * @param max_events 本次最多处理的事件条数
  * @return 实际处理的事件条数
  */
@@ -129,5 +131,12 @@ int bm_event_process(uint32_t max_events);
  * @return 丢弃计数（reset 后清零）
  */
 uint32_t bm_event_get_dropped_count(void);
+
+/**
+ * @brief 查询分发阶段因无效类型或快照截断而跳过的次数
+ *
+ * @return 跳过计数（reset 后清零）
+ */
+uint32_t bm_event_get_dispatch_skipped_count(void);
 
 #endif /* BM_EVENT_H */

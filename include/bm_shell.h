@@ -71,7 +71,9 @@ int bm_shell_register(bm_shell_t *shell, const char *name,
                       bm_shell_cmd_fn_t fn, const char *help);
 
 /**
- * @brief 喂入单个字符（如 UART ISR），完整行到达时立即执行
+ * @brief 喂入单个字符，完整行到达时立即执行
+ *
+ * 非 ISR 安全；仅从主循环或 bm_shell_poll 调用。
  *
  * @param shell Shell 实例指针
  * @param c 输入字符

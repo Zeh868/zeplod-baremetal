@@ -7,6 +7,11 @@
 
 #include <string.h>
 
+#if BM_CONFIG_ULTRA_QUEUE_DEPTH < 2 || \
+    ((BM_CONFIG_ULTRA_QUEUE_DEPTH & (BM_CONFIG_ULTRA_QUEUE_DEPTH - 1)) != 0)
+#error "BM_CONFIG_ULTRA_QUEUE_DEPTH must be a power of two and at least 2"
+#endif
+
 static bm_ultra_queue_t _bm_ultra_q;
 static uint32_t         _bm_ultra_dropped;
 
@@ -98,4 +103,21 @@ uint8_t bm_ultra_queue_count(void) {
 
 const bm_ultra_queue_t *bm_ultra_queue_state(void) {
     return &_bm_ultra_q;
+}
+
+uint8_t bm_ultra_process(void) {
+    bm_ultra_queue_item_t item;
+    bm_ultra_callback_t cb;
+
+    if (bm_ultra_queue_pop(&item) != BM_OK) {
+        return 0u;
+    }
+    if (item.event_type >= BM_CONFIG_ULTRA_MAX_EVENT_TYPES) {
+        return 1u;
+    }
+    cb = _bm_ultra_callbacks[item.event_type];
+    if (cb != NULL) {
+        cb(item.data, item.data_len);
+    }
+    return 1u;
 }
