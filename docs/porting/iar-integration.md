@@ -28,9 +28,9 @@ src/core/bm_mempool.c
 Optional sources:
 
 ```text
-src/module/bm_module.c
-src/channel/bm_channel.c
-src/shell/bm_shell.c
+src/core/bm_module.c
+src/core/bm_channel.c
+src/core/bm_shell.c
 src/core/bm_wdg.c
 ```
 

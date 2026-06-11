@@ -10,7 +10,7 @@ BM_SRCS := \
     $(BM_ROOT)/src/core/bm_critical.c
 
 ifeq ($(BM_ENABLE_MODULE),1)
-    BM_SRCS += $(BM_ROOT)/src/module/bm_module.c
+    BM_SRCS += $(BM_ROOT)/src/core/bm_module.c
 endif
 
 ifeq ($(BM_ENABLE_WDG),1)
@@ -18,11 +18,11 @@ ifeq ($(BM_ENABLE_WDG),1)
 endif
 
 ifeq ($(BM_ENABLE_CHANNEL),1)
-    BM_SRCS += $(BM_ROOT)/src/channel/bm_channel.c
+    BM_SRCS += $(BM_ROOT)/src/core/bm_channel.c
 endif
 
 ifeq ($(BM_ENABLE_SHELL),1)
-    BM_SRCS += $(BM_ROOT)/src/shell/bm_shell.c
+    BM_SRCS += $(BM_ROOT)/src/core/bm_shell.c
 endif
 
 ifdef BM_CONFIG_H

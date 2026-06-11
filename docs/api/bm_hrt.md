@@ -1,7 +1,7 @@
 # bm_hrt — 高分辨率定时调度器
 
 头文件：`include/bm_hrt.h`  
-实现：`src/hrt/bm_hrt.c`
+实现：`src/hybrid/bm_hrt.c`
 
 ## 概述
 

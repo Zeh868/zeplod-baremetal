@@ -47,7 +47,7 @@ set(QEMU_CM0_HAL_SRCS
 )
 
 set(BM_HYBRID_SRCS
-    ${BM_ROOT}/src/hrt/bm_hrt.c
+    ${BM_ROOT}/src/hybrid/bm_hrt.c
 )
 
 add_executable(qemu_smoke_cm0.elf

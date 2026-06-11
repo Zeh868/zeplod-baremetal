@@ -34,9 +34,9 @@ src/core/bm_mempool.c
 Add optional components only when used:
 
 ```text
-src/module/bm_module.c
-src/channel/bm_channel.c
-src/shell/bm_shell.c
+src/core/bm_module.c
+src/core/bm_channel.c
+src/core/bm_shell.c
 src/core/bm_wdg.c
 ```
 

@@ -9,6 +9,8 @@
 ```text
 include/bm_hal_*.h     统一接口契约（所有外设）
 src/hal/               默认弱符号空桩（链接时可被覆盖）
+src/core/              SRT 核心与可选组件（event、mempool、module、channel、shell 等）
+src/hybrid/            混合域（hrt、ticker、ctrl_inst、resource、sync）
 hal_reference/         精选平台参考实现
 ```
 

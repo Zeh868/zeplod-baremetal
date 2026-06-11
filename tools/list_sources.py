@@ -10,10 +10,11 @@ COMPONENTS = {
         "src/core/bm_critical.c",
         "src/core/bm_event.c",
         "src/core/bm_mempool.c",
+        "src/core/bm_log.c",
     ],
-    "module": ["src/module/bm_module.c"],
-    "channel": ["src/channel/bm_channel.c"],
-    "shell": ["src/shell/bm_shell.c"],
+    "module": ["src/core/bm_module.c"],
+    "channel": ["src/core/bm_channel.c"],
+    "shell": ["src/core/bm_shell.c"],
     "wdg": ["src/core/bm_wdg.c"],
 }
 

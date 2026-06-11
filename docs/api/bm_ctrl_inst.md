@@ -1,7 +1,7 @@
 # bm_ctrl_inst — 控制实例与批量生命周期
 
 头文件：`include/bm_ctrl_inst.h`  
-实现：`src/ctrl/bm_ctrl_inst.c`
+实现：`src/hybrid/bm_ctrl_inst.c`
 
 ## 概述
 

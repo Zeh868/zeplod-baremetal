@@ -28,6 +28,14 @@ Component headers depend on `bm_types.h`, not on the complete core API. This
 keeps compile-time dependencies explicit and prevents HAL headers from
 depending back on the framework umbrella.
 
+## Source Layout
+
+```text
+src/core/    SRT framework and optional components (module, channel, shell, wdg)
+src/hybrid/  HRT scheduler, ticker, multi-instance control, sync domain
+src/hal/     weak HAL stubs overridden by platform ports
+```
+
 ## CMake Targets
 
 - `bm_core`: mandatory event, memory pool, and critical-section code.
