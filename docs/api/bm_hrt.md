@@ -33,7 +33,7 @@ HRT（High-Resolution Timer）管理微秒级周期 slot，支持定时器、PWM
 
 ### `bm_hrt_deadline_missed_hook(slot)`
 
-弱符号钩子，slot 错过 deadline 时在 ISR 中调用。默认空实现；覆盖实现必须有界且不得记录日志。
+弱符号钩子，slot 错过 deadline 时在 ISR 中调用。默认空实现（`BM_CONFIG_HRT_DEADLINE_MISS_LOG=1` 时弱实现可打错误日志）；应用覆盖时必须有界，且不应在 ISR 中做重逻辑或阻塞。
 
 ### `bm_hrt_get_deadline_missed(slot_index)` / `bm_hrt_get_deadline_missed_total()`
 

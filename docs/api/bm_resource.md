@@ -36,14 +36,16 @@
 
 ### `bm_resource_check_conflicts(claims, claim_counts, instance_count)`
 
-`claims[i]` 指向第 i 个实例的声明数组，`claim_counts[i]` 为条数。  
-返回：`BM_OK` 无冲突；`BM_ERR_INVALID` 参数错误；`BM_ERR_BUSY` 等资源冲突码。
+`claims[i]` 指向第 i 个实例的声明数组，`claim_counts[i]` 为条数（单实例 ≤ `BM_CONFIG_MAX_RESOURCE_CLAIMS`，总展平条数有界）。  
+返回：`BM_OK` 无冲突；`BM_ERR_INVALID`（NULL、枚举越界、条数超限）；`BM_ERR_BUSY` 等资源冲突码。
 
 ## 规则摘要
 
 1. 同一 `kind + key` 最多一个 `EXCLUSIVE` 或 `OWNER`。
 2. `SHARED_READ` 要求同 `share_group` 恰好一个 `OWNER`。
 3. `EXCLUSIVE` 与任何其他模式在同 key 上互斥。
+4. `SHARED_READ` 与 `SHARED_READ` 可共存；`SHARED_COORDINATED` 仅与同 `share_group` 的另一 `SHARED_COORDINATED` 兼容。
+5. `kind` / `access` 须在枚举定义界内，否则 `BM_ERR_INVALID`。
 
 ## 示例
 

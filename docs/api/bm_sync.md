@@ -34,7 +34,7 @@ HAL 失败时立即执行 safe-stop 并清除活动域。
 
 ### `bm_sync_trigger(domain)`
 
-触发同步域，按 `phase_ticks` 依次启动各成员 slot。  
+触发同步域，按 `phase_ticks` 释放各成员硬件相位（one-shot：成功后清除 armed，重复触发须先 `arm`）。  
 QEMU 参考 HAL 在 `trigger` 时同步执行成员 `step`（仿真用）。
 HAL 失败时立即执行 safe-stop，后续必须重新 configure。
 
@@ -42,13 +42,19 @@ HAL 失败时立即执行 safe-stop，后续必须重新 configure。
 
 安全停止并复位 HAL 状态。
 
+## 框架层校验
+
+- `member_count` ≤ `BM_CONFIG_MAX_SYNC_MEMBERS`
+- 各 `phase_ticks[i]` ≤ `BM_CONFIG_SYNC_MAX_PHASE_TICKS`
+- `members[i]` 非 NULL
+
 ## 生命周期
 
-```
-configure → arm → trigger (可重复) → safe_stop
+```text
+configure → arm → trigger → （须 re-arm 才能再次 trigger）→ safe_stop
 ```
 
-须在 `bm_ctrl_start_all` 之后、`trigger` 之前完成 `configure` 与 `arm`。
+`configure` / `arm` 可在 `bm_ctrl_start_all` 之前或之后完成；`trigger` 通常在 `start_all` 之后（Scheduled 槽依赖 HRT 已启动）。示例见 `examples/multi_axis_sync`。
 
 ## 平台实现
 

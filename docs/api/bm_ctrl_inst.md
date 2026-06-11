@@ -27,8 +27,9 @@
 ### `bm_ctrl_start_all(instances, count)`
 
 实例初始化阶段已完成资源冲突检查和 HRT slot 注册；本 API 依次调用
-`ops->start`，全部成功后开放会话门并启动 Scheduled HRT。失败时关闭
-会话门、解绑 Hardware slot，并逆序 `safe_stop`。
+`ops->start`，**全部成功后再** `bm_hrt_start`（若存在 Scheduled 槽）并开放会话门（`STARTED`）。在此之前 Hardware / Scheduled `step` 均被忽略。失败时 `ctrl_abort_session`：关闭会话门、解绑 Hardware、逆序 `safe_stop`。
+
+`instances` 数组元素不得为 NULL，且须与 `init_all` 时指针一致；`slot_count` 不得超过 `BM_CONFIG_MAX_CTRL_SLOTS`。
 
 ### `bm_ctrl_safe_stop_all(instances, count)`
 

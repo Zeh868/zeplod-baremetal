@@ -30,6 +30,7 @@
 
 ## 专题
 
+- [api/](api/) — 混合域公共头文件 API 参考（`bm_hrt`、`bm_ctrl_inst`、`bm_sync` 等）
 - [architecture.md](architecture.md) — 英文架构摘要
 - [porting/](porting/) — Keil / IAR 附录
 - [reports/](reports/) — 硬件验证报告
