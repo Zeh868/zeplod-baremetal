@@ -12,6 +12,10 @@
 #error "BM_CONFIG_ULTRA_QUEUE_DEPTH must be a power of two and at least 2"
 #endif
 
+#if BM_CONFIG_ULTRA_QUEUE_DEPTH > 256
+#error "BM_CONFIG_ULTRA_QUEUE_DEPTH must not exceed 256 with uint8_t indices"
+#endif
+
 static bm_ultra_queue_t _bm_ultra_q;
 static uint32_t         _bm_ultra_dropped;
 static uint32_t         _bm_ultra_dispatch_skipped;
@@ -30,6 +34,9 @@ int bm_ultra_queue_push(const bm_ultra_queue_item_t *item) {
         return BM_ERR_INVALID;
     }
     if (item->event_type >= BM_CONFIG_ULTRA_MAX_EVENT_TYPES) {
+        return BM_ERR_INVALID;
+    }
+    if (item->data_len > BM_CONFIG_ULTRA_MAX_EVENT_DATA_SIZE) {
         return BM_ERR_INVALID;
     }
 

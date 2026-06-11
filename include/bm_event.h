@@ -57,7 +57,8 @@ int bm_event_register_type(bm_event_type_t type, const char *name);
  * @param cb 回调函数
  * @param user_data 用户上下文指针
  * @param id 输出订阅者句柄（可为 NULL）
- * @return BM_OK 成功；BM_ERR_NO_MEM 订阅表已满；BM_ERR_INVALID 参数无效
+ * @return BM_OK 成功；BM_ERR_NOT_INIT 类型未注册；BM_ERR_BUSY 回调分发中；
+ *         BM_ERR_NO_MEM 订阅表已满；BM_ERR_INVALID 参数无效
  */
 int bm_event_subscribe(bm_event_type_t type, bm_event_callback_t cb,
                        void *user_data, bm_event_subscriber_id_t *id);
@@ -78,7 +79,8 @@ int bm_event_unsubscribe(bm_event_type_t type, bm_event_subscriber_id_t id);
  * @param prio 事件优先级
  * @param data 载荷数据指针
  * @param len 载荷字节长度
- * @return BM_OK 成功；BM_ERR_OVERFLOW 队列已满；BM_ERR_INVALID 参数无效
+ * @return BM_OK 成功；BM_ERR_NOT_INIT 类型未注册；BM_ERR_BUSY 回调分发中；
+ *         BM_ERR_OVERFLOW 队列已满；BM_ERR_INVALID 参数无效
  */
 int bm_event_publish_copy(bm_event_type_t type, bm_event_priority_t prio,
                           const void *data, size_t len);
@@ -118,10 +120,11 @@ int bm_event_publish_event_from_isr(const bm_event_t *event);
 /**
  * @brief 从队列取出并分发事件
  *
- * 回调内禁止 subscribe/unsubscribe/publish/reset（非重入）。
+ * 回调内调用 subscribe/unsubscribe/常规 publish/process 会返回 BM_ERR_BUSY；
+ * reset 会被拒绝并计入重入拒绝计数。ISR 必须使用 from_isr 发布 API。
  *
  * @param max_events 本次最多处理的事件条数
- * @return 实际处理的事件条数
+ * @return 实际处理的事件条数；回调重入时返回 BM_ERR_BUSY
  */
 int bm_event_process(uint32_t max_events);
 
@@ -138,6 +141,13 @@ uint32_t bm_event_get_dropped_count(void);
  * @return 跳过计数（reset 后清零）
  */
 uint32_t bm_event_get_dispatch_skipped_count(void);
+
+/**
+ * @brief 查询回调分发期间被重入保护拒绝的 API 调用次数
+ *
+ * @return 最近一次成功 reset 后的拒绝次数
+ */
+uint32_t bm_event_get_reentrancy_rejected_count(void);
 
 #ifdef BM_ENABLE_EVENT_TEST_HOOK
 /** 单元测试专用：绕过发布校验向队列注入事件（生产固件勿定义此宏） */

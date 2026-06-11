@@ -29,6 +29,7 @@
 #define BM_CONFIG_EVENT_QUEUE_SIZE          16
 #define BM_CONFIG_EVENT_PRIORITIES          4
 #define BM_CONFIG_EVENT_INLINE_DATA_SIZE     8
+#define BM_CONFIG_EVENT_PRIORITY_BURST_MAX   8
 /* EVENT_QUEUE_SIZE 须能被 EVENT_PRIORITIES 整除，且商为 2 的幂 */
 
 /* Optional components */
@@ -36,6 +37,7 @@
 #define BM_CONFIG_SHELL_BUF_SIZE            64
 #define BM_CONFIG_SHELL_MAX_ARGS             4
 #define BM_CONFIG_SHELL_MAX_CMDS             8
+#define BM_CONFIG_SHELL_MAX_NAME_LEN         16
 #define BM_CONFIG_MAX_WDG_MODULES            4
 #define BM_CONFIG_WDG_MODULE_TIMEOUT_MS      1000
 
@@ -45,7 +47,9 @@
 #define BM_CONFIG_ULTRA_MAX_EVENT_DATA_SIZE  8
 
 /* Hybrid domain (optional) */
+#ifndef BM_CONFIG_ENABLE_PRIORITY_MASK
 #define BM_CONFIG_ENABLE_PRIORITY_MASK       0
+#endif
 #define BM_CONFIG_HRT_PRIORITY_THRESHOLD     4
 #define BM_CONFIG_HRT_TICK_US                100
 #define BM_CONFIG_HRT_MAX_SLOTS              16

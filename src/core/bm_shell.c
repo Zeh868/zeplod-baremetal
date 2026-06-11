@@ -67,13 +67,21 @@ void bm_shell_init(bm_shell_t *shell) {
  */
 int bm_shell_register(bm_shell_t *shell, const char *name,
                       bm_shell_cmd_fn_t fn, const char *help) {
+    size_t name_len;
+
     if (!shell || !name || !fn) return BM_ERR_INVALID;
+    name_len = strlen(name);
+    if (name_len == 0u || name_len >= BM_CONFIG_SHELL_MAX_NAME_LEN) {
+        return BM_ERR_INVALID;
+    }
     if (shell->cmd_count >= BM_CONFIG_SHELL_MAX_CMDS) {
         BM_LOGW("shell", "register table full");
         return BM_ERR_NO_MEM;
     }
 
-    shell->cmds[shell->cmd_count].name = name;
+    memcpy(shell->cmd_names[shell->cmd_count], name, name_len + 1u);
+    shell->cmds[shell->cmd_count].name =
+        shell->cmd_names[shell->cmd_count];
     shell->cmds[shell->cmd_count].fn = fn;
     shell->cmds[shell->cmd_count].help = help;
     shell->cmd_count++;
@@ -92,11 +100,17 @@ int bm_shell_register(bm_shell_t *shell, const char *name,
 static int _tokenize(char *line, char *argv[], int max_argv) {
     int argc = 0;
     char *p = line;
-    while (*p && argc < max_argv) {
+    while (*p) {
         while (*p == ' ' || *p == '\t') *p++ = '\0';
         if (!*p) break;
+        if (argc >= max_argv) {
+            return -1;
+        }
         argv[argc++] = p;
         while (*p && *p != ' ' && *p != '\t') p++;
+        if (*p) {
+            *p++ = '\0';
+        }
     }
     return argc;
 }
@@ -113,12 +127,12 @@ int bm_shell_exec(bm_shell_t *shell, char *line) {
 
     char *argv[BM_CONFIG_SHELL_MAX_ARGS];
     int argc = _tokenize(line, argv, BM_CONFIG_SHELL_MAX_ARGS);
-    if (argc == 0) {
-        return BM_OK;
-    }
-    if (argc >= BM_CONFIG_SHELL_MAX_ARGS) {
+    if (argc < 0) {
         BM_LOGW("shell", "too many arguments");
         return BM_ERR_INVALID;
+    }
+    if (argc == 0) {
+        return BM_OK;
     }
     if (shell->cmd_count > BM_CONFIG_SHELL_MAX_CMDS) {
         return BM_ERR_INVALID;

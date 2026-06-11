@@ -56,6 +56,12 @@ void test_ultra_rejects_invalid_event_type(void) {
     TEST_ASSERT_EQUAL(0u, bm_ultra_event_count());
 }
 
+void test_ultra_rejects_null_payload(void) {
+    TEST_ASSERT_EQUAL(BM_ERR_INVALID,
+                      bm_ultra_publish(EVENT_TEST, NULL, 1u));
+    TEST_ASSERT_EQUAL(0u, bm_ultra_event_count());
+}
+
 void test_ultra_dispatch_skipped_invalid_type(void) {
     bm_ultra_queue_item_t bad = { .event_type = 255u, .data_len = 0u };
 
@@ -96,6 +102,7 @@ int main(void) {
     UNITY_BEGIN();
     RUN_TEST(test_ultra_publish_and_process);
     RUN_TEST(test_ultra_rejects_invalid_event_type);
+    RUN_TEST(test_ultra_rejects_null_payload);
     RUN_TEST(test_ultra_dispatch_skipped_invalid_type);
     RUN_TEST(test_ultra_dispatch_skipped_corrupt_queue);
     RUN_TEST(test_ultra_queue_overflow);

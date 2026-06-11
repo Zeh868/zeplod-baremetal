@@ -20,6 +20,9 @@ static bm_event_t g_last_event;
 static uint16_t g_last_data = 0;
 static uint8_t g_seen_data[4];
 static bm_event_type_t g_seen_types[4];
+static int g_reentrant_publish_rc;
+static int g_reentrant_subscribe_rc;
+static int g_reentrant_process_rc;
 
 #define EVENT_TEST 1
 #define EVENT_HIGH 2
@@ -38,6 +41,17 @@ static void test_cb(const bm_event_t *ev, void *user_data) {
     g_last_event.data = NULL;
 }
 
+static void reentrant_cb(const bm_event_t *ev, void *user_data) {
+    (void)ev;
+    (void)user_data;
+    g_reentrant_publish_rc =
+        bm_event_publish_copy(EVENT_TEST, 0u, NULL, 0u);
+    g_reentrant_subscribe_rc =
+        bm_event_subscribe(EVENT_TEST, test_cb, &g_count, NULL);
+    bm_event_reset();
+    g_reentrant_process_rc = bm_event_process(1u);
+}
+
 void setUp(void) {
     BM_LOGI("test_evt", "setUp: reset event subsystem");
     bm_event_reset();
@@ -46,6 +60,9 @@ void setUp(void) {
     memset(&g_last_event, 0, sizeof(g_last_event));
     memset(g_seen_data, 0, sizeof(g_seen_data));
     memset(g_seen_types, 0, sizeof(g_seen_types));
+    g_reentrant_publish_rc = BM_OK;
+    g_reentrant_subscribe_rc = BM_OK;
+    g_reentrant_process_rc = BM_OK;
 }
 void tearDown(void) {}
 
@@ -125,11 +142,60 @@ void test_event_priority_reorder_preserves_inline_data(void) {
 
 void test_event_queue_overflow_counts_dropped(void) {
     uint32_t i = 0u;
+    TEST_ASSERT_EQUAL(BM_OK, bm_event_register_type(EVENT_TEST, "TEST"));
     while (bm_event_publish_copy(EVENT_TEST, 0, NULL, 0u) == BM_OK) {
         i++;
     }
     TEST_ASSERT_GREATER_THAN(0u, i);
     TEST_ASSERT_GREATER_THAN(0u, bm_event_get_dropped_count());
+}
+
+void test_event_requires_registered_type(void) {
+    TEST_ASSERT_EQUAL(BM_ERR_NOT_INIT,
+        bm_event_subscribe(EVENT_TEST, test_cb, &g_count, NULL));
+    TEST_ASSERT_EQUAL(BM_ERR_NOT_INIT,
+        bm_event_publish_copy(EVENT_TEST, 0u, NULL, 0u));
+}
+
+void test_event_rejects_callback_reentrancy(void) {
+    TEST_ASSERT_EQUAL(BM_OK, bm_event_register_type(EVENT_TEST, "TEST"));
+    TEST_ASSERT_EQUAL(BM_OK,
+        bm_event_subscribe(EVENT_TEST, reentrant_cb, NULL, NULL));
+    TEST_ASSERT_EQUAL(BM_OK,
+        bm_event_publish_copy(EVENT_TEST, 0u, NULL, 0u));
+
+    TEST_ASSERT_EQUAL(1, bm_event_process(1u));
+    TEST_ASSERT_EQUAL(BM_ERR_BUSY, g_reentrant_publish_rc);
+    TEST_ASSERT_EQUAL(BM_ERR_BUSY, g_reentrant_subscribe_rc);
+    TEST_ASSERT_EQUAL(BM_ERR_BUSY, g_reentrant_process_rc);
+    TEST_ASSERT_EQUAL(4u, bm_event_get_reentrancy_rejected_count());
+    TEST_ASSERT_EQUAL(BM_OK,
+        bm_event_publish_copy(EVENT_TEST, 0u, NULL, 0u));
+}
+
+void test_event_priority_fairness_bound(void) {
+    uint32_t i;
+
+    TEST_ASSERT_EQUAL(BM_OK, bm_event_register_type(EVENT_TEST, "LOW"));
+    TEST_ASSERT_EQUAL(BM_OK, bm_event_register_type(EVENT_HIGH, "HIGH"));
+    TEST_ASSERT_EQUAL(BM_OK,
+        bm_event_subscribe(EVENT_TEST, test_cb, &g_count, NULL));
+    TEST_ASSERT_EQUAL(BM_OK,
+        bm_event_subscribe(EVENT_HIGH, test_cb, &g_count, NULL));
+    TEST_ASSERT_EQUAL(BM_OK,
+        bm_event_publish_copy(EVENT_TEST, 3u, NULL, 0u));
+
+    for (i = 0u; i < BM_CONFIG_EVENT_PRIORITY_BURST_MAX; i++) {
+        TEST_ASSERT_EQUAL(BM_OK,
+            bm_event_publish_copy(EVENT_HIGH, 0u, NULL, 0u));
+        TEST_ASSERT_EQUAL(1, bm_event_process(1u));
+        TEST_ASSERT_EQUAL(EVENT_HIGH, g_last_event.type);
+    }
+
+    TEST_ASSERT_EQUAL(BM_OK,
+        bm_event_publish_copy(EVENT_HIGH, 0u, NULL, 0u));
+    TEST_ASSERT_EQUAL(1, bm_event_process(1u));
+    TEST_ASSERT_EQUAL(EVENT_TEST, g_last_event.type);
 }
 
 void test_event_register_type_rejects_duplicate(void) {
@@ -180,6 +246,9 @@ int main(void) {
     RUN_TEST(test_event_priority_reorder_preserves_inline_data);
     RUN_TEST(test_event_rejects_invalid_payload_and_priority);
     RUN_TEST(test_event_queue_overflow_counts_dropped);
+    RUN_TEST(test_event_requires_registered_type);
+    RUN_TEST(test_event_rejects_callback_reentrancy);
+    RUN_TEST(test_event_priority_fairness_bound);
     RUN_TEST(test_event_dispatch_skipped_invalid_type);
     RUN_TEST(test_event_register_type_rejects_duplicate);
     RUN_TEST(test_event_subscribe_null_id);

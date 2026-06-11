@@ -65,6 +65,9 @@ static int mempool_pool_end(const bm_mempool_t *pool, uintptr_t *end_out) {
  * @return 对象指针；失败返回 NULL
  */
 void *bm_mempool_alloc(bm_mempool_t *pool) {
+    void *obj = NULL;
+    uint32_t allocated_idx = 0u;
+
     if (mempool_validate_pool(pool) != BM_OK) {
         BM_LOGE("mempool", "alloc invalid pool");
         return NULL;
@@ -79,12 +82,14 @@ void *bm_mempool_alloc(bm_mempool_t *pool) {
                     if (idx >= pool->count) {
                         break;
                     }
-                    void *obj = (uint8_t *)pool->pool + idx * pool->obj_size;
 
                     pool->bitmap[w] |= (1U << b);
-                    memset(obj, 0, pool->obj_size);
+                    obj = (uint8_t *)pool->pool + idx * pool->obj_size;
+                    allocated_idx = idx;
                     BM_CRITICAL_EXIT(s);
-                    BM_LOGT("mempool", "alloc slot %u", (unsigned)idx);
+                    memset(obj, 0, pool->obj_size);
+                    BM_LOGT("mempool", "alloc slot %u",
+                            (unsigned)allocated_idx);
                     return obj;
                 }
             }

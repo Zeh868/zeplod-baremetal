@@ -64,6 +64,9 @@ static inline int bm_ultra_publish(bm_event_type_t type,
     if (len > BM_CONFIG_ULTRA_MAX_EVENT_DATA_SIZE) {
         return BM_ERR_NO_MEM;
     }
+    if (len > 0u && data == NULL) {
+        return BM_ERR_INVALID;
+    }
     item.event_type = type;
     item.data_len = len;
     if (len > 0u && data != NULL) {

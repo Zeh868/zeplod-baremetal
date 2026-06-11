@@ -60,6 +60,8 @@ void test_module_init_failure_rollback(void) {
     TEST_ASSERT_EQUAL(BM_ERR_INVALID, bm_module_init_all());
     TEST_ASSERT_EQUAL(2, g_init_count);
     TEST_ASSERT_EQUAL(1, g_deinit_count);
+    TEST_ASSERT_EQUAL(BM_OK, bm_module_deinit_all());
+    TEST_ASSERT_EQUAL(1, g_deinit_count);
 }
 
 void test_module_start_failure_rollback(void) {

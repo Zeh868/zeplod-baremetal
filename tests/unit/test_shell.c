@@ -97,6 +97,24 @@ void test_shell_too_many_args_rejected(void) {
     TEST_ASSERT_EQUAL(BM_ERR_INVALID, bm_shell_exec(&my_shell, line));
 }
 
+void test_shell_accepts_exact_argument_limit(void) {
+    char line[] = "echo a b c";
+
+    TEST_ASSERT_EQUAL(BM_OK, bm_shell_register(&my_shell, "echo", cmd_echo, NULL));
+    TEST_ASSERT_EQUAL(BM_OK, bm_shell_exec(&my_shell, line));
+    TEST_ASSERT_EQUAL(BM_CONFIG_SHELL_MAX_ARGS, g_last_argc);
+}
+
+void test_shell_copies_command_name(void) {
+    char name[] = "echo";
+    char line[] = "echo";
+
+    TEST_ASSERT_EQUAL(BM_OK, bm_shell_register(&my_shell, name, cmd_echo, NULL));
+    name[0] = 'x';
+    TEST_ASSERT_EQUAL(BM_OK, bm_shell_exec(&my_shell, line));
+    TEST_ASSERT_EQUAL(1, g_cmd_count);
+}
+
 void test_shell_feed_backspace(void) {
     TEST_ASSERT_EQUAL(BM_OK, bm_shell_register(&my_shell, "echo", cmd_echo, NULL));
 
@@ -121,5 +139,7 @@ int main(void) {
     RUN_TEST(test_shell_feed_crlf);
     RUN_TEST(test_shell_feed_backspace);
     RUN_TEST(test_shell_too_many_args_rejected);
+    RUN_TEST(test_shell_accepts_exact_argument_limit);
+    RUN_TEST(test_shell_copies_command_name);
     return UNITY_END();
 }

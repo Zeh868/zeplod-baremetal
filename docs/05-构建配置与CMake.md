@@ -63,11 +63,13 @@ target_link_libraries(my_app PRIVATE bm_hal_native bm_framework)
 #define BM_CONFIG_MAX_EVENT_SUBSCRIBERS     32
 #define BM_CONFIG_EVENT_QUEUE_SIZE          16
 #define BM_CONFIG_EVENT_PRIORITIES          4
+#define BM_CONFIG_EVENT_PRIORITY_BURST_MAX   8
 
 /* 模块 / Shell / 看门狗 */
 #define BM_CONFIG_MAX_MODULES                8
 #define BM_CONFIG_SHELL_BUF_SIZE            64
 #define BM_CONFIG_SHELL_MAX_ARGS             4
+#define BM_CONFIG_SHELL_MAX_NAME_LEN         16
 #define BM_CONFIG_WDG_MODULE_TIMEOUT_MS   1000
 
 /* 混合域 */

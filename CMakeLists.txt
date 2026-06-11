@@ -4,6 +4,8 @@ project(zeplod-baremetal C ASM)
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 
+add_compile_options("$<$<C_COMPILER_ID:MSVC>:/utf-8>")
+
 option(BM_ENABLE_MODULE "Enable bm-module" ON)
 option(BM_ENABLE_CHANNEL "Enable bm-channel" OFF)
 option(BM_ENABLE_SHELL "Enable bm-shell" OFF)

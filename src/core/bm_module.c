@@ -186,7 +186,8 @@ int bm_module_deinit_all(void) {
     int rc = BM_OK;
 
     for (int i = (int)_module_count - 1; i >= 0; i--) {
-        if (_modules[i].deinit) {
+        if (_modules[i].state != BM_MODULE_STATE_UNINIT &&
+            _modules[i].deinit) {
             int r = _modules[i].deinit();
             if (r != BM_OK) {
                 rc = r;
