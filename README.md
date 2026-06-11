@@ -143,10 +143,11 @@ zeplod-baremetal/
 │   ├── unit/             # Unity-based unit tests (PC native)
 │   └── qemu/             # QEMU smoke tests
 ├── docs/
-│   ├── architecture.md   # Framework architecture overview
+│   ├── README.md         # Doc index (00–09 guides)
+│   ├── 00-快速开始.md … 09-安全与可靠性.md
+│   ├── architecture.md   # Framework architecture overview (English)
 │   ├── api/              # API reference docs
-│   ├── migration/        # Migration guides (ultra→core→zephyr)
-│   └── porting/          # HAL porting and IDE integration guides
+│   └── porting/          # Keil / IAR toolchain appendices
 ├── CMakeLists.txt        # CMake build (32-bit mainstream)
 └── Makefile              # Pure Makefile (8-bit toolchain friendly)
 ```
@@ -251,7 +252,7 @@ Zeplod Baremetal is designed as the bottom layer of a three-tier robot/electroni
 - **Core → Core+Module**: Scatter-gather logic is wrapped into modules with lifecycle management.
 - **Baremetal → Zephyr**: Module code is largely reusable; event API semantics are aligned. `bm-channel` must be replaced with Zeplod Data Bus.
 
-See [`docs/migration/`](docs/migration/) for detailed guides.
+See [docs/08-迁移与演进.md](docs/08-迁移与演进.md) for detailed guides.
 
 ---
 

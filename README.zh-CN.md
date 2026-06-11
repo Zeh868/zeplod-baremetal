@@ -147,9 +147,7 @@ zeplod-baremetal/
 │   ├── 00-快速开始.md … 09-安全与可靠性.md
 │   ├── architecture.md   # 框架架构概述（英文）
 │   ├── api/              # API 参考文档
-│   ├── migration/        # 迁移指南（ultra→core→zephyr）
-│   ├── porting/          # HAL 移植与 IDE 集成指南
-│   └── safety/           # SIL 认证准备与追溯
+│   └── porting/          # Keil / IAR 工具链附录（HAL 主文档见 06）
 ├── CMakeLists.txt        # CMake 构建（32 位主流平台）
 └── Makefile              # 纯 Makefile（8 位工具链友好）
 ```
@@ -254,7 +252,7 @@ Zeplod Baremetal 被设计为机器人/电子系统三层架构的底层：
 - **Core → Core+Module**：分散的中断/主循环逻辑封装为带生命周期管理的模块。
 - **Baremetal → Zephyr**：模块代码基本可复用；事件 API 语义对齐。`bm-channel` 必须替换为 Zeplod Data Bus。
 
-详细指南见 [`docs/migration/`](docs/migration/)。
+详细指南见 [08-迁移与演进](docs/08-迁移与演进.md)。
 
 ---
 
@@ -275,7 +273,7 @@ Zeplod Baremetal 被设计为机器人/电子系统三层架构的底层：
 | 08 | [迁移与演进](docs/08-迁移与演进.md) |
 | 09 | [安全与可靠性](docs/09-安全与可靠性.md) |
 
-专题：[architecture.md](docs/architecture.md) · [api/](docs/api/) · [migration/](docs/migration/) · [porting/](docs/porting/) · [safety/](docs/safety/)
+专题：[architecture.md](docs/architecture.md) · [api/](docs/api/) · [porting/](docs/porting/)（Keil/IAR 附录）
 
 ---
 
