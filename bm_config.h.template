@@ -1,9 +1,21 @@
 /*
  * Copy to the application directory as bm_config.h.
  * Put that directory before zeplod-baremetal/include in the include path.
+ * Application API entry: #include "zeplod.h"
  */
 #ifndef BM_CONFIG_H
 #define BM_CONFIG_H
+
+/* Component switches (align with CMake BM_ENABLE_* / PROFILE) */
+#define BM_CONFIG_ENABLE_ULTRA              0
+#define BM_CONFIG_ENABLE_MODULE             1
+#define BM_CONFIG_ENABLE_CHANNEL            0
+#define BM_CONFIG_ENABLE_SHELL              0
+#define BM_CONFIG_ENABLE_WDG                1
+#define BM_CONFIG_ENABLE_HRT                0
+#define BM_CONFIG_ENABLE_TICKER             0
+#define BM_CONFIG_ENABLE_CTRL_INST          0
+#define BM_CONFIG_ENABLE_SYNC               0
 
 /* Event system */
 #define BM_CONFIG_MAX_EVENT_TYPES           16

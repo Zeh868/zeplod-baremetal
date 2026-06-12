@@ -1,0 +1,14 @@
+# 将 CMake BM_ENABLE_* 同步为编译期 BM_CONFIG_ENABLE_*（与 bm_config.h 默认值可被 -D 覆盖）
+
+function(bm_export_config_enable target)
+    target_compile_definitions(${target} INTERFACE
+        BM_CONFIG_ENABLE_MODULE=$<BOOL:${BM_ENABLE_MODULE}>
+        BM_CONFIG_ENABLE_CHANNEL=$<BOOL:${BM_ENABLE_CHANNEL}>
+        BM_CONFIG_ENABLE_SHELL=$<BOOL:${BM_ENABLE_SHELL}>
+        BM_CONFIG_ENABLE_WDG=$<BOOL:${BM_ENABLE_WDG}>
+        BM_CONFIG_ENABLE_HRT=$<BOOL:${BM_ENABLE_HRT}>
+        BM_CONFIG_ENABLE_TICKER=$<BOOL:${BM_ENABLE_TICKER}>
+        BM_CONFIG_ENABLE_CTRL_INST=$<BOOL:${BM_ENABLE_CTRL_INST}>
+        BM_CONFIG_ENABLE_SYNC=$<BOOL:${BM_ENABLE_SYNC}>
+    )
+endfunction()

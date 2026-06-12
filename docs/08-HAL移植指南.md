@@ -8,7 +8,7 @@
 ## 三层结构（driver API）
 
 ```text
-include/bm/hal/bm_hal_*.h   应用契约（稳定 API）
+include/bm_hal_*.h          应用契约（稳定 API）
 include/drv/bm_drv_*.h    驱动 API 表（Zephyr 同构 vtable）
 Source/hal/            分发层（契约 → driver API）
 portable/              Port 实现（模板 + 参考后端）

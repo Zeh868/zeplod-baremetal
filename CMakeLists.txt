@@ -34,9 +34,11 @@ if(NOT BM_CONFIG_FILE AND EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/bm_config.h)
 endif()
 
 include(${CMAKE_CURRENT_LIST_DIR}/cmake/bm_include_dirs.cmake)
+include(${CMAKE_CURRENT_LIST_DIR}/cmake/bm_config_export.cmake)
 
 add_library(bm_config INTERFACE)
 target_include_directories(bm_config INTERFACE ${BM_INCLUDE_BACKEND_DIRS})
+bm_export_config_enable(bm_config)
 
 if(BM_CONFIG_FILE)
     get_filename_component(BM_CONFIG_FILE "${BM_CONFIG_FILE}" ABSOLUTE)

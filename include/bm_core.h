@@ -1,9 +1,9 @@
 /**
  * @file bm_core.h
- * @brief 核心子系统兼容聚合头文件
+ * @brief 核心子系统聚合头（atomic、event、mempool、types）
  *
- * 一次性引入 atomic、event、mempool、types 等基础模块。
- * 新代码建议按需直接包含各子模块头文件以明确依赖。
+ * 应用推荐入口：`#include "zeplod.h"`（按 bm_config.h 裁剪）。
+ * 仅需事件子系统时可单独包含本头；Lite 层见 bm_lite.h。
  * @author zeh (china_qzh@163.com)
  * @version 1.0
  * @date 2026-06-10

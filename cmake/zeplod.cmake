@@ -99,7 +99,5 @@ function(zeplod_include_dirs OUT_VAR)
 endfunction()
 
 function(zeplod_port_include_dirs OUT_VAR)
-    zeplod_include_dirs(_dirs)
-    list(APPEND _dirs "${ZEPLOD_ROOT}/include/drv")
-    set(${OUT_VAR} ${_dirs} PARENT_SCOPE)
+    zeplod_include_dirs(${OUT_VAR})
 endfunction()

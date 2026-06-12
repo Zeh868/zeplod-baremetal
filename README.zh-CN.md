@@ -110,13 +110,10 @@ Zeplod Baremetal 专为**资源受限 MCU 上的机电控制节点**而设计。
 
 ```text
 zeplod-baremetal/
-├── include/              # 公共 API（扁平 #include，见 include/README.md）
-│   ├── bm/common/        # types、log、config、atomic…
-│   ├── bm/core/          # event、mempool、module、shell、wdg…
-│   ├── bm/hybrid/        # hrt、ticker、ctrl_inst、sync、snapshot…
-│   ├── bm/hal/           # bm_hal_* 应用契约
-│   ├── bm/ultra/         # bm_ultra.h
-│   └── drv/              # bm_drv_* 后端驱动 API
+├── include/              # 公共 API 根目录（见 include/README.md）
+│   ├── zeplod.h          # 统一对外入口（按 bm_config.h 裁剪）
+│   ├── bm_*.h            # 框架子系统与 HAL 契约
+│   └── bm_drv_*.h        # Port 驱动 API
 ├── Source/               # 库内核（类比 FreeRTOS/Source/）
 │   ├── core/             # 事件、内存池、模块、看门狗…
 │   ├── hal/              # HAL 分发层

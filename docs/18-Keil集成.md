@@ -13,11 +13,10 @@
 ## 2. Include 路径（顺序重要）
 
 1. 应用目录（含 `bm_config.h`，**最先**）
-2. `include/bm/common`、`core`、`hybrid`、`hal`、`ultra`
-3. 编写 Port 时再加 `include/drv`
-4. 厂商 CMSIS / 设备头文件
+2. 框架 `include/`（所有公共头文件均在根目录）
+3. 厂商 CMSIS / 设备头文件
 
-详见 [20-头文件布局](20-头文件布局.md)。
+应用入口：`#include "zeplod.h"`。详见 [20-头文件布局](20-头文件布局.md)。
 
 ## 3. 库源文件列表
 
