@@ -1,15 +1,16 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
-BUILD_ROOT="$SCRIPT_DIR/build/unix"
+# shellcheck source=demo_paths.sh
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/demo_paths.sh"
+
+BUILD_ROOT="$BUILD_DEMO_ROOT/unix"
 TOOLCHAIN="$ROOT_DIR/cmake/toolchain-arm-none-eabi.cmake"
 FAILED=()
 
 while IFS= read -r example; do
     [[ -z "$example" || "$example" == \#* ]] && continue
-    source_dir="$SCRIPT_DIR/$example"
+    source_dir="$DEMO_DIR/$example"
     build_dir="$BUILD_ROOT/$example"
 
     echo "=== Building $example ==="
@@ -30,7 +31,7 @@ while IFS= read -r example; do
         echo "$example ... FAIL"
         FAILED+=("$example")
     fi
-done < "$SCRIPT_DIR/examples.txt"
+done < "$EXAMPLES_LIST"
 
 if ((${#FAILED[@]} > 0)); then
     echo "Failed examples: ${FAILED[*]}"

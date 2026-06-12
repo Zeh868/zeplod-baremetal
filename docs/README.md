@@ -65,4 +65,4 @@
 | 已有 Cube/SDK 工程挂库 | 13 → 16 或 17 → 18/19 |
 | Keil / IAR 手工加源文件 | 13 → 18 或 19 |
 
-仓库入口：[README.zh-CN.md](../README.zh-CN.md) · 示例目录：[Demo/](../Demo/)
+仓库入口：[README.zh-CN.md](../README.zh-CN.md) · 示例源码：[Demo/](../Demo/) · 运行脚本：[tools/demo/](../tools/demo/)

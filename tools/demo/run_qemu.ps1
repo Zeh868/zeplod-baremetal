@@ -4,12 +4,13 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
-$ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Definition
-$RootDir = Split-Path -Parent $ScriptDir
-$SourceDir = Join-Path $ScriptDir $Example
-$BuildDir = Join-Path (Join-Path (Join-Path $ScriptDir 'build') 'qemu') $Example
+$DemoToolsDir = Split-Path -Parent $MyInvocation.MyCommand.Definition
+$RootDir = (Resolve-Path (Join-Path $DemoToolsDir '../..')).Path
+$DemoDir = Join-Path $RootDir 'Demo'
+$SourceDir = Join-Path $DemoDir $Example
+$BuildDir = Join-Path (Join-Path (Join-Path $RootDir 'build/demo') 'qemu') $Example
 $Toolchain = (Join-Path $RootDir 'cmake/toolchain-arm-none-eabi.cmake').Replace('\', '/')
-$KnownExamples = Get-Content (Join-Path $ScriptDir 'examples.txt')
+$KnownExamples = Get-Content (Join-Path $DemoToolsDir 'examples.txt')
 $Qemu = (Get-Command qemu-system-arm -ErrorAction SilentlyContinue).Source
 
 if ($Example -notin $KnownExamples -or -not (Test-Path $SourceDir)) {

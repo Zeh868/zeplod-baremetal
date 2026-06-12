@@ -1,5 +1,6 @@
 ZEPLOD_ROOT ?= $(realpath ../..)
 BM_BOOT_QEMU_CM0 := $(ZEPLOD_ROOT)/portable/boot/qemu_cortex_m0
+BUILD_DEMO_DIR ?= $(ZEPLOD_ROOT)/build/demo/make
 
 CC      := arm-none-eabi-gcc
 CFLAGS  ?= -mcpu=cortex-m0 -mthumb -Os -ffunction-sections -fdata-sections \
@@ -21,8 +22,11 @@ SRCS := main.c $(QEMU_COMMON_SRCS) $(FRAMEWORK_SRCS) $(HAL_SRCS) $(EXTRA_SRCS)
 
 all: $(TARGET)
 
-$(TARGET): $(SRCS)
+$(TARGET): $(SRCS) | $(BUILD_DEMO_DIR)
 	$(CC) $(CFLAGS) $(SRCS) $(LDFLAGS) -o $@
+
+$(BUILD_DEMO_DIR):
+	@mkdir -p $@
 
 qemu: $(TARGET)
 	qemu-system-arm -machine microbit -cpu cortex-m0 -kernel $(TARGET) \

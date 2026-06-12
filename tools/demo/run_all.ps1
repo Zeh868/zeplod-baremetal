@@ -1,14 +1,15 @@
 $ErrorActionPreference = 'Stop'
-$ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Definition
-$RootDir = Split-Path -Parent $ScriptDir
-$BuildRoot = Join-Path (Join-Path $ScriptDir 'build') 'windows'
+$DemoToolsDir = Split-Path -Parent $MyInvocation.MyCommand.Definition
+$RootDir = (Resolve-Path (Join-Path $DemoToolsDir '../..')).Path
+$DemoDir = Join-Path $RootDir 'Demo'
+$BuildRoot = Join-Path (Join-Path $RootDir 'build/demo') 'windows'
 $Toolchain = (Join-Path $RootDir 'cmake/toolchain-arm-none-eabi.cmake').Replace('\', '/')
-$Examples = Get-Content (Join-Path $ScriptDir 'examples.txt') |
+$Examples = Get-Content (Join-Path $DemoToolsDir 'examples.txt') |
     Where-Object { $_ -and -not $_.StartsWith('#') }
 $Failed = @()
 
 foreach ($Example in $Examples) {
-    $SourceDir = Join-Path $ScriptDir $Example
+    $SourceDir = Join-Path $DemoDir $Example
     $BuildDir = Join-Path $BuildRoot $Example
     Write-Host "=== Building $Example ==="
 

@@ -1,12 +1,13 @@
 param([Parameter(Mandatory = $true)][string]$Example)
 
 $ErrorActionPreference = 'Stop'
-$ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Definition
-$RootDir = Split-Path -Parent $ScriptDir
-$SourceDir = Join-Path $ScriptDir $Example
-$BuildDir = Join-Path (Join-Path (Join-Path $ScriptDir 'build') 'windows') $Example
+$DemoToolsDir = Split-Path -Parent $MyInvocation.MyCommand.Definition
+$RootDir = (Resolve-Path (Join-Path $DemoToolsDir '../..')).Path
+$DemoDir = Join-Path $RootDir 'Demo'
+$BuildDir = Join-Path (Join-Path (Join-Path $RootDir 'build/demo') 'windows') $Example
 $Toolchain = (Join-Path $RootDir 'cmake/toolchain-arm-none-eabi.cmake').Replace('\', '/')
-$KnownExamples = Get-Content (Join-Path $ScriptDir 'examples.txt')
+$KnownExamples = Get-Content (Join-Path $DemoToolsDir 'examples.txt')
+$SourceDir = Join-Path $DemoDir $Example
 
 if ($Example -notin $KnownExamples -or -not (Test-Path $SourceDir)) {
     Write-Error "Unknown example '$Example'"

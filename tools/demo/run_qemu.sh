@@ -2,13 +2,15 @@
 set -euo pipefail
 
 EXAMPLE="${1:?usage: run_qemu.sh <example>}"
-ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-SRC="$ROOT/Demo/$EXAMPLE"
-BUILD="$ROOT/Demo/build/qemu/$EXAMPLE"
-TOOLCHAIN="$ROOT/cmake/toolchain-arm-none-eabi.cmake"
+# shellcheck source=demo_paths.sh
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/demo_paths.sh"
+
+SRC="$DEMO_DIR/$EXAMPLE"
+BUILD="$BUILD_DEMO_ROOT/qemu/$EXAMPLE"
+TOOLCHAIN="$ROOT_DIR/cmake/toolchain-arm-none-eabi.cmake"
 TIMEOUT="${QEMU_TIMEOUT_SEC:-60}"
 
-if ! grep -qx "$EXAMPLE" "$ROOT/Demo/examples.txt"; then
+if ! grep -qx "$EXAMPLE" "$EXAMPLES_LIST"; then
     echo "Unknown example: $EXAMPLE" >&2
     exit 1
 fi

@@ -7,9 +7,10 @@ zephyr_config.env
 id_rsa
 id_ed25519
 
-# Zephyr build directory
+# Build output (framework tests, Demo examples, QEMU smoke)
 build/
 build_tests_hw/
+Demo/build/
 
 # CMake
 CMakeCache.txt

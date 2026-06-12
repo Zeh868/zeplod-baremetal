@@ -178,19 +178,15 @@ zeplod_link(app)
 ### 快速开始（本地模拟）
 
 ```bash
-cmake -B build -S Demo/core_sensor
-cmake --build build
-./build/core_sensor
+cmake -B build/demo/manual/core_sensor -S Demo/core_sensor
+cmake --build build/demo/manual/core_sensor
+# 或：.\tools\demo\run_native.ps1 core_sensor
 ```
 
 ### 快速开始（QEMU Cortex-M0）
 
 ```bash
-cmake -B build_qemu -S Demo/interrupt_demo \
-    -DZEPLOD_BAREMETAL_DIR=../.. \
-    -DBOARD=qemu_cortex_m0
-cmake --build build_qemu
-qemu-system-arm -M microbit -kernel build_qemu/interrupt_demo.elf -nographic -serial stdio
+.\tools\demo\run_qemu.ps1 interrupt_demo
 ```
 
 ---

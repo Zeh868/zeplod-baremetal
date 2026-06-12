@@ -6,13 +6,14 @@ if (($# != 1)); then
     exit 1
 fi
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
-EXAMPLE="$1"
-SOURCE_DIR="$SCRIPT_DIR/$EXAMPLE"
-BUILD_DIR="$SCRIPT_DIR/build/unix/$EXAMPLE"
+# shellcheck source=demo_paths.sh
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/demo_paths.sh"
 
-if ! grep -Fxq "$EXAMPLE" "$SCRIPT_DIR/examples.txt" || [[ ! -d "$SOURCE_DIR" ]]; then
+EXAMPLE="$1"
+SOURCE_DIR="$DEMO_DIR/$EXAMPLE"
+BUILD_DIR="$BUILD_DEMO_ROOT/unix/$EXAMPLE"
+
+if ! grep -Fxq "$EXAMPLE" "$EXAMPLES_LIST" || [[ ! -d "$SOURCE_DIR" ]]; then
     echo "Unknown example '$EXAMPLE'"
     exit 1
 fi

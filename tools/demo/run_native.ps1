@@ -1,11 +1,14 @@
 param([Parameter(Mandatory = $true)][string]$Example)
 
 $ErrorActionPreference = 'Stop'
-$ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Definition
-$SourceDir = Join-Path $ScriptDir $Example
-$BuildDir = Join-Path (Join-Path (Join-Path $ScriptDir 'build') 'native') $Example
+$DemoToolsDir = Split-Path -Parent $MyInvocation.MyCommand.Definition
+$RootDir = (Resolve-Path (Join-Path $DemoToolsDir '../..')).Path
+$DemoDir = Join-Path $RootDir 'Demo'
+$SourceDir = Join-Path $DemoDir $Example
+$BuildDir = Join-Path (Join-Path (Join-Path $RootDir 'build/demo') 'native') $Example
+$KnownExamples = Get-Content (Join-Path $DemoToolsDir 'examples.txt')
 
-if (-not (Test-Path $SourceDir)) {
+if ($Example -notin $KnownExamples -or -not (Test-Path $SourceDir)) {
     Write-Error "Unknown example '$Example'"
     exit 1
 }
