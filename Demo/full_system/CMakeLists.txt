@@ -7,6 +7,10 @@ set(EXAMPLE_ENABLE_SHELL OFF)
 set(EXAMPLE_ENABLE_WDG ON)
 include(../cmake/qemu_example.cmake)
 
+file(GLOB FULL_SYSTEM_MODULES CONFIGURE_DEPENDS modules/*.c)
+list(APPEND FULL_SYSTEM_MODULES ${CMAKE_CURRENT_SOURCE_DIR}/app_events.c)
+
 bm_add_qemu_example(full_system
     FRAMEWORK_LIBS bm_core bm_module bm_wdg
+    EXTRA_SOURCES ${FULL_SYSTEM_MODULES}
 )

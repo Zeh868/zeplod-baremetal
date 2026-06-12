@@ -11,16 +11,17 @@
  * 2026-06-10       1.0            zeh            正式发布
  *
  */
+#include "app_bms.h"
 #include "bm_ctrl_inst.h"
 #include "bm_hrt.h"
 #include "bm_log.h"
+#include "bm_module.h"
 #include "bm_snapshot.h"
 #include "bm_ticker.h"
 #include "hybrid_print.h"
 
 #include "bm_hal_adc_sim.h"
 #include "bm_hal_comp_sim.h"
-#include "bm_event.h"
 #include "bm_hal_pwm_sim.h"
 #include "bm_hal_timer.h"
 #include "bm_hal_uart.h"
@@ -35,8 +36,6 @@
 #include <stdint.h>
 
 #define TAG "hrt_bms"
-
-#define TICKER_INTEGRATE 1u
 
 BM_SNAPSHOT_DEFINE(pack_current, float);
 
@@ -115,7 +114,7 @@ static const bm_ctrl_inst_t g_pack_sampler = {
 };
 
 /** 电芯库仑积分：读取 Pack 电流快照并累加 */
-static void cell_integrate_step(const bm_ctrl_inst_t *instance) {
+void app_cell_integrate_step(const bm_ctrl_inst_t *instance) {
     cell_state_t *state = (cell_state_t *)instance->state;
     float amps;
 
@@ -152,7 +151,7 @@ static const bm_ticker_slot_t g_cell_ticker[] = {
     { CELL_TICKER_MS, TICKER_INTEGRATE, 1u, "integrate" }
 };
 
-static const bm_ctrl_inst_t g_cell_0 = {
+const bm_ctrl_inst_t g_cell_0 = {
     20u, "cell_0", &g_cell_state, NULL, NULL,
     NULL, 0u, NULL, 0u, &g_cell_ops
 };
@@ -161,14 +160,6 @@ static const bm_ctrl_inst_t *const g_instances[] = {
     &g_pack_sampler,
     &g_cell_0
 };
-
-/** ticker 积分事件回调 */
-static void on_integrate(const bm_event_t *event, void *user_data) {
-    (void)user_data;
-    if (event->type == TICKER_INTEGRATE) {
-        cell_integrate_step(&g_cell_0);
-    }
-}
 
 /** 推进仿真并轮询 ticker / 事件 */
 static void run_sim(uint32_t cycles) {
@@ -192,14 +183,17 @@ static void run_sim(uint32_t cycles) {
 }
 
 int main(void) {
-    bm_event_subscriber_id_t sub;
     int rc;
 
     BM_LOGI(TAG, "hrt_bms_coulomb example start");
     bm_hal_uart_init(NULL);
-    bm_event_reset();
-    bm_event_register_type(TICKER_INTEGRATE, "INTEGRATE");
-    bm_event_subscribe(TICKER_INTEGRATE, on_integrate, NULL, &sub);
+
+    rc = bm_module_boot();
+    if (rc != BM_OK) {
+        BM_LOGE(TAG, "module boot failed, rc=%d", rc);
+        hybrid_print("EXAMPLE_HRT_BMS_COULOMB: FAIL boot\n");
+        return 1;
+    }
 
     (void)bm_hal_timer_init(1000u);
     bm_hal_comp_sim_set_threshold(&BM_HAL_COMP_SIM0, 3000u);

@@ -2,7 +2,7 @@
  * @file bm_module.c
  * @brief 模块生命周期管理实现
  *
- * 从链接器段表加载模块，按优先级排序后依次 init/start/stop/deinit。
+ * 从应用提供的 _bm_module_table 加载模块，按优先级排序后依次 init/start/stop/deinit。
  * @author zeh (china_qzh@163.com)
  * @version 1.1
  * @date 2026-06-10
@@ -16,16 +16,29 @@
  */
 #include "bm_module.h"
 #include "bm_critical_wrap.h"
+#include "bm_event.h"
 #include "bm_log.h"
 
 #include <string.h>
 
-extern const bm_module_t _bm_module_table[];
-extern const uint32_t    _bm_module_count;
+extern const bm_module_t *_bm_module_table[];
+extern const uint32_t     _bm_module_count;
 
 static bm_module_t _modules[BM_CONFIG_MAX_MODULES];
 static uint32_t    _module_count = 0;
 static int         _modules_initialized = 0;
+
+/**
+ * @brief 应用启动：复位事件总线并执行模块 init/start
+ */
+int bm_module_boot(void) {
+    bm_event_reset();
+    int r = bm_module_init_all();
+    if (r != BM_OK) {
+        return r;
+    }
+    return bm_module_start_all();
+}
 
 /**
  * @brief 按 priority 升序对模块表冒泡排序
@@ -73,7 +86,7 @@ static void _rollback_starts(uint32_t through_index) {
 }
 
 /**
- * @brief 从链接器段表加载模块并依次调用 init
+ * @brief 从模块表加载并依次调用 init
  *
  * @return BM_OK 全部成功；负值为首个失败模块的错误码
  */
@@ -94,7 +107,9 @@ int bm_module_init_all(void) {
     }
 
     _module_count = _bm_module_count;
-    memcpy(_modules, _bm_module_table, _module_count * sizeof(bm_module_t));
+    for (uint32_t i = 0u; i < _module_count; i++) {
+        memcpy(&_modules[i], _bm_module_table[i], sizeof(bm_module_t));
+    }
     for (uint32_t i = 0u; i < _module_count; i++) {
         _modules[i].state = BM_MODULE_STATE_UNINIT;
     }

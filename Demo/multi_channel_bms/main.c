@@ -11,8 +11,10 @@
  * 2026-06-10       1.0            zeh            正式发布
  *
  */
+#include "app_bms.h"
 #include "bm_ctrl_inst.h"
 #include "bm_event.h"
+#include "bm_module.h"
 #include "bm_hrt.h"
 #include "bm_log.h"
 #include "bm_snapshot.h"
@@ -34,8 +36,6 @@
 
 #define TAG "multi_bms"
 
-#define CELL_COUNT          16u
-#define EVENT_CELL_CHECK    2u
 #define PACK_ADC_KEY        100u
 #define CELL_GPIO_BASE      200u
 
@@ -149,7 +149,7 @@ static const bm_ticker_slot_t g_check_ticker[] = {
 };
 
 /** 周期性读取各电芯电压并检测过压 */
-static void on_cell_check(const bm_event_t *event, void *user_data) {
+void app_on_cell_check(const bm_event_t *event, void *user_data) {
     uint32_t i;
 
     (void)user_data;
@@ -198,18 +198,20 @@ static void setup_cells(void) {
 }
 
 int main(void) {
-    bm_event_subscriber_id_t sub;
     uint32_t i;
     uint32_t reported = 0u;
     int rc;
 
     BM_LOGI(TAG, "multi_channel_bms example start");
     bm_hal_uart_init(NULL);
-    bm_event_reset();
     setup_cells();
 
-    bm_event_register_type(EVENT_CELL_CHECK, "CELL_CHECK");
-    bm_event_subscribe(EVENT_CELL_CHECK, on_cell_check, NULL, &sub);
+    rc = bm_module_boot();
+    if (rc != BM_OK) {
+        BM_LOGE(TAG, "module boot failed, rc=%d", rc);
+        hybrid_print("EXAMPLE_MULTI_CHANNEL_BMS: FAIL boot\n");
+        return 1;
+    }
 
     (void)bm_hal_timer_init(1000u);
 
