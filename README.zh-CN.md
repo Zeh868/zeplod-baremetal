@@ -293,6 +293,7 @@ Zeplod Baremetal 被设计为机器人/电子系统三层架构的底层：
 | 14–19 | [Port](docs/14-Port移植层.md) · [静态库](docs/15-静态库构建.md) · [CubeMX](docs/16-STM32-CubeMX集成.md) · [MCUX](docs/17-NXP-MCUXpresso集成.md) · [Keil](docs/18-Keil集成.md) · [IAR](docs/19-IAR集成.md) |
 | 20 | [头文件布局](docs/20-头文件布局.md)（`zeplod.h` 入口） |
 | 21 | [测试覆盖率基线](docs/21-测试覆盖率基线.md) |
+| 22 | [领域算法与模块化路线图](docs/22-领域算法与模块化路线图.md) |
 
 API 参考：[docs/api/](docs/api/)
 
