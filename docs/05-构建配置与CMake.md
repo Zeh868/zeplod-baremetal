@@ -1,5 +1,8 @@
 # 05 构建配置与 CMake
 
+> **本文职责**：CMake 选项、`bm_config.h`、链接目标与 include 路径。  
+> **不负责**：运行时行为与 `main` 顺序 → [07](07-应用骨架与数据流.md)。
+
 ## 顶层 CMake 选项
 
 在框架根目录 `CMakeLists.txt` 中通过 `option` 裁剪组件：
@@ -31,25 +34,30 @@ BM_ENABLE_SYNC → BM_ENABLE_CTRL_INST → BM_ENABLE_HRT
 | `bm_module` / `bm_channel` / `bm_shell` / `bm_wdg` | 可选组件 |
 | `bm_hrt` / `bm_ticker` / `bm_ctrl_inst` / `bm_resource` / `bm_sync` | 混合域 |
 | `bm_hal` | 弱符号默认桩 |
-| `bm_hal_native` / `bm_hal_stm32g4` / … | 平台强符号覆盖 |
+| `bm_hal_native` / `bm_hal_stm32g4` / `bm_hal_esp32wroom32e` / … | 平台强符号覆盖 |
 | `bm_framework` | 已启用组件的聚合接口库 |
 
 应用应**只链接用到的目标**；需要全开时用 `bm_framework`。
 
-## 应用工程示例
+## 应用工程集成
+
+Zeplod 是库：**先移植 Port，再集成**（源码或静态库）。见 [13-集成到现有工程](13-集成到现有工程.md)。
+
+| 方式 | 入口 |
+|------|------|
+| 源码（CMake） | `cmake/zeplod.cmake` |
+| 源码（Keil/IAR） | `tools/list_sources.py` + `portable/template/bm_port.c` |
+| 静态库 | `cmake/static-lib/` |
 
 ```cmake
-cmake_minimum_required(VERSION 3.20)
-project(my_app C)
-
-set(ZEPLOD_BAREMETAL_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../zeplod-baremetal")
-add_subdirectory(${ZEPLOD_BAREMETAL_DIR} zeplod)
-
-add_executable(my_app main.c)
-target_link_libraries(my_app PRIVATE bm_hal_native bm_framework)
+zeplod_configure(ROOT ... PROFILE event BACKEND external CONFIG bm_config.h)
+target_sources(my_app PRIVATE bm_port.c)
+zeplod_link(my_app)
 ```
 
-示例目录通过 `-DZEPLOD_BAREMETAL_DIR=../..` 指向框架根。
+## 底层 add_subdirectory（高级）
+
+仍可直接 `add_subdirectory(zeplod-baremetal)` 并手动设置 `BM_ENABLE_*`、`BM_BACKEND`。框架内示例与单元测试采用此方式。
 
 ## `bm_config.h`
 
@@ -87,11 +95,11 @@ target_link_libraries(my_app PRIVATE bm_hal_native bm_framework)
 
 ## Makefile 路径
 
-8 位或极简工具链可用根目录 `Makefile`，不依赖 CMake。见 `examples/` 中部分 Makefile 示例。
+8 位或极简工具链可用根目录 `Makefile`，不依赖 CMake。见 `Demo/` 中部分 Makefile 示例。
 
 ## 8 位 Ultra
 
-不链接 `src/`，仅 `#include "bm_ultra.h"`。见 `examples/ultra_blink`。
+不链接 `Source/`，仅 `#include "bm_ultra.h"`。见 `Demo/ultra_blink`。
 
 ## 常见问题
 

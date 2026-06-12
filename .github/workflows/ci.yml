@@ -74,9 +74,9 @@ jobs:
       - name: Build and run native_sim example
         shell: pwsh
         run: |
-          cmake -S examples/${{ matrix.example }} -B build-ex/${{ matrix.example }} -DNATIVE_SIM_BUILD=ON
-          cmake --build build-ex/${{ matrix.example }} --config Debug
-          $exe = Get-ChildItem -Path build-ex/${{ matrix.example }} -Recurse -Filter "${{ matrix.example }}.exe" | Select-Object -First 1
+          cmake -S Demo/${{ matrix.example }} -B build/demo/native/${{ matrix.example }} -DNATIVE_SIM_BUILD=ON
+          cmake --build build/demo/native/${{ matrix.example }} --config Debug
+          $exe = Get-ChildItem -Path build/demo/native/${{ matrix.example }} -Recurse -Filter "${{ matrix.example }}.exe" | Select-Object -First 1
           $out = & $exe.FullName 2>&1 | Out-String
           Write-Host $out
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -92,5 +92,5 @@ jobs:
           sudo apt-get install -y gcc-arm-none-eabi qemu-system-arm
       - name: Build and run QEMU smoke + hybrid examples
         run: |
-          chmod +x examples/run_qemu.sh tests/qemu/run_hybrid_smoke.sh tests/qemu/run_all.sh
+          chmod +x tools/demo/run_qemu.sh tests/qemu/run_hybrid_smoke.sh tests/qemu/run_all.sh
           bash tests/qemu/run_all.sh

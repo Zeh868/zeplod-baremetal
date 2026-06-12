@@ -60,14 +60,14 @@ HAL 失败时立即执行 safe-stop，后续必须重新 configure。
 configure → arm → trigger → （须 re-arm 才能再次 trigger）→ safe_stop
 ```
 
-`configure` / `arm` 可在 `bm_ctrl_start_all` 之前或之后完成；`trigger` 通常在 `start_all` 之后（Scheduled 槽依赖 HRT 已启动）。示例见 `examples/multi_axis_sync`。
+`configure` / `arm` 可在 `bm_ctrl_start_all` 之前或之后完成；`trigger` 通常在 `start_all` 之后（Scheduled 槽依赖 HRT 已启动）。示例见 `Demo/multi_axis_sync`。
 
 ## 平台实现
 
 | 平台 | 文件 |
 |------|------|
-| native_sim | `hal_reference/native_sim/bm_sync_hal_native.c` |
-| QEMU M0 | `hal_reference/qemu_cortex_m0/bm_sync_hal_qemu.c` |
-| STM32G4 | `hal_reference/stm32g4/bm_sync_hal_stm32g4.c` |
+| native_sim | `platform/backends/native_sim/bm_sync_hal_native.c` |
+| QEMU M0 | `platform/backends/qemu_cortex_m0/bm_sync_hal_qemu.c` |
+| STM32G4 | `platform/backends/register_stm32g4/bm_sync_hal_stm32g4.c` |
 
 真实 MCU 上 `trigger` 通过定时器比较/ITR 硬件路由；仿真环境可退化为软件逐步调用。

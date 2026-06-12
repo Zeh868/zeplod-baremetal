@@ -68,7 +68,7 @@ Zeplod Baremetal targets motor drives, digital power, battery management systems
 |------|-------|-----|-------------|------------|
 | **Ultra** | < 8 KB | < 1 KB | STM8, AVR, 8051 | `bm_ultra.h` (header-only) |
 | **Nano** | 8–32 KB | 1–4 KB | CH32V003, STM32F030 | `bm_core` + optional `bm_module` |
-| **Lite** | 32–128 KB | 4–16 KB | STM32F103, nRF51822 | `bm_core` + `bm_module` + `bm_channel` + `bm_shell` |
+| **Lite** | 32–128 KB | 4–16 KB | STM32F103, nRF51822, ESP32-WROOM-32E | `bm_core` + `bm_module` + `bm_channel` + `bm_shell` |
 | **Control** | 32–128 KB+ | 4–16 KB+ | STM32G4, STM32F3 | All above + `bm_hrt` + `bm_ctrl_inst` + `bm_sync` |
 
 ---
@@ -132,22 +132,22 @@ zeplod-baremetal/
 │   ├── shell/            # bm_shell
 │   ├── hrt/              # bm_hrt, bm_ticker
 │   └── ctrl/             # bm_ctrl_inst, bm_resource, bm_sync
-├── hal_reference/        # Reference HAL implementations
+├── platform/boot/        # QEMU boot (startup, linker scripts)
 │   ├── native_sim/       # PC-native simulation (no hardware)
 │   ├── qemu_cortex_m0/   # QEMU ARM Cortex-M0
 │   ├── qemu_riscv32/     # QEMU RISC-V 32-bit
 │   ├── stm32f0/          # STM32F0 real hardware
-│   └── stm32g4/          # STM32G4 real hardware
+│   ├── stm32g4/          # STM32G4 real hardware
+│   ├── ch32v003/         # CH32V003 Nano-tier peripherals
+│   └── esp32wroom32e/    # ESP32-WROOM-32E (UART0, TG0 timer, Xtensa critical)
 ├── examples/             # Progressive examples (see below)
 ├── tests/
 │   ├── unit/             # Unity-based unit tests (PC native)
 │   └── qemu/             # QEMU smoke tests
 ├── docs/
-│   ├── README.md         # Doc index (00–11 guides)
-│   ├── 00-快速开始.md … 11-安全与可靠性.md
-│   ├── architecture.md   # Framework architecture overview (English)
-│   ├── api/              # API reference docs
-│   └── porting/          # Keil / IAR toolchain appendices
+│   ├── README.md         # Doc index (00–21, Chinese)
+│   ├── 00-快速开始.md … 21-测试覆盖率基线.md
+│   └── api/              # API reference (only subfolder)
 ├── CMakeLists.txt        # CMake build (32-bit mainstream)
 └── Makefile              # Pure Makefile (8-bit toolchain friendly)
 ```
@@ -258,15 +258,13 @@ See [docs/10-迁移与演进.md](docs/10-迁移与演进.md) for detailed guides
 
 ## Documentation
 
-Start at [`docs/README.md`](docs/README.md) (numbered guides 00–11 in Chinese).
+Start at [`docs/README.md`](docs/README.md) (numbered guides 00–21 in Chinese).
 
-- [`docs/08-HAL移植指南.md`](docs/08-HAL移植指南.md) — HAL contracts, reference platforms, PWM/ADC porting
-- [`docs/10-迁移与演进.md`](docs/10-迁移与演进.md) — Ultra→Core→Hybrid→Zephyr migration
-- [`docs/11-安全与可靠性.md`](docs/11-安全与可靠性.md) — Safety posture and requirements traceability
-- [`docs/architecture.md`](docs/architecture.md) — Framework architecture (English)
-- [`docs/api/`](docs/api/) — API reference for hybrid-domain components
-- [`docs/porting/`](docs/porting/) — Keil / IAR integration appendices
-- [`examples/PORTING.md`](examples/PORTING.md) — Example porting guide for custom hardware
+- [`docs/01-框架概览与资源层级.md`](docs/01-框架概览与资源层级.md) — Architecture overview
+- [`docs/13-集成到现有工程.md`](docs/13-集成到现有工程.md) — Integrate into existing Cube/SDK/Keil/IAR projects
+- [`docs/08-HAL移植指南.md`](docs/08-HAL移植指南.md) — HAL contracts and porting
+- [`docs/api/`](docs/api/) — Hybrid-domain API reference
+- [`docs/06-示例与上手路径.md`](docs/06-示例与上手路径.md) — Examples and hardware porting
 
 ---
 

@@ -66,7 +66,7 @@ Zeplod Baremetal 定位于电机驱动、数字电源、电池管理系统（BMS
 |------|-------|-----|---------|---------|
 | **Ultra** | < 8 KB | < 1 KB | STM8、AVR、8051 | `bm_ultra.h`（纯头文件库） |
 | **Nano** | 8–32 KB | 1–4 KB | CH32V003、STM32F030 | `bm_core` + 可选 `bm_module` |
-| **Lite** | 32–128 KB | 4–16 KB | STM32F103、nRF51822 | `bm_core` + `bm_module` + `bm_channel` + `bm_shell` |
+| **Lite** | 32–128 KB | 4–16 KB | STM32F103、nRF51822、ESP32-WROOM-32E | `bm_core` + `bm_module` + `bm_channel` + `bm_shell` |
 | **Control** | 32–128 KB+ | 4–16 KB+ | STM32G4、STM32F3 | 上述全部 + `bm_hrt` + `bm_ctrl_inst` + `bm_sync` |
 
 ---
@@ -110,44 +110,29 @@ Zeplod Baremetal 专为**资源受限 MCU 上的机电控制节点**而设计。
 
 ```text
 zeplod-baremetal/
-├── include/              # 公共 API 头文件
-│   ├── bm_core.h         # 事件系统、内存池、临界区、基础类型
-│   ├── bm_module.h       # 模块生命周期（可选）
-│   ├── bm_channel.h      # SPSC 数据通道（可选）
-│   ├── bm_shell.h        # 串口命令行（可选）
-│   ├── bm_ultra.h        # 极端裁剪头文件库
-│   ├── bm_hrt.h          # 硬实时调度分发器
-│   ├── bm_ticker.h       # 软实时周期任务
-│   ├── bm_ctrl_inst.h    # 多实例控制抽象
-│   ├── bm_sync.h         # 同步域（多轴相位同步）
-│   ├── bm_snapshot.h     # 三缓冲跨域邮箱
-│   ├── bm_resource.h     # 资源声明与冲突检测
-│   └── bm_hal_*.h        # HAL 接口契约（UART、定时器、PWM、ADC、比较器、编码器等）
-├── src/
-│   ├── core/             # bm_event、bm_mempool、bm_critical、bm_wdg
-│   ├── hal/              # bm_hal 默认弱符号桩（可被 hal_reference 覆盖）
-│   ├── module/           # bm_module
-│   ├── channel/          # bm_channel
-│   ├── shell/            # bm_shell
-│   ├── hrt/              # bm_hrt、bm_ticker
-│   └── ctrl/             # bm_ctrl_inst、bm_resource、bm_sync
-├── hal_reference/        # 精选平台参考 HAL（方案 B）
-│   ├── native_sim/       # PC 纯软件模拟（全外设）
-│   ├── qemu_cortex_m0/   # QEMU ARM Cortex-M0
-│   ├── qemu_riscv32/     # QEMU RISC-V 32 位
-│   ├── stm32f0/          # STM32F0 基础外设
-│   ├── stm32g4/          # STM32G4 伺服/BMS 外设（PWM/ADC/COMP/Encoder）
-│   └── ch32v003/         # CH32V003 Nano 级基础外设
-├── examples/             # 渐进式示例（见下表）
+├── include/              # 公共 API（扁平 #include，见 include/README.md）
+│   ├── bm/common/        # types、log、config、atomic…
+│   ├── bm/core/          # event、mempool、module、shell、wdg…
+│   ├── bm/hybrid/        # hrt、ticker、ctrl_inst、sync、snapshot…
+│   ├── bm/hal/           # bm_hal_* 应用契约
+│   ├── bm/ultra/         # bm_ultra.h
+│   └── drv/              # bm_drv_* 后端驱动 API
+├── Source/               # 库内核（类比 FreeRTOS/Source/）
+│   ├── core/             # 事件、内存池、模块、看门狗…
+│   ├── hal/              # HAL 分发层
+│   └── hybrid/           # HRT、ctrl_inst、sync…
+├── portable/             # 平台 Port（类比 FreeRTOS/portable/）
+│   ├── template/         # bm_port.c 模板（复制到应用工程）
+│   ├── boot/             # QEMU 启动与链接脚本
+│   └── native_sim/ …     # 参考 Port 实现
+├── Demo/                 # 示例（类比 FreeRTOS/Demo/）
 ├── tests/
 │   ├── unit/             # Unity 单元测试（PC 本地运行）
 │   └── qemu/             # QEMU 冒烟测试
 ├── docs/
-│   ├── README.md         # 文档索引（00–11 导读）
-│   ├── 00-快速开始.md … 11-安全与可靠性.md
-│   ├── architecture.md   # 框架架构概述（英文）
-│   ├── api/              # API 参考文档
-│   └── porting/          # Keil / IAR 工具链附录（HAL 主文档见 08）
+│   ├── README.md         # 文档索引（00–21）
+│   ├── 00-快速开始.md … 21-测试覆盖率基线.md
+│   └── api/              # API 参考（唯一子目录）
 ├── CMakeLists.txt        # CMake 构建（32 位主流平台）
 └── Makefile              # 纯 Makefile（8 位工具链友好）
 ```
@@ -156,38 +141,52 @@ zeplod-baremetal/
 
 ## 示例
 
-[`examples/`](examples/) 目录包含逐步扩展的演示程序：
+[`Demo/`](Demo/) 目录包含逐步扩展的演示程序（类比 FreeRTOS/Demo/）：
 
 | 示例 | 重点 | 层级 |
 |---------|-------|------|
-| [`ultra_blink`](examples/ultra_blink) | 最小化的头文件版事件队列 | Ultra |
-| [`core_sensor`](examples/core_sensor) | 事件、内存池与模块生命周期 | Nano |
-| [`full_system`](examples/full_system) | 多模块、事件优先级、看门狗 | Lite |
-| [`interrupt_demo`](examples/interrupt_demo) | SysTick、外设中断与 ISR 事件发布 | Nano |
-| [`hrt_servo_stub`](examples/hrt_servo_stub) | 混合域伺服（电流 HRT + 速度 HRT + 位置 SRT） | Control |
-| [`hrt_bms_coulomb`](examples/hrt_bms_coulomb) | BMS 包采样器（ADC HRT）+ 电芯库仑计数（SRT） | Control |
-| [`multi_axis_sync`](examples/multi_axis_sync) | 带同步域的多实例控制 | Control |
-| [`multi_channel_bms`](examples/multi_channel_bms) | 多通道 BMS 实例模型 | Control |
+| [`ultra_blink`](Demo/ultra_blink) | 最小化的头文件版事件队列 | Ultra |
+| [`core_sensor`](Demo/core_sensor) | 事件、内存池与模块生命周期 | Nano |
+| [`full_system`](Demo/full_system) | 多模块、事件优先级、看门狗 | Lite |
+| [`interrupt_demo`](Demo/interrupt_demo) | SysTick、外设中断与 ISR 事件发布 | Nano |
+| [`hrt_servo_stub`](Demo/hrt_servo_stub) | 混合域伺服 | Control |
+| [`hrt_bms_coulomb`](Demo/hrt_bms_coulomb) | BMS 混合域 | Control |
+| [`multi_axis_sync`](Demo/multi_axis_sync) | 同步域多轴 | Control |
+| [`multi_channel_bms`](Demo/multi_channel_bms) | 多通道 BMS | Control |
 
-构建与运行说明见 [`examples/README.md`](examples/README.md)。
+构建说明见 [`Demo/README.md`](Demo/README.md)。
+
+### 集成到已有工程（类 FreeRTOS）
+
+**① 移植** `portable/template/bm_port.c` → 接 Cube/SDK HAL  
+**② 库集成** `Source/` 源码或 `libbm_*.a`（见 `cmake/static-lib/`）
+
+```bash
+# 源码集成：库文件列表（不含 Port）
+python tools/list_sources.py --profile event --format keil
+```
+
+```cmake
+# CMake 源码集成
+zeplod_configure(ROOT ... PROFILE event BACKEND external CONFIG bm_config.h)
+target_sources(app PRIVATE Core/Src/bm_port.c)
+zeplod_link(app)
+```
+
+详见 [`docs/13-集成到现有工程.md`](docs/13-集成到现有工程.md)。
 
 ### 快速开始（本地模拟）
 
 ```bash
-# 在 PC 上构建并运行示例（无需 QEMU 或硬件）
-cmake -B build -S examples/core_sensor -DZEPLOD_BAREMETAL_DIR=../..
-cmake --build build
-./build/core_sensor
+cmake -B build/demo/manual/core_sensor -S Demo/core_sensor
+cmake --build build/demo/manual/core_sensor
+# 或：.\tools\demo\run_native.ps1 core_sensor
 ```
 
 ### 快速开始（QEMU Cortex-M0）
 
 ```bash
-cmake -B build_qemu -S examples/interrupt_demo \
-    -DZEPLOD_BAREMETAL_DIR=../.. \
-    -DBOARD=qemu_cortex_m0
-cmake --build build_qemu
-qemu-system-arm -M microbit -kernel build_qemu/interrupt_demo.elf -nographic -serial stdio
+.\tools\demo\run_qemu.ps1 interrupt_demo
 ```
 
 ---
@@ -274,8 +273,13 @@ Zeplod Baremetal 被设计为机器人/电子系统三层架构的底层：
 | 09 | [测试与调试](docs/09-测试与调试.md) |
 | 10 | [迁移与演进](docs/10-迁移与演进.md) |
 | 11 | [安全与可靠性](docs/11-安全与可靠性.md) |
+| 12 | [运行时与实例模型](docs/12-运行时与实例模型.md) |
+| 13 | [集成到现有工程](docs/13-集成到现有工程.md) |
+| 14–19 | [Port](docs/14-Port移植层.md) · [静态库](docs/15-静态库构建.md) · [CubeMX](docs/16-STM32-CubeMX集成.md) · [MCUX](docs/17-NXP-MCUXpresso集成.md) · [Keil](docs/18-Keil集成.md) · [IAR](docs/19-IAR集成.md) |
+| 20 | [头文件布局](docs/20-头文件布局.md) |
+| 21 | [测试覆盖率基线](docs/21-测试覆盖率基线.md) |
 
-专题：[architecture.md](docs/architecture.md) · [api/](docs/api/) · [porting/](docs/porting/)（Keil/IAR 附录）
+API 参考：[docs/api/](docs/api/)
 
 ---
 

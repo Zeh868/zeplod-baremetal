@@ -1,0 +1,22 @@
+set(CMAKE_SYSTEM_NAME Generic)
+set(CMAKE_SYSTEM_PROCESSOR xtensa)
+
+if(DEFINED ENV{IDF_PATH})
+    set(_BM_ESP32_TOOLCHAIN_PREFIX "$ENV{IDF_PATH}/tools/xtensa-esp-elf/xtensa-esp-elf/bin")
+    if(EXISTS "${_BM_ESP32_TOOLCHAIN_PREFIX}/xtensa-esp32-elf-gcc")
+        set(CMAKE_C_COMPILER "${_BM_ESP32_TOOLCHAIN_PREFIX}/xtensa-esp32-elf-gcc")
+        set(CMAKE_ASM_COMPILER "${_BM_ESP32_TOOLCHAIN_PREFIX}/xtensa-esp32-elf-gcc")
+        set(CMAKE_OBJCOPY "${_BM_ESP32_TOOLCHAIN_PREFIX}/xtensa-esp32-elf-objcopy")
+        set(CMAKE_SIZE "${_BM_ESP32_TOOLCHAIN_PREFIX}/xtensa-esp32-elf-size")
+    endif()
+endif()
+
+if(NOT CMAKE_C_COMPILER)
+    set(CMAKE_C_COMPILER xtensa-esp32-elf-gcc)
+    set(CMAKE_ASM_COMPILER xtensa-esp32-elf-gcc)
+    set(CMAKE_OBJCOPY xtensa-esp32-elf-objcopy)
+    set(CMAKE_SIZE xtensa-esp32-elf-size)
+endif()
+
+set(CMAKE_C_FLAGS "-mlongcalls -Os -ffunction-sections -fdata-sections -Wall -Wextra -std=c99")
+set(CMAKE_EXE_LINKER_FLAGS "-nostdlib -Wl,--gc-sections")
