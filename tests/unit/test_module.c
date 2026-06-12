@@ -20,27 +20,27 @@ static int g_deinit_count = 0;
 static int g_fail_mod_b_init = 0;
 static int g_fail_mod_b_start = 0;
 
-int mod_a_init(void) { g_init_count++; return BM_OK; }
-int mod_a_start(void) { g_start_count++; return BM_OK; }
-int mod_a_stop(void) { g_stop_count++; return BM_OK; }
-int mod_a_deinit(void) { g_deinit_count++; return BM_OK; }
+static int mod_a_init(void) { g_init_count++; return BM_OK; }
+static int mod_a_start(void) { g_start_count++; return BM_OK; }
+static int mod_a_stop(void) { g_stop_count++; return BM_OK; }
+static int mod_a_deinit(void) { g_deinit_count++; return BM_OK; }
 
-int mod_b_init(void) {
+static int mod_b_init(void) {
     g_init_count++;
     return g_fail_mod_b_init ? BM_ERR_INVALID : BM_OK;
 }
-int mod_b_start(void) {
+static int mod_b_start(void) {
     g_start_count++;
     return g_fail_mod_b_start ? BM_ERR_INVALID : BM_OK;
 }
 
-/* 显式模块表（兼容各工具链） */
-const bm_module_t _bm_module_table[] = {
-    { .name = "mod_b", .priority = 5, .init = mod_b_init, .start = mod_b_start },
-    { .name = "mod_a", .priority = 1, .init = mod_a_init, .start = mod_a_start,
-      .stop = mod_a_stop, .deinit = mod_a_deinit },
-};
-const uint32_t _bm_module_count = 2;
+BM_MODULE_DEFINE(mod_b, 5, mod_b_init, mod_b_start, NULL, NULL);
+
+BM_MODULE_DEFINE(mod_a, 1, mod_a_init, mod_a_start, mod_a_stop, mod_a_deinit);
+
+BM_MODULE_TABLE(
+    BM_MODULE_ENTRY(mod_b),
+    BM_MODULE_ENTRY(mod_a));
 
 void setUp(void) {
     BM_LOGI("test_mod", "setUp: reset lifecycle counters");

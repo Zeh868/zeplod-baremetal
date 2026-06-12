@@ -32,54 +32,6 @@ typedef struct {
 
 BM_MEMPOOL_DEFINE(sensor_pool, sensor_data_t, 4);
 
-static int sensor_init(void) {
-    example_print("[mod] sensor init\n");
-    BM_LOGI(TAG, "module sensor init");
-    return BM_OK;
-}
-
-static int sensor_start(void) {
-    return BM_OK;
-}
-
-static int sensor_stop(void) {
-    return BM_OK;
-}
-
-static int sensor_deinit(void) {
-    return BM_OK;
-}
-
-static int display_init(void) {
-    example_print("[mod] display init\n");
-    BM_LOGI(TAG, "module display init");
-    return BM_OK;
-}
-
-static int display_start(void) {
-    return BM_OK;
-}
-
-static int logger_init(void) {
-    example_print("[mod] logger init\n");
-    BM_LOGI(TAG, "module logger init");
-    return BM_OK;
-}
-
-static int logger_start(void) {
-    return BM_OK;
-}
-
-const bm_module_t _bm_module_table[] = {
-    { .name = "display", .priority = 0, .init = display_init,
-      .start = display_start },
-    { .name = "logger", .priority = 1, .init = logger_init,
-      .start = logger_start },
-    { .name = "sensor", .priority = 2, .init = sensor_init,
-      .start = sensor_start, .stop = sensor_stop, .deinit = sensor_deinit },
-};
-const uint32_t _bm_module_count = 3;
-
 /** 打印一次温湿度读数 */
 static void print_measurement(const char *prefix, const sensor_data_t *data) {
     example_print(prefix);
