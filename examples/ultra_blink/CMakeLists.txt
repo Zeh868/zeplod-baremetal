@@ -7,7 +7,4 @@ set(EXAMPLE_ENABLE_SHELL OFF)
 set(EXAMPLE_ENABLE_WDG OFF)
 include(../cmake/qemu_example.cmake)
 
-bm_add_qemu_example(ultra_blink
-    HAL_SOURCES
-        ${ZEPLOD_ROOT}/hal_reference/qemu_cortex_m0/bm_hal_uart_qemu.c
-)
+bm_add_qemu_example(ultra_blink)

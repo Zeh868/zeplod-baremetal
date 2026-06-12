@@ -19,8 +19,5 @@ else()
     include(../cmake/qemu_example.cmake)
     bm_add_qemu_example(multi_channel_bms
         FRAMEWORK_LIBS bm_core bm_hrt bm_ticker bm_ctrl_inst
-        HAL_SOURCES
-            ${ZEPLOD_ROOT}/hal_reference/qemu_cortex_m0/bm_hal_uart_qemu.c
-            ${ZEPLOD_ROOT}/hal_reference/qemu_cortex_m0/bm_hal_timer_qemu.c
     )
 endif()

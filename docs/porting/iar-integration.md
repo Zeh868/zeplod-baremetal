@@ -8,11 +8,11 @@ EWARM release with C99 support is recommended.
 In `Project -> Options -> C/C++ Compiler -> Preprocessor`, add:
 
 1. The application directory containing `bm_config.h`
-2. `<zeplod-baremetal>/include`
+2. Zeplod header layers: `include/bm/common`, `core`, `hybrid`, `hal`, `ultra`, and `drv` for backends
 3. The MCU vendor CMSIS and device include directories
 
 Keep the application directory first. The framework ships
-`include/bm_config.h` with defaults; the application copy must override it.
+`include/bm/common/bm_config.h` with defaults; the application copy must override it.
 Start from `bm_config.h.template`.
 
 ## 2. Add Framework Sources
@@ -57,7 +57,7 @@ For STM32F0 projects, the reference implementation uses CMSIS intrinsics and
 is compatible with vendor device headers:
 
 ```text
-hal_reference/stm32f0/bm_hal_critical_stm32f0.c
+platform/backends/<your_mcu>/bm_drv_singleton_*.c
 ```
 
 The shell additionally needs UART HAL functions. The watchdog component needs

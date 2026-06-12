@@ -68,7 +68,7 @@ Zeplod Baremetal targets motor drives, digital power, battery management systems
 |------|-------|-----|-------------|------------|
 | **Ultra** | < 8 KB | < 1 KB | STM8, AVR, 8051 | `bm_ultra.h` (header-only) |
 | **Nano** | 8–32 KB | 1–4 KB | CH32V003, STM32F030 | `bm_core` + optional `bm_module` |
-| **Lite** | 32–128 KB | 4–16 KB | STM32F103, nRF51822 | `bm_core` + `bm_module` + `bm_channel` + `bm_shell` |
+| **Lite** | 32–128 KB | 4–16 KB | STM32F103, nRF51822, ESP32-WROOM-32E | `bm_core` + `bm_module` + `bm_channel` + `bm_shell` |
 | **Control** | 32–128 KB+ | 4–16 KB+ | STM32G4, STM32F3 | All above + `bm_hrt` + `bm_ctrl_inst` + `bm_sync` |
 
 ---
@@ -132,12 +132,14 @@ zeplod-baremetal/
 │   ├── shell/            # bm_shell
 │   ├── hrt/              # bm_hrt, bm_ticker
 │   └── ctrl/             # bm_ctrl_inst, bm_resource, bm_sync
-├── hal_reference/        # Reference HAL implementations
+├── platform/boot/        # QEMU boot (startup, linker scripts)
 │   ├── native_sim/       # PC-native simulation (no hardware)
 │   ├── qemu_cortex_m0/   # QEMU ARM Cortex-M0
 │   ├── qemu_riscv32/     # QEMU RISC-V 32-bit
 │   ├── stm32f0/          # STM32F0 real hardware
-│   └── stm32g4/          # STM32G4 real hardware
+│   ├── stm32g4/          # STM32G4 real hardware
+│   ├── ch32v003/         # CH32V003 Nano-tier peripherals
+│   └── esp32wroom32e/    # ESP32-WROOM-32E (UART0, TG0 timer, Xtensa critical)
 ├── examples/             # Progressive examples (see below)
 ├── tests/
 │   ├── unit/             # Unity-based unit tests (PC native)

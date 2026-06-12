@@ -20,15 +20,16 @@
 
 | 平台 | 文件 | 实现 |
 |------|------|------|
-| native_sim | `hal_reference/native_sim/bm_hal_memory_native.c` | 编译器屏障 |
-| QEMU Cortex-M0 | `hal_reference/qemu_cortex_m0/bm_hal_memory_qemu.c` | `__DMB()` / 编译器屏障 |
-| STM32G4 | `hal_reference/stm32g4/bm_hal_memory_stm32g4.c` | CMSIS `__DMB()` |
+| native_sim | `platform/backends/native_sim/bm_drv_singleton_native.c` | 编译器屏障 |
+| QEMU Cortex-M0 | `platform/backends/qemu_cortex_m0/bm_drv_singleton_qemu.c` | 编译器屏障 |
+| STM32G4 | `platform/backends/register_stm32g4/bm_drv_singleton_stm32g4.c` | `dmb` / `dsb` |
+| CH32V003 | `platform/backends/register_ch32v003/bm_drv_singleton_ch32v003.c` | RISC-V `fence` |
 
 ## 移植要点
 
-1. ARM Cortex-M：通常 `__DMB()` 或 `__sync_synchronize()` 即可。
+1. ARM Cortex-M：在 `bm_drv_singleton_*.c` 中实现 `bm_drv_memory_api`。
 2. 单核无缓存 MCU：release 可用编译器 `memory` clobber；多核或 DMA 一致性场景须用硬件屏障。
-3. RISC-V：参考 `hal_reference/qemu_riscv32` 中对应实现模式。
+3. RISC-V：参考 `register_ch32v003` 后端中的 `fence` 实现。
 
 ## 与快照的配合
 

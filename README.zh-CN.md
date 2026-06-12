@@ -66,7 +66,7 @@ Zeplod Baremetal 定位于电机驱动、数字电源、电池管理系统（BMS
 |------|-------|-----|---------|---------|
 | **Ultra** | < 8 KB | < 1 KB | STM8、AVR、8051 | `bm_ultra.h`（纯头文件库） |
 | **Nano** | 8–32 KB | 1–4 KB | CH32V003、STM32F030 | `bm_core` + 可选 `bm_module` |
-| **Lite** | 32–128 KB | 4–16 KB | STM32F103、nRF51822 | `bm_core` + `bm_module` + `bm_channel` + `bm_shell` |
+| **Lite** | 32–128 KB | 4–16 KB | STM32F103、nRF51822、ESP32-WROOM-32E | `bm_core` + `bm_module` + `bm_channel` + `bm_shell` |
 | **Control** | 32–128 KB+ | 4–16 KB+ | STM32G4、STM32F3 | 上述全部 + `bm_hrt` + `bm_ctrl_inst` + `bm_sync` |
 
 ---
@@ -110,34 +110,24 @@ Zeplod Baremetal 专为**资源受限 MCU 上的机电控制节点**而设计。
 
 ```text
 zeplod-baremetal/
-├── include/              # 公共 API 头文件
-│   ├── bm_core.h         # 事件系统、内存池、临界区、基础类型
-│   ├── bm_module.h       # 模块生命周期（可选）
-│   ├── bm_channel.h      # SPSC 数据通道（可选）
-│   ├── bm_shell.h        # 串口命令行（可选）
-│   ├── bm_ultra.h        # 极端裁剪头文件库
-│   ├── bm_hrt.h          # 硬实时调度分发器
-│   ├── bm_ticker.h       # 软实时周期任务
-│   ├── bm_ctrl_inst.h    # 多实例控制抽象
-│   ├── bm_sync.h         # 同步域（多轴相位同步）
-│   ├── bm_snapshot.h     # 三缓冲跨域邮箱
-│   ├── bm_resource.h     # 资源声明与冲突检测
-│   └── bm_hal_*.h        # HAL 接口契约（UART、定时器、PWM、ADC、比较器、编码器等）
+├── include/              # 公共 API（扁平 #include，见 include/README.md）
+│   ├── bm/common/        # types、log、config、atomic…
+│   ├── bm/core/          # event、mempool、module、shell、wdg…
+│   ├── bm/hybrid/        # hrt、ticker、ctrl_inst、sync、snapshot…
+│   ├── bm/hal/           # bm_hal_* 应用契约
+│   ├── bm/ultra/         # bm_ultra.h
+│   └── drv/              # bm_drv_* 后端驱动 API
 ├── src/
 │   ├── core/             # bm_event、bm_mempool、bm_critical、bm_wdg
-│   ├── hal/              # bm_hal 默认弱符号桩（可被 hal_reference 覆盖）
+│   ├── hal/              # bm_hal 分发层（契约 → driver API）
 │   ├── module/           # bm_module
 │   ├── channel/          # bm_channel
 │   ├── shell/            # bm_shell
 │   ├── hrt/              # bm_hrt、bm_ticker
 │   └── ctrl/             # bm_ctrl_inst、bm_resource、bm_sync
-├── hal_reference/        # 精选平台参考 HAL（方案 B）
-│   ├── native_sim/       # PC 纯软件模拟（全外设）
-│   ├── qemu_cortex_m0/   # QEMU ARM Cortex-M0
-│   ├── qemu_riscv32/     # QEMU RISC-V 32 位
-│   ├── stm32f0/          # STM32F0 基础外设
-│   ├── stm32g4/          # STM32G4 伺服/BMS 外设（PWM/ADC/COMP/Encoder）
-│   └── ch32v003/         # CH32V003 Nano 级基础外设
+├── platform/
+│   ├── backends/         # 驱动后端（SDK / 寄存器 / 仿真）
+│   └── boot/             # QEMU 启动汇编、链接脚本
 ├── examples/             # 渐进式示例（见下表）
 ├── tests/
 │   ├── unit/             # Unity 单元测试（PC 本地运行）

@@ -12,11 +12,13 @@ In `Options for Target -> C/C++ (AC6) -> Include Paths`, add paths in this
 order:
 
 1. The application configuration directory containing `bm_config.h`
-2. `<zeplod-baremetal>/include`
+2. Zeplod header layers (all under `<zeplod-baremetal>/include/`):
+   - `bm/common`, `bm/core`, `bm/hybrid`, `bm/hal`, `bm/ultra`
+   - `drv` (only when implementing a platform backend)
 3. The MCU vendor CMSIS and device include directories
 
 The application path must come first so its `bm_config.h` overrides the
-framework defaults in `include/bm_config.h`.
+framework defaults in `include/bm/common/bm_config.h`.
 
 Copy `bm_config.h.template` into the application directory and tune the
 resource limits. Every translation unit must see the same configuration.
@@ -59,9 +61,9 @@ bm_irq_state_t bm_hal_critical_enter(void);
 void bm_hal_critical_exit(bm_irq_state_t state);
 ```
 
-Use `hal_reference/stm32f0/bm_hal_critical_stm32f0.c` for an STM32F0 CMSIS
-project, or provide an equivalent implementation for the target MCU. Do not
-add native or QEMU HAL files to a hardware project.
+Implement `bm_drv_critical_api` in a `platform/backends/` target for your MCU
+(e.g. CMSIS `__disable_irq` / `__enable_irq`), or provide an equivalent
+implementation. Do not add native_sim or QEMU backend files to a hardware project.
 
 Optional component dependencies:
 

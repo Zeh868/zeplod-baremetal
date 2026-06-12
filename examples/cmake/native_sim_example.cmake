@@ -12,6 +12,7 @@ set(BM_ENABLE_CTRL_INST ${EXAMPLE_ENABLE_CTRL_INST} CACHE BOOL "" FORCE)
 set(BM_ENABLE_SYNC ${EXAMPLE_ENABLE_SYNC} CACHE BOOL "" FORCE)
 set(BM_SYNC_HAL_NATIVE ${EXAMPLE_ENABLE_SYNC} CACHE BOOL "" FORCE)
 set(BM_CONFIG_FILE "${CMAKE_CURRENT_SOURCE_DIR}/bm_config.h" CACHE FILEPATH "" FORCE)
+set(BM_BACKEND "native_sim" CACHE STRING "" FORCE)
 
 add_subdirectory("${ZEPLOD_ROOT}" zeplod EXCLUDE_FROM_ALL)
 
@@ -33,7 +34,7 @@ function(bm_add_native_sim_example TARGET)
     target_include_directories(${TARGET} PRIVATE
         "${CMAKE_CURRENT_SOURCE_DIR}"
         "${ZEPLOD_ROOT}/examples/common"
-        "${ZEPLOD_ROOT}/hal_reference/native_sim"
+        "${ZEPLOD_ROOT}/platform/backends/native_sim"
     )
     target_link_libraries(${TARGET} PRIVATE
         bm_config

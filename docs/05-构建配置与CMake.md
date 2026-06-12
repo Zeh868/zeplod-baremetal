@@ -31,7 +31,7 @@ BM_ENABLE_SYNC → BM_ENABLE_CTRL_INST → BM_ENABLE_HRT
 | `bm_module` / `bm_channel` / `bm_shell` / `bm_wdg` | 可选组件 |
 | `bm_hrt` / `bm_ticker` / `bm_ctrl_inst` / `bm_resource` / `bm_sync` | 混合域 |
 | `bm_hal` | 弱符号默认桩 |
-| `bm_hal_native` / `bm_hal_stm32g4` / … | 平台强符号覆盖 |
+| `bm_hal_native` / `bm_hal_stm32g4` / `bm_hal_esp32wroom32e` / … | 平台强符号覆盖 |
 | `bm_framework` | 已启用组件的聚合接口库 |
 
 应用应**只链接用到的目标**；需要全开时用 `bm_framework`。

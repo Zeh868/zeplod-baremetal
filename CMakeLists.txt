@@ -17,6 +17,8 @@ option(BM_ENABLE_SYNC "Enable sync domain" OFF)
 option(BM_SYNC_HAL_NATIVE "Link native_sim sync HAL into bm_ctrl_inst" OFF)
 option(BM_SYNC_HAL_QEMU "Link QEMU sync HAL into bm_ctrl_inst" OFF)
 option(BM_BUILD_TESTS "Build unit tests" ON)
+set(BM_BACKEND "" CACHE STRING
+    "Driver backend: native_sim, register_stm32g4, qemu_cortex_m0, ...")
 
 if(BM_ENABLE_CTRL_INST AND NOT BM_ENABLE_HRT)
     message(FATAL_ERROR "BM_ENABLE_CTRL_INST requires BM_ENABLE_HRT")
@@ -31,8 +33,10 @@ if(NOT BM_CONFIG_FILE AND EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/bm_config.h)
     set(BM_CONFIG_FILE ${CMAKE_CURRENT_SOURCE_DIR}/bm_config.h)
 endif()
 
+include(${CMAKE_CURRENT_LIST_DIR}/cmake/bm_include_dirs.cmake)
+
 add_library(bm_config INTERFACE)
-target_include_directories(bm_config INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/include)
+target_include_directories(bm_config INTERFACE ${BM_INCLUDE_BACKEND_DIRS})
 
 if(BM_CONFIG_FILE)
     get_filename_component(BM_CONFIG_FILE "${BM_CONFIG_FILE}" ABSOLUTE)
@@ -57,6 +61,14 @@ add_library(bm_hal STATIC
     src/hal/bm_hal_encoder.c
 )
 target_link_libraries(bm_hal PUBLIC bm_config)
+
+if(BM_BUILD_TESTS AND NOT BM_BACKEND)
+    set(BM_BACKEND "native_sim")
+endif()
+if(BM_BACKEND)
+    target_compile_definitions(bm_hal PRIVATE BM_DRV_HAS_BACKEND)
+    add_subdirectory(platform/backends/${BM_BACKEND})
+endif()
 
 add_library(bm_core STATIC
     src/core/bm_mempool.c
@@ -126,10 +138,10 @@ if(BM_ENABLE_CTRL_INST)
         target_sources(bm_ctrl_inst PRIVATE src/hybrid/bm_sync.c)
         if(BM_SYNC_HAL_NATIVE OR BM_BUILD_TESTS)
             target_sources(bm_ctrl_inst PRIVATE
-                hal_reference/native_sim/bm_sync_hal_native.c)
+                platform/backends/native_sim/bm_sync_hal_native.c)
         elseif(BM_SYNC_HAL_QEMU)
             target_sources(bm_ctrl_inst PRIVATE
-                hal_reference/qemu_cortex_m0/bm_sync_hal_qemu.c)
+                platform/backends/qemu_cortex_m0/bm_sync_hal_qemu.c)
         else()
             message(WARNING
                 "BM_ENABLE_SYNC without BM_SYNC_HAL_NATIVE/QEMU: "
@@ -145,7 +157,3 @@ if(BM_BUILD_TESTS)
     add_subdirectory(tests/unit/unity)
     add_subdirectory(tests/unit)
 endif()
-
-add_subdirectory(hal_reference/native_sim EXCLUDE_FROM_ALL)
-add_subdirectory(hal_reference/stm32g4 EXCLUDE_FROM_ALL)
-add_subdirectory(hal_reference/ch32v003 EXCLUDE_FROM_ALL)
