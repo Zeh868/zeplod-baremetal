@@ -16,8 +16,8 @@
 #ifndef BM_SYNC_H
 #define BM_SYNC_H
 
-#include "bm_ctrl_inst.h"
-#include "bm_types.h"
+#include "bm/hybrid/bm_ctrl_inst.h"
+#include "bm/common/bm_types.h"
 
 typedef struct bm_hal_timer bm_hal_timer_t;
 

@@ -16,8 +16,8 @@
 #ifndef BM_TICKER_H
 #define BM_TICKER_H
 
-#include "bm_event.h"
-#include "bm_types.h"
+#include "bm/core/bm_event.h"
+#include "bm/common/bm_types.h"
 
 /** Ticker 槽位配置 */
 typedef struct {

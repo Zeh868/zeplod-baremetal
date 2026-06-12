@@ -41,4 +41,5 @@ function(bm_add_native_sim_example TARGET)
         bm_hal_native
         ${EX_FRAMEWORK_LIBS}
     )
+    bm_target_internal_includes(${TARGET})
 endfunction()

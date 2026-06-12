@@ -16,7 +16,7 @@
 #ifndef BM_SHELL_H
 #define BM_SHELL_H
 
-#include "bm_types.h"
+#include "bm/common/bm_types.h"
 
 #include <stdint.h>
 

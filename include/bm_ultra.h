@@ -17,7 +17,7 @@
 #define BM_ULTRA_H
 
 #include "bm_config.h"
-#include "bm_types.h"
+#include "bm/common/bm_types.h"
 
 #include <stdint.h>
 #include <stddef.h>

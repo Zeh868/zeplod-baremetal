@@ -12,5 +12,6 @@ target_include_directories(bm_backend_native_sim PUBLIC
 )
 target_compile_definitions(bm_backend_native_sim PUBLIC BM_DRV_HAS_BACKEND)
 target_link_libraries(bm_backend_native_sim PUBLIC bm_hal bm_config)
+bm_target_internal_includes(bm_backend_native_sim)
 
 add_library(bm_hal_native ALIAS bm_backend_native_sim)

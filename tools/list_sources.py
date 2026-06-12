@@ -91,6 +91,14 @@ PROFILES: dict[str, dict[str, bool]] = {
 
 INCLUDE_APP = ["include"]
 
+INCLUDE_PORT_EXTRA = [
+    "include/bm/common",
+    "include/bm/core",
+    "include/bm/hybrid",
+    "include/hal",
+    "include/drv",
+]
+
 
 def enabled(value: str) -> bool:
     return value == "ON"
@@ -133,6 +141,8 @@ def collect_sources(args: argparse.Namespace) -> list[str]:
 
 def collect_includes(args: argparse.Namespace) -> list[str]:
     paths = list(INCLUDE_APP)
+    if args.with_hal or args.backend:
+        paths.extend(INCLUDE_PORT_EXTRA)
     if args.backend and args.backend != "external":
         paths.append(f"portable/{args.backend}")
     return paths

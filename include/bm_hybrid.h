@@ -21,21 +21,21 @@
 #error "BM_CONFIG_ENABLE_CTRL_INST requires BM_CONFIG_ENABLE_HRT"
 #endif
 
-#include "bm_hrt.h"
-#include "bm_snapshot.h"
+#include "bm/hybrid/bm_hrt.h"
+#include "bm/hybrid/bm_snapshot.h"
 
 #if BM_CONFIG_ENABLE_TICKER
-#include "bm_ticker.h"
+#include "bm/hybrid/bm_ticker.h"
 #endif
 
 #if BM_CONFIG_ENABLE_CTRL_INST
-#include "bm_resource.h"
-#include "bm_ctrl_inst.h"
-#include "bm_runtime_model.h"
+#include "bm/hybrid/bm_resource.h"
+#include "bm/hybrid/bm_ctrl_inst.h"
+#include "bm/hybrid/bm_runtime_model.h"
 #endif
 
 #if BM_CONFIG_ENABLE_SYNC
-#include "bm_sync.h"
+#include "bm/hybrid/bm_sync.h"
 #endif
 
 #endif /* BM_HYBRID_H */

@@ -3,7 +3,7 @@
  * @brief 全系统集成示例：模块、事件风暴优先级、主循环喂狗与故障处理
  */
 #include "app_events.h"
-#include "bm_hal_uart.h"
+#include "hal/bm_hal_uart.h"
 #include "example_support.h"
 #include "zeplod.h"
 

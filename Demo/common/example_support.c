@@ -13,7 +13,7 @@
  */
 #include "example_support.h"
 
-#include "bm_hal_uart.h"
+#include "hal/bm_hal_uart.h"
 #include "bm_log.h"
 
 #include <stddef.h>

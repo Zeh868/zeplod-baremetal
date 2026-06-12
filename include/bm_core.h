@@ -17,9 +17,9 @@
 #ifndef BM_CORE_H
 #define BM_CORE_H
 
-#include "bm_atomic.h"
-#include "bm_event.h"
-#include "bm_mempool.h"
-#include "bm_types.h"
+#include "bm/common/bm_atomic.h"
+#include "bm/core/bm_event.h"
+#include "bm/core/bm_mempool.h"
+#include "bm/common/bm_types.h"
 
 #endif /* BM_CORE_H */

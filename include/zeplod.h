@@ -3,7 +3,7 @@
  * @brief Zeplod Baremetal 统一对外 API 入口
  *
  * 根据 bm_config.h 中 BM_CONFIG_ENABLE_* 暴露已启用子系统。
- * 板级外设请按需单独包含 bm_hal_*.h（不在此聚合）。
+ * 板级外设请按需 `#include "hal/bm_hal_uart.h"` 或 `bm_hal.h`（不在此聚合）。
  *
  * @par 资源层级与典型配置
  * - Ultra：`BM_CONFIG_ENABLE_ULTRA=1`

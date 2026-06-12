@@ -5,8 +5,8 @@
 #ifndef BM_DRV_COMP_H
 #define BM_DRV_COMP_H
 
-#include "bm_drv.h"
-#include "bm_types.h"
+#include "drv/bm_drv.h"
+#include "bm/common/bm_types.h"
 
 struct bm_comp_driver_api {
     int (*clear_latch)(const struct bm_hal_comp *dev);

@@ -17,8 +17,8 @@
 #ifndef BM_HRT_H
 #define BM_HRT_H
 
-#include "bm_hal_hrt.h"
-#include "bm_types.h"
+#include "hal/bm_hal_hrt.h"
+#include "bm/common/bm_types.h"
 
 /** 硬件触发源类型（调度器当前仅处理 TIMER） */
 typedef enum {

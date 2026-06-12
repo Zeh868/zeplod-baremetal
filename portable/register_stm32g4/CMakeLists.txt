@@ -16,5 +16,6 @@ target_compile_definitions(bm_backend_register_stm32g4 PUBLIC
     BM_HAL_HAS_PRIORITY_MASK=1
 )
 target_link_libraries(bm_backend_register_stm32g4 PUBLIC bm_hal bm_config)
+bm_target_internal_includes(bm_backend_register_stm32g4)
 
 add_library(bm_hal_stm32g4 ALIAS bm_backend_register_stm32g4)

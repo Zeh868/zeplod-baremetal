@@ -16,9 +16,9 @@
 #ifndef BM_HAL_PWM_H
 #define BM_HAL_PWM_H
 
-#include "bm_drv_pwm.h"
-#include "bm_hal_hrt.h"
-#include "bm_types.h"
+#include "drv/bm_drv_pwm.h"
+#include "hal/bm_hal_hrt.h"
+#include "bm/common/bm_types.h"
 
 typedef struct bm_hal_pwm bm_hal_pwm_t;
 

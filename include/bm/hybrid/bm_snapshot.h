@@ -16,7 +16,7 @@
 #ifndef BM_SNAPSHOT_H
 #define BM_SNAPSHOT_H
 
-#include "bm_hal_memory.h"
+#include "hal/bm_hal_memory.h"
 
 #include <stdint.h>
 

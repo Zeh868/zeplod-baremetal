@@ -21,8 +21,8 @@
 
 #include "bm_hal_adc_sim.h"
 #include "bm_hal_pwm_sim.h"
-#include "bm_hal_timer.h"
-#include "bm_hal_uart.h"
+#include "hal/bm_hal_timer.h"
+#include "hal/bm_hal_uart.h"
 
 #ifdef NATIVE_SIM
 #include "bm_hal_timer_native.h"

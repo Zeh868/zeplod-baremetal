@@ -11,22 +11,22 @@
 #include "bm_config.h"
 
 #include "bm_core.h"
-#include "bm_log.h"
+#include "bm/common/bm_log.h"
 
 #if BM_CONFIG_ENABLE_MODULE
-#include "bm_module.h"
+#include "bm/core/bm_module.h"
 #endif
 
 #if BM_CONFIG_ENABLE_CHANNEL
-#include "bm_channel.h"
+#include "bm/core/bm_channel.h"
 #endif
 
 #if BM_CONFIG_ENABLE_SHELL
-#include "bm_shell.h"
+#include "bm/core/bm_shell.h"
 #endif
 
 #if BM_CONFIG_ENABLE_WDG
-#include "bm_wdg.h"
+#include "bm/core/bm_wdg.h"
 #endif
 
 #endif /* BM_LITE_H */

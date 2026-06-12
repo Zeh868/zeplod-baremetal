@@ -16,7 +16,7 @@
 #ifndef BM_HAL_CRITICAL_H
 #define BM_HAL_CRITICAL_H
 
-#include "bm_types.h"
+#include "bm/common/bm_types.h"
 
 #include <stdint.h>
 

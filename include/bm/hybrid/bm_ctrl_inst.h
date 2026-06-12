@@ -17,10 +17,10 @@
 #ifndef BM_CTRL_INST_H
 #define BM_CTRL_INST_H
 
-#include "bm_hal_hrt.h"
-#include "bm_hrt.h"
-#include "bm_resource.h"
-#include "bm_types.h"
+#include "hal/bm_hal_hrt.h"
+#include "bm/hybrid/bm_hrt.h"
+#include "bm/hybrid/bm_resource.h"
+#include "bm/common/bm_types.h"
 
 typedef struct bm_ctrl_inst bm_ctrl_inst_t;
 

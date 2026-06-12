@@ -16,7 +16,7 @@
 #ifndef BM_MEMPOOL_H
 #define BM_MEMPOOL_H
 
-#include "bm_types.h"
+#include "bm/common/bm_types.h"
 
 #include <stddef.h>
 #include <stdint.h>

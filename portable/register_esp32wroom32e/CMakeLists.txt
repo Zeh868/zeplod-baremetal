@@ -8,5 +8,6 @@ target_include_directories(bm_backend_register_esp32wroom32e PUBLIC
 )
 target_compile_definitions(bm_backend_register_esp32wroom32e PUBLIC BM_DRV_HAS_BACKEND)
 target_link_libraries(bm_backend_register_esp32wroom32e PUBLIC bm_hal bm_config)
+bm_target_internal_includes(bm_backend_register_esp32wroom32e)
 
 add_library(bm_hal_esp32wroom32e ALIAS bm_backend_register_esp32wroom32e)

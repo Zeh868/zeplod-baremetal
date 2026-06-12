@@ -15,9 +15,9 @@
 #ifndef BM_TIME_H
 #define BM_TIME_H
 
-#include "bm_hal_timer.h"
-#include "bm_safety.h"
-#include "bm_types.h"
+#include "hal/bm_hal_timer.h"
+#include "bm/common/bm_safety.h"
+#include "bm/common/bm_types.h"
 
 /**
  * @brief 将毫秒周期转换为 HAL 定时器 tick 数

@@ -19,7 +19,7 @@
 #ifndef BM_WDG_H
 #define BM_WDG_H
 
-#include "bm_types.h"
+#include "bm/common/bm_types.h"
 
 #ifndef BM_CONFIG_MAX_WDG_MODULES
 #define BM_CONFIG_MAX_WDG_MODULES 4

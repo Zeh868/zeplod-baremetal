@@ -16,8 +16,8 @@
 #ifndef BM_HAL_ENCODER_H
 #define BM_HAL_ENCODER_H
 
-#include "bm_drv_encoder.h"
-#include "bm_types.h"
+#include "drv/bm_drv_encoder.h"
+#include "bm/common/bm_types.h"
 
 typedef struct bm_hal_encoder bm_hal_encoder_t;
 
