@@ -26,8 +26,8 @@ portable/                   Port 实现（模板 + 参考后端）
 | 后端目录 | 定位 |
 |----------|------|
 | `portable/native_sim` | PC 测试与示例 |
-| `portable/register_stm32g4` | STM32G4 寄存器参考 |
-| `portable/register_esp32wroom32e` | ESP32 寄存器参考 |
+| `portable/sdk_stm32g4` | STM32G4 CMSIS（需 `BM_STM32_CUBE_PATH`） |
+| `portable/sdk_esp32_idf` | ESP32 ESP-IDF driver（需 `IDF_PATH` 或 IDF 组件） |
 | `portable/register_ch32v003` | CH32V003 桩 |
 | `portable/qemu_cortex_m0` | QEMU 冒烟 |
 | `portable/boot/qemu_cortex_m0/` | QEMU 启动、`crt0`、链接脚本 |

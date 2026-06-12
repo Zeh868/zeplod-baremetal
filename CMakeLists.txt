@@ -18,7 +18,7 @@ option(BM_SYNC_HAL_NATIVE "Link native_sim sync HAL into bm_ctrl_inst" OFF)
 option(BM_SYNC_HAL_QEMU "Link QEMU sync HAL into bm_ctrl_inst" OFF)
 option(BM_BUILD_TESTS "Build unit tests" ON)
 set(BM_BACKEND "" CACHE STRING
-    "Portable backend: native_sim, register_stm32g4, qemu_cortex_m0, external, ...")
+    "Portable backend: native_sim, sdk_stm32g4, sdk_esp32_idf, qemu_cortex_m0, external, ...")
 
 if(BM_ENABLE_CTRL_INST AND NOT BM_ENABLE_HRT)
     message(FATAL_ERROR "BM_ENABLE_CTRL_INST requires BM_ENABLE_HRT")

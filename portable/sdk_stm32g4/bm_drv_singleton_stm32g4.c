@@ -1,6 +1,6 @@
 /**
  * @file bm_drv_singleton_stm32g4.c
- * @brief STM32G4 寄存器后端单例驱动（临界区/屏障/定时器/UART/看门狗）
+ * @brief STM32G4 CMSIS 后端单例驱动（临界区/屏障/定时器/UART/看门狗）
  */
 #ifndef BM_HAL_HAS_PRIORITY_MASK
 #define BM_HAL_HAS_PRIORITY_MASK 1
@@ -15,12 +15,14 @@
 #include "bm_drv_timer.h"
 #include "bm_drv_uart.h"
 #include "bm_drv_wdg.h"
-#include "bm_hal_regs_stm32g4.h"
+#include "bm_hal_sdk_stm32g4.h"
 #include "bm_log.h"
 #include "bm_types.h"
 
 #define TAG_UART "hal_uart"
 #define TAG_WDG  "hal_wdg"
+
+extern uint32_t SystemCoreClock;
 
 static void (*g_tick_callback)(void);
 static uint32_t g_tick_freq;
@@ -92,10 +94,10 @@ const struct bm_memory_driver_api bm_drv_memory_api = {
 };
 
 void TIM6_DAC_IRQHandler(void) {
-    if ((BM_TIM_SR(BM_STM32G4_TIM6_BASE) & BM_TIM_SR_UIF) == 0u) {
+    if ((TIM6->SR & TIM_SR_UIF) == 0u) {
         return;
     }
-    BM_TIM_SR(BM_STM32G4_TIM6_BASE) &= ~BM_TIM_SR_UIF;
+    TIM6->SR &= (uint32_t)~TIM_SR_UIF;
     if (g_tick_callback) {
         g_tick_callback();
     }
@@ -104,33 +106,38 @@ void TIM6_DAC_IRQHandler(void) {
 static int stm32_timer_init(uint32_t freq_hz) {
     uint32_t psc;
     uint32_t arr;
+    uint32_t tim_clk;
 
     if (freq_hz == 0u) {
         return BM_ERR_INVALID;
     }
     g_tick_freq = freq_hz;
+    tim_clk = SystemCoreClock;
+    if (tim_clk == 0u) {
+        tim_clk = 170000000u;
+    }
     psc = 169u;
-    arr = (170000000u / ((psc + 1u) * freq_hz)) - 1u;
+    arr = (tim_clk / ((psc + 1u) * freq_hz)) - 1u;
     if (arr == 0u) {
         return BM_ERR_INVALID;
     }
-    BM_TIM_CR1(BM_STM32G4_TIM6_BASE) = 0u;
-    BM_TIM_PSC(BM_STM32G4_TIM6_BASE) = psc;
-    BM_TIM_ARR(BM_STM32G4_TIM6_BASE) = arr;
-    BM_TIM_EGR(BM_STM32G4_TIM6_BASE) = 1u;
-    BM_TIM_DIER(BM_STM32G4_TIM6_BASE) = BM_TIM_DIER_UIE;
-    BM_TIM_CR1(BM_STM32G4_TIM6_BASE) = BM_TIM_CR1_CEN;
+    TIM6->CR1 = 0u;
+    TIM6->PSC = psc;
+    TIM6->ARR = arr;
+    TIM6->EGR = TIM_EGR_UG;
+    TIM6->DIER = TIM_DIER_UIE;
+    TIM6->CR1 = TIM_CR1_CEN;
     return BM_OK;
 }
 
 static void stm32_timer_stop(void) {
-    BM_TIM_DIER(BM_STM32G4_TIM6_BASE) = 0u;
-    BM_TIM_CR1(BM_STM32G4_TIM6_BASE) = 0u;
+    TIM6->DIER = 0u;
+    TIM6->CR1 = 0u;
     g_tick_callback = NULL;
 }
 
 static uint32_t stm32_timer_get_ticks(void) {
-    return BM_TIM_CNT(BM_STM32G4_TIM6_BASE);
+    return TIM6->CNT;
 }
 
 static uint32_t stm32_timer_get_freq(void) {
@@ -151,7 +158,7 @@ const struct bm_timer_driver_api bm_drv_timer_api = {
 
 static int stm32_uart_init(void *config) {
     (void)config;
-    BM_LOGI(TAG_UART, "init: USART2 stub (add Cube LL + GPIO)");
+    BM_LOGI(TAG_UART, "init: wire USART2 via Cube HAL in bm_port.c for production");
     return BM_OK;
 }
 
@@ -180,7 +187,7 @@ const struct bm_uart_driver_api bm_drv_uart_api = {
 
 static int stm32_wdg_init(uint32_t timeout_ms) {
     (void)timeout_ms;
-    BM_LOGI(TAG_WDG, "init: IWDG stub (configure prescaler/reload)");
+    BM_LOGI(TAG_WDG, "init: configure IWDG via Cube HAL in bm_port.c for production");
     return BM_OK;
 }
 

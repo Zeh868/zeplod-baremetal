@@ -9,7 +9,7 @@
 
 **模板：** [`portable/template/bm_port.c`](../portable/template/bm_port.c)
 
-**参考实现：** `portable/register_<mcu>/`（PC 开发可用 `BM_BACKEND=native_sim`）
+**参考实现：** `portable/sdk_<mcu>/`（PC 开发可用 `BM_BACKEND=native_sim`）
 
 ## 2. 必须实现
 
@@ -26,7 +26,7 @@
 | `bm_drv_uart_api` | 日志、Shell |
 | `bm_drv_pwm_api` 等 | 混合域外设 |
 
-实现时对接厂商 `HAL_*` 或寄存器；可参考 `portable/register_stm32g4/`。
+实现时对接厂商 SDK（Cube `HAL_*`、ESP-IDF `driver/*`）；可参考 `portable/sdk_stm32g4/`、`portable/sdk_esp32_idf/`。
 
 ## 4. 集成检查清单
 

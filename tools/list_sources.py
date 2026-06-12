@@ -47,16 +47,16 @@ BACKENDS: dict[str, list[str]] = {
         "portable/native_sim/bm_drv_comp_native.c",
         "portable/native_sim/bm_drv_encoder_native.c",
     ],
-    "register_stm32g4": [
-        "portable/register_stm32g4/bm_drv_singleton_stm32g4.c",
-        "portable/register_stm32g4/bm_drv_pwm_stm32g4.c",
-        "portable/register_stm32g4/bm_drv_adc_stm32g4.c",
-        "portable/register_stm32g4/bm_drv_comp_stm32g4.c",
-        "portable/register_stm32g4/bm_drv_encoder_stm32g4.c",
-        "portable/register_stm32g4/bm_sync_hal_stm32g4.c",
+    "sdk_stm32g4": [
+        "portable/sdk_stm32g4/bm_drv_singleton_stm32g4.c",
+        "portable/sdk_stm32g4/bm_drv_pwm_stm32g4.c",
+        "portable/sdk_stm32g4/bm_drv_adc_stm32g4.c",
+        "portable/sdk_stm32g4/bm_drv_comp_stm32g4.c",
+        "portable/sdk_stm32g4/bm_drv_encoder_stm32g4.c",
+        "portable/sdk_stm32g4/bm_sync_hal_stm32g4.c",
     ],
-    "register_esp32wroom32e": [
-        "portable/register_esp32wroom32e/bm_drv_singleton_esp32.c",
+    "sdk_esp32_idf": [
+        "portable/sdk_esp32_idf/bm_drv_singleton_esp32.c",
     ],
     "register_ch32v003": [
         "portable/register_ch32v003/bm_drv_singleton_ch32v003.c",

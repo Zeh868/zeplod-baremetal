@@ -32,4 +32,4 @@ zeplod_link(${CMAKE_PROJECT_NAME})
 
 ## 4. 参考 Port
 
-寄存器级参考：`portable/register_stm32g4/`。量产推荐在 `bm_port.c` 内直接调用 Cube `HAL_*`。
+CMSIS 参考后端：`portable/sdk_stm32g4/`（`-DBM_STM32_CUBE_PATH=...`）。量产推荐在 `bm_port.c` 内直接调用 Cube `HAL_*`。
