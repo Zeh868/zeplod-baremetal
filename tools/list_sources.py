@@ -35,7 +35,7 @@ COMPONENTS = {
     "hrt": ["Source/hybrid/bm_hrt.c"],
     "ticker": ["Source/hybrid/bm_ticker.c"],
     "resource": ["Source/hybrid/bm_resource.c"],
-    "ctrl_inst": ["Source/hybrid/bm_ctrl_inst.c"],
+    "exec": ["Source/hybrid/bm_exec.c"],
     "sync": ["Source/hybrid/bm_sync.c"],
 }
 
@@ -73,19 +73,19 @@ BACKENDS: dict[str, list[str]] = {
 PROFILES: dict[str, dict[str, bool]] = {
     "minimal": {
         "module": False, "channel": False, "shell": False, "wdg": False,
-        "hrt": False, "ticker": False, "ctrl_inst": False, "sync": False,
+        "hrt": False, "ticker": False, "exec": False, "sync": False,
     },
     "event": {
         "module": True, "channel": False, "shell": False, "wdg": True,
-        "hrt": False, "ticker": False, "ctrl_inst": False, "sync": False,
+        "hrt": False, "ticker": False, "exec": False, "sync": False,
     },
     "servo": {
         "module": False, "channel": False, "shell": False, "wdg": False,
-        "hrt": True, "ticker": True, "ctrl_inst": True, "sync": False,
+        "hrt": True, "ticker": True, "exec": True, "sync": False,
     },
     "full": {
         "module": True, "channel": False, "shell": False, "wdg": True,
-        "hrt": True, "ticker": True, "ctrl_inst": True, "sync": False,
+        "hrt": True, "ticker": True, "exec": True, "sync": False,
     },
 }
 
@@ -116,7 +116,7 @@ def profile_flags(args: argparse.Namespace) -> dict[str, bool]:
         "wdg": enabled(args.enable_wdg),
         "hrt": enabled(args.enable_hrt),
         "ticker": enabled(args.enable_ticker),
-        "ctrl_inst": enabled(args.enable_ctrl_inst),
+        "exec": enabled(args.enable_exec),
         "sync": enabled(args.enable_sync),
     }
 
@@ -197,7 +197,7 @@ def main() -> None:
     parser.add_argument("--enable-wdg", choices=["ON", "OFF"], default="OFF")
     parser.add_argument("--enable-hrt", choices=["ON", "OFF"], default="OFF")
     parser.add_argument("--enable-ticker", choices=["ON", "OFF"], default="OFF")
-    parser.add_argument("--enable-ctrl-inst", choices=["ON", "OFF"], default="OFF")
+    parser.add_argument("--enable-exec", choices=["ON", "OFF"], default="OFF")
     parser.add_argument("--enable-sync", choices=["ON", "OFF"], default="OFF")
     parser.add_argument(
         "--backend",

@@ -17,7 +17,7 @@
 |------|------|
 | `bm/common/` | types、log、atomic… |
 | `bm/core/` | event、mempool、module… |
-| `bm/hybrid/` | hrt、ctrl_inst、sync… |
+| `bm/hybrid/` | hrt、exec、sync… |
 | `hal/` | `bm_hal_*.h` 应用契约 |
 | `drv/` | `bm_drv_*.h`（Port 作者） |
 

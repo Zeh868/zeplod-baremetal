@@ -7,11 +7,11 @@ if(NATIVE_SIM_BUILD)
     set(EXAMPLE_ENABLE_MODULE ON)
     set(EXAMPLE_ENABLE_HRT ON)
     set(EXAMPLE_ENABLE_TICKER ON)
-    set(EXAMPLE_ENABLE_CTRL_INST ON)
+    set(EXAMPLE_ENABLE_EXEC ON)
     include(../cmake/native_sim_example.cmake)
     file(GLOB HRT_BMS_MODULES CONFIGURE_DEPENDS modules/*.c)
     bm_add_native_sim_example(hrt_bms_coulomb
-        FRAMEWORK_LIBS bm_core bm_module bm_hrt bm_ticker bm_ctrl_inst
+        FRAMEWORK_LIBS bm_core bm_module bm_hrt bm_ticker bm_exec
         EXTRA_SOURCES ${HRT_BMS_MODULES}
     )
 else()
@@ -19,11 +19,11 @@ else()
     set(EXAMPLE_ENABLE_MODULE ON)
     set(EXAMPLE_ENABLE_HRT ON)
     set(EXAMPLE_ENABLE_TICKER ON)
-    set(EXAMPLE_ENABLE_CTRL_INST ON)
+    set(EXAMPLE_ENABLE_EXEC ON)
     include(../cmake/qemu_example.cmake)
     file(GLOB HRT_BMS_MODULES CONFIGURE_DEPENDS modules/*.c)
     bm_add_qemu_example(hrt_bms_coulomb
-        FRAMEWORK_LIBS bm_core bm_module bm_hrt bm_ticker bm_ctrl_inst
+        FRAMEWORK_LIBS bm_core bm_module bm_hrt bm_ticker bm_exec
         EXTRA_SOURCES ${HRT_BMS_MODULES}
     )
 endif()

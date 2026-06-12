@@ -1,8 +1,12 @@
 # Zeplod Baremetal
 
-A resource-scalable bare-metal event-driven framework for MCU-based electromechanical control.
+A resource-scalable deterministic event, control, and streaming-compute framework for MCUs.
 
-Zeplod Baremetal targets motor drives, digital power, battery management systems (BMS), and robotic end-nodes where an RTOS is too heavy or simply unavailable. It provides a unified programming model across 8-bit microcontrollers up to mid-range ARM Cortex-M, with a clear migration path to [Zeplod on Zephyr](https://github.com/zeplod/zeplod) when hardware resources allow.
+The current stable implementation focuses on motor drives, digital power, battery management systems (BMS), and robotic end-nodes. Its roadmap extends the same static-resource and deterministic-execution model to audio DSP, condition monitoring, instrumentation, sensor fusion, ultrasonic/radar front ends, and low-resolution vision. It provides a unified programming model from 8-bit microcontrollers to mid-range ARM Cortex-M, with a migration path to [Zeplod on Zephyr](https://github.com/zeplod/zeplod).
+
+> Multi-domain capabilities are planned in the
+> [deterministic streaming architecture](docs/23-多领域确定性流式架构.md);
+> planned components are not presented as currently implemented features.
 
 ---
 
@@ -14,7 +18,8 @@ Zeplod Baremetal targets motor drives, digital power, battery management systems
 - **Multi-instance control**: Run multiple independent control algorithms (multi-axis servos, multi-cell BMS) with explicit resource claims and conflict detection.
 - **Synchronization domains**: Phase-lock multiple PWM/ADC instances for interleaved power stages or synchronized robotic joints.
 - **Cross-domain data exchange**: Lock-free triple-buffer snapshots (`bm_snapshot`) for safe HRT-to-SRT data hand-off.
-- **Failure-safe startup**: `bm_ctrl_init_all()` validates all instances, resources, and bindings before execution; any failure triggers orderly rollback and safe-stop.
+- **Failure-safe startup**: `bm_exec_init_all()` validates all instances, resources, and bindings before execution; any failure triggers orderly rollback and safe-stop.
+- **Multi-domain roadmap**: Static zero-copy block streams, DMA block/frame deadlines, and generic execution instances are planned for audio, vision, acquisition, and edge DSP while preserving control API compatibility.
 
 ---
 
@@ -37,7 +42,7 @@ Zeplod Baremetal targets motor drives, digital power, battery management systems
 │  ┌────────────────────────────────────────────────────────────────┐ │
 │  │  Hybrid Domain (optional)                                       │ │
 │  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────────┐ │ │
-│  │  │   bm_hrt    │  │  bm_ticker  │  │      bm_ctrl_inst       │ │ │
+│  │  │   bm_hrt    │  │  bm_ticker  │  │      bm_exec       │ │ │
 │  │  │(scheduled  │  │  (SRT       │  │ (multi-instance control │ │ │
 │  │  │  dispatch)  │  │  periodic)  │  │  + resource claims)     │ │ │
 │  │  └─────────────┘  └─────────────┘  └─────────────────────────┘ │ │
@@ -60,6 +65,9 @@ Zeplod Baremetal targets motor drives, digital power, battery management systems
 
 **Key rule**: Hardware HRT and Scheduled HRT never access SRT event queues or critical-section-protected structures. This guarantees that high-priority control loops cannot be delayed by business-logic processing.
 
+The planned **Block/Frame RT** domain is DMA or frame-ready driven and must finish
+audio, FFT, acquisition, or vision work before the next block/frame arrives.
+
 ---
 
 ## Resource Tiers
@@ -69,22 +77,28 @@ Zeplod Baremetal targets motor drives, digital power, battery management systems
 | **Ultra** | < 8 KB | < 1 KB | STM8, AVR, 8051 | `BM_CONFIG_ENABLE_ULTRA` / `bm_ultra.h` |
 | **Nano** | 8–32 KB | 1–4 KB | CH32V003, STM32F030 | `zeplod.h` or `bm_lite.h` |
 | **Lite** | 32–128 KB | 4–16 KB | STM32F103, nRF51822, ESP32-WROOM-32E | + channel / shell via `BM_CONFIG_ENABLE_*` |
-| **Control** | 32–128 KB+ | 4–16 KB+ | STM32G4, STM32F3 | + HRT / ctrl_inst / sync (`bm_hybrid.h`) |
+| **Control** | 32–128 KB+ | 4–16 KB+ | STM32G4, STM32F3 | + HRT / exec / sync (`bm_hybrid.h`) |
+| **DSP (planned)** | 64–256 KB | 16–128 KB | Cortex-M4F/M7, ESP32-S3 | + algorithm / stream / pipeline |
+| **Media Edge (planned)** | 128 KB+ | 64 KB+ / external RAM | Cortex-M7, PSRAM MCUs | + audio / frame / camera HAL |
 
 ---
 
 ## Target Domains
 
-Zeplod Baremetal is purpose-built for **electromechanical control nodes** on resource-constrained MCUs. The following domains are ranked by native fit.
+Zeplod Baremetal targets **deterministic control and streaming-compute nodes** on
+resource-constrained MCUs. Current and planned coverage are distinguished below.
 
 ### ★★★★★ Native fit — core design targets
 
-| Domain | Typical use case | Why it fits |
-|--------|-----------------|-------------|
-| **Digital power** | DC-DC, PFC, LLC, multi-phase VRM | Hardware HRT (PWM→ADC trigger) + scheduled HRT (voltage loop) + sync domains (interleaving) |
-| **BMS** | Cell sampling, coulomb counting, balancing | Multi-instance model maps 1-to-1 to "pack sampler + N cells"; fault protection via comparator Break |
-| **Servo / motion control** | Industrial servo, robot joints, stepper drives | Current/speed/position three-loop model matches Hardware HRT + Scheduled HRT + SRT exactly |
-| **Robotics** | Manipulators, mobile robots, humanoid end-effectors | Part of the Zeplod stack; multi-axis sync + event-ID alignment with upper-layer Zeplod/Zephyr |
+| Domain | Typical use case | Why it fits | Status |
+|--------|-----------------|-------------|--------|
+| **Digital power** | DC-DC, PFC, LLC, multi-phase VRM | Hardware + scheduled HRT and synchronization | Current foundation |
+| **BMS** | Cell sampling, coulomb counting, balancing | Multi-instance sampling, snapshots, protection | Current foundation |
+| **Servo / motion** | Servos, robot joints, steppers | Multi-rate control loops and synchronization | Current foundation |
+| **Robotics** | Manipulators, mobile robots, end-effectors | Multi-axis instances and event coordination | Current foundation |
+| **Acoustic/condition monitoring** | Noise, bearing, structural monitoring | DMA blocks, FFT/envelope/features | R1-R3 planned |
+| **Instrumentation/metering** | Acquisition, power quality, recorders | Synchronous blocks and spectral/statistical DSP | R1-R3 planned |
+| **Sensor fusion/perception** | IMU/AHRS, ultrasonic, low-rate radar | Timestamps, fusion, correlation/FFT | R2-R3 planned |
 
 ### ★★★★☆ Strong fit — minor gaps (protocol stacks)
 
@@ -95,6 +109,10 @@ Zeplod Baremetal is purpose-built for **electromechanical control nodes** on res
 | **Consumer / white goods** | Inverter AC, washing machine, vacuum | Needs display/touch and wireless stacks |
 | **Energy / PV / ESS** | Solar inverter, PCS, EV charger module | Needs MPPT/PLL and OCPP/IEC 61850 protocols |
 | **IoT / sensor nodes** | Environmental monitoring, smart metering, agriculture | Needs LoRa/BLE/Zigbee and aggressive power-management policy |
+| **Embedded audio** | Intercom front ends, prompts, EQ, AGC, VAD | Needs stream/pipeline and I2S/SAI/PDM/DAC HAL |
+| **Low-resolution vision** | Thresholding, morphology, marker/line detection | Needs frame streams, camera HAL, cache/external RAM |
+| **Biomedical signals** | ECG/PPG/EMG preprocessing | Medical algorithms and certification remain product responsibilities |
+| **Communications DSP / TinyML** | DTMF/FSK, features, anomaly detection | Protocol and inference runtimes remain external |
 
 ### ★★★☆☆ Moderate fit — viable with extra work
 
@@ -104,7 +122,8 @@ Zeplod Baremetal is purpose-built for **electromechanical control nodes** on res
 | **Medical devices** | Infusion pump, ventilator motor, hospital bed | Needs IEC 62304 process and safety certification (framework itself is uncertified) |
 | **Smart lighting** | LED driver, DALI/DMX decoder | Needs DALI/DMX and wireless mesh protocols |
 
-> **Not a fit**: Commercial avionics (DO-178C), safety-critical automotive (ASIL-D), and complex GUI/HMI applications.
+> **Not a fit**: Commercial avionics (DO-178C), ASIL-D systems, complex GUI/HMI,
+> high-resolution software video codecs, large neural audio/vision models, or desktop media stacks.
 
 ---
 
@@ -119,7 +138,7 @@ zeplod-baremetal/
 ├── Source/               # Library kernel (like FreeRTOS/Source/)
 │   ├── core/             # Events, mempool, module, shell, wdg…
 │   ├── hal/              # HAL dispatch layer
-│   └── hybrid/           # HRT, ctrl_inst, sync…
+│   └── hybrid/           # HRT, exec, sync…
 ├── portable/             # Platform ports (template + reference backends)
 ├── Demo/                 # Progressive examples (like FreeRTOS/Demo/)
 ├── tests/
@@ -231,7 +250,7 @@ All framework limits are configurable at compile-time via `bm_config.h` (force-i
 /* Hybrid domain */
 #define BM_CONFIG_HRT_TICK_US                100
 #define BM_CONFIG_HRT_MAX_SLOTS              16
-#define BM_CONFIG_MAX_CTRL_INSTANCES         16
+#define BM_CONFIG_MAX_EXEC_INSTANCES         16
 #define BM_CONFIG_MAX_RESOURCE_CLAIMS        64
 ```
 
@@ -269,7 +288,7 @@ See [docs/10-迁移与演进.md](docs/10-迁移与演进.md) for detailed guides
 
 ## Documentation
 
-Start at [`docs/README.md`](docs/README.md) (numbered guides 00–21 in Chinese).
+Start at [`docs/README.md`](docs/README.md) (numbered guides 00–23 in Chinese).
 
 - [`docs/01-框架概览与资源层级.md`](docs/01-框架概览与资源层级.md) — Architecture overview
 - [`docs/13-集成到现有工程.md`](docs/13-集成到现有工程.md) — Integrate into existing Cube/SDK/Keil/IAR projects
@@ -277,6 +296,8 @@ Start at [`docs/README.md`](docs/README.md) (numbered guides 00–21 in Chinese)
 - [`docs/08-HAL移植指南.md`](docs/08-HAL移植指南.md) — HAL contracts and porting
 - [`docs/api/`](docs/api/) — Hybrid-domain API reference
 - [`docs/06-示例与上手路径.md`](docs/06-示例与上手路径.md) — Examples and hardware porting
+- [`docs/22-领域算法与模块化路线图.md`](docs/22-领域算法与模块化路线图.md) — Domain algorithms and maturity
+- [`docs/23-多领域确定性流式架构.md`](docs/23-多领域确定性流式架构.md) — Multi-domain deterministic streaming architecture
 
 ---
 
@@ -311,4 +332,6 @@ Third-party files may use other licenses; see their headers (e.g. Unity test fra
 
 ---
 
-*Zeplod Baremetal is part of the Zeplod robotics stack. It is not a general-purpose RTOS replacement; it is a control-oriented framework for resource-constrained electromechanical nodes.*
+*Zeplod Baremetal is part of the Zeplod robotics/electronics stack. It is not a
+general-purpose RTOS or media stack; it targets deterministic control and bounded
+streaming computation on resource-constrained MCUs.*

@@ -13,12 +13,12 @@
 #error "bm_hybrid.h requires BM_CONFIG_ENABLE_HRT"
 #endif
 
-#if BM_CONFIG_ENABLE_SYNC && !BM_CONFIG_ENABLE_CTRL_INST
-#error "BM_CONFIG_ENABLE_SYNC requires BM_CONFIG_ENABLE_CTRL_INST"
+#if BM_CONFIG_ENABLE_SYNC && !BM_CONFIG_ENABLE_EXEC
+#error "BM_CONFIG_ENABLE_SYNC requires BM_CONFIG_ENABLE_EXEC"
 #endif
 
-#if BM_CONFIG_ENABLE_CTRL_INST && !BM_CONFIG_ENABLE_HRT
-#error "BM_CONFIG_ENABLE_CTRL_INST requires BM_CONFIG_ENABLE_HRT"
+#if BM_CONFIG_ENABLE_EXEC && !BM_CONFIG_ENABLE_HRT
+#error "BM_CONFIG_ENABLE_EXEC requires BM_CONFIG_ENABLE_HRT"
 #endif
 
 #include "bm/hybrid/bm_hrt.h"
@@ -28,9 +28,9 @@
 #include "bm/hybrid/bm_ticker.h"
 #endif
 
-#if BM_CONFIG_ENABLE_CTRL_INST
+#if BM_CONFIG_ENABLE_EXEC
 #include "bm/hybrid/bm_resource.h"
-#include "bm/hybrid/bm_ctrl_inst.h"
+#include "bm/hybrid/bm_exec.h"
 #include "bm/hybrid/bm_runtime_model.h"
 #endif
 

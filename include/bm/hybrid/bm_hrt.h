@@ -3,7 +3,7 @@
  * @brief 高分辨率定时（HRT）调度器
  *
  * 管理微秒级周期 slot。当前调度器仅实现 BM_HRT_TRIGGER_TIMER；
- * PWM/ADC 硬件槽通过 HAL bind 路径（见 bm_ctrl_inst）接入。
+ * PWM/ADC 硬件槽通过 HAL bind 路径（见 bm_exec）接入。
  * @author zeh (china_qzh@163.com)
  * @version 1.0
  * @date 2026-06-10

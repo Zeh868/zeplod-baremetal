@@ -7,7 +7,7 @@
 
 HRT（High-Resolution Timer）管理微秒级 Scheduled slot，当前调度器仅接收
 `BM_HRT_TRIGGER_TIMER`。PWM 更新、ADC 完成等 Hardware HRT 通过
-`bm_ctrl_inst` 的 HAL bind 路径接入。回调在 ISR 或等效硬实时上下文中执行，
+`bm_exec` 的 HAL bind 路径接入。回调在 ISR 或等效硬实时上下文中执行，
 **不得**调用 `bm_event_publish` 等慢速核心 API。
 
 ## 类型

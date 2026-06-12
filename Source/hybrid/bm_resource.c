@@ -29,8 +29,8 @@ typedef struct {
     uint32_t instance_index;
 } flat_claim_t;
 
-#ifndef BM_CONFIG_MAX_CTRL_INSTANCES
-#define BM_CONFIG_MAX_CTRL_INSTANCES 16u
+#ifndef BM_CONFIG_MAX_EXEC_INSTANCES
+#define BM_CONFIG_MAX_EXEC_INSTANCES 16u
 #endif
 
 #ifndef BM_CONFIG_MAX_RESOURCE_CLAIMS
@@ -183,7 +183,7 @@ int bm_resource_check_conflicts(const bm_resource_claim_t *const *claims,
     if (!claims || !claim_counts) {
         return BM_ERR_INVALID;
     }
-    if (instance_count == 0u || instance_count > BM_CONFIG_MAX_CTRL_INSTANCES) {
+    if (instance_count == 0u || instance_count > BM_CONFIG_MAX_EXEC_INSTANCES) {
         BM_LOGE("resource", "invalid instance_count=%u", (unsigned)instance_count);
         return BM_ERR_INVALID;
     }

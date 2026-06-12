@@ -5,7 +5,7 @@
 
 ## 概述
 
-控制实例通过 `bm_resource_claim_t` 声明对外设资源的访问模式。`bm_ctrl_start_all` 启动前调用冲突检测，防止多实例独占同一 PWM、ADC 规则组等。
+控制实例通过 `bm_resource_claim_t` 声明对外设资源的访问模式。`bm_exec_start_all` 启动前调用冲突检测，防止多实例独占同一 PWM、ADC 规则组等。
 
 ## 类型
 

@@ -52,15 +52,15 @@ if(TARGET bm_resource)
     bm_add_test(test_resource_claim test_resource_claim.c bm_resource)
 endif()
 
-if(BM_ENABLE_CTRL_INST)
-    bm_add_test(test_ctrl_inst test_ctrl_inst.c bm_ctrl_inst)
-    target_include_directories(test_ctrl_inst PRIVATE
+if(BM_ENABLE_EXEC)
+    bm_add_test(test_exec test_exec.c bm_exec)
+    target_include_directories(test_exec PRIVATE
         ${CMAKE_SOURCE_DIR}/portable/native_sim)
 endif()
 
 if(BM_ENABLE_SYNC)
     add_executable(test_sync test_sync.c)
-    target_link_libraries(test_sync PRIVATE unity bm_ctrl_inst bm_hal_native)
+    target_link_libraries(test_sync PRIVATE unity bm_exec bm_hal_native)
     bm_target_internal_includes(test_sync)
     target_include_directories(test_sync PRIVATE
         ${CMAKE_SOURCE_DIR}/tests/unit/unity

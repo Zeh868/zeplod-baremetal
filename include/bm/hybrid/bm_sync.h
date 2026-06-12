@@ -16,7 +16,7 @@
 #ifndef BM_SYNC_H
 #define BM_SYNC_H
 
-#include "bm/hybrid/bm_ctrl_inst.h"
+#include "bm/hybrid/bm_exec.h"
 #include "bm/common/bm_types.h"
 
 typedef struct bm_hal_timer bm_hal_timer_t;
@@ -25,7 +25,7 @@ typedef struct bm_hal_timer bm_hal_timer_t;
 typedef struct {
     const char *name;
     const bm_hal_timer_t *master_timer;
-    const bm_ctrl_inst_t *const *members;
+    const bm_exec_t *const *members;
     const uint32_t *phase_ticks;
     uint32_t member_count;
 } bm_sync_domain_t;

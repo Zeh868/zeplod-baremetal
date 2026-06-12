@@ -33,7 +33,7 @@
 1. 从 `portable/template/bm_port.c` 复制到应用 `Core/Src/` 或 `source/`。
 2. 按 PROFILE 实现本应用用到的 `bm_drv_*_api`。
 3. 在 `native_sim` 或 QEMU 上跑通单元测试（若适用）。
-4. 真机验证 HRT 时序与 ISR 上下文（混合域见 [03 §3.1](03-执行域与跨域通讯.md#31-直接-hal-绑定不用-bm_ctrl_inst)）。
+4. 真机验证 HRT 时序与 ISR 上下文（混合域见 [03 §3.1](03-执行域与跨域通讯.md#31-直接-hal-绑定不用-bm_exec)）。
 
 ## 5. 相关文档
 

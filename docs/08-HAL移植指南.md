@@ -3,7 +3,7 @@
 > **本文职责**：HAL 契约、driver API 分层、参考平台与混合域外设移植要点。  
 > **不负责**：Keil/IAR 加源文件 → [18](18-Keil集成.md)、[19](19-IAR集成.md)；挂库总览 → [13](13-集成到现有工程.md)。
 
-应用与 `Source/` 只依赖 `include/bm_hal_*.h`；厂商 Port 在 `portable/`（量产用 `template/bm_port.c` 接 SDK）。混合域 **bind 如何接到向量 ISR** 见 [03 §3.1](03-执行域与跨域通讯.md#31-直接-hal-绑定不用-bm_ctrl_inst)。
+应用与 `Source/` 只依赖 `include/bm_hal_*.h`；厂商 Port 在 `portable/`（量产用 `template/bm_port.c` 接 SDK）。混合域 **bind 如何接到向量 ISR** 见 [03 §3.1](03-执行域与跨域通讯.md#31-直接-hal-绑定不用-bm_exec)。
 
 ## 三层结构（driver API）
 

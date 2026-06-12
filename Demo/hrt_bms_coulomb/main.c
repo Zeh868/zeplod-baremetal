@@ -12,7 +12,7 @@
  *
  */
 #include "app_bms.h"
-#include "bm_ctrl_inst.h"
+#include "bm_exec.h"
 #include "bm_hrt.h"
 #include "bm_log.h"
 #include "bm_module.h"
@@ -54,7 +54,7 @@ static pack_state_t g_pack_state;
 static cell_state_t g_cell_state;
 
 /** Pack 电流采样：ADC 读数换算为安培并发布快照 */
-static void pack_sample_step(const bm_ctrl_inst_t *instance) {
+static void pack_sample_step(const bm_exec_t *instance) {
     pack_state_t *state = (pack_state_t *)instance->state;
     uint16_t raw = 0u;
     float amps;
@@ -68,13 +68,13 @@ static void pack_sample_step(const bm_ctrl_inst_t *instance) {
     state->sample_count++;
 }
 
-static int bind_pack_adc(const bm_ctrl_inst_t *instance,
+static int bind_pack_adc(const bm_exec_t *instance,
                          const bm_hal_hrt_binding_t *binding) {
     (void)instance;
     return bm_hal_adc_bind_complete(&BM_HAL_ADC_SIM0, binding);
 }
 
-static int pack_init(const bm_ctrl_inst_t *instance) {
+static int pack_init(const bm_exec_t *instance) {
     (void)instance;
     bm_hal_adc_sim_set_rank(&BM_HAL_ADC_SIM0, 0u, 4095u);
     (void)bm_hal_pwm_enable_outputs(&BM_HAL_PWM_SIM0, 1);
@@ -82,39 +82,38 @@ static int pack_init(const bm_ctrl_inst_t *instance) {
     return BM_OK;
 }
 
-static int pack_start(const bm_ctrl_inst_t *instance) {
+static int pack_start(const bm_exec_t *instance) {
     (void)instance;
     return BM_OK;
 }
 
-static void pack_safe_stop(const bm_ctrl_inst_t *instance) {
+static void pack_safe_stop(const bm_exec_t *instance) {
     (void)instance;
     BM_LOGW(TAG, "pack safe stop");
     bm_hal_pwm_request_safe_state(&BM_HAL_PWM_SIM0);
 }
 
-static const bm_ctrl_ops_t g_pack_ops = {
+static const bm_exec_ops_t g_pack_ops = {
     pack_init, pack_start, pack_safe_stop
 };
 
-static const bm_ctrl_slot_t g_pack_slots[] = {
+static const bm_exec_slot_t g_pack_slots[] = {
     {
-        BM_CTRL_SLOT_HARDWARE,
+        BM_EXEC_SLOT_HARDWARE,
         0u,
-        BM_HRT_TRIGGER_ADC_COMPLETE,
         pack_sample_step,
         bind_pack_adc,
         "pack_sample"
     }
 };
 
-static const bm_ctrl_inst_t g_pack_sampler = {
+static const bm_exec_t g_pack_sampler = {
     10u, "pack_sampler", &g_pack_state, NULL, NULL,
     g_pack_slots, 1u, NULL, 0u, &g_pack_ops
 };
 
 /** 电芯库仑积分：读取 Pack 电流快照并累加 */
-void app_cell_integrate_step(const bm_ctrl_inst_t *instance) {
+void app_cell_integrate_step(const bm_exec_t *instance) {
     cell_state_t *state = (cell_state_t *)instance->state;
     float amps;
 
@@ -123,21 +122,21 @@ void app_cell_integrate_step(const bm_ctrl_inst_t *instance) {
     state->integrate_ticks++;
 }
 
-static int cell_init(const bm_ctrl_inst_t *instance) {
+static int cell_init(const bm_exec_t *instance) {
     (void)instance;
     return BM_OK;
 }
 
-static int cell_start(const bm_ctrl_inst_t *instance) {
+static int cell_start(const bm_exec_t *instance) {
     (void)instance;
     return BM_OK;
 }
 
-static void cell_safe_stop(const bm_ctrl_inst_t *instance) {
+static void cell_safe_stop(const bm_exec_t *instance) {
     (void)instance;
 }
 
-static const bm_ctrl_ops_t g_cell_ops = {
+static const bm_exec_ops_t g_cell_ops = {
     cell_init, cell_start, cell_safe_stop
 };
 
@@ -151,12 +150,12 @@ static const bm_ticker_slot_t g_cell_ticker[] = {
     { CELL_TICKER_MS, TICKER_INTEGRATE, 1u, "integrate" }
 };
 
-const bm_ctrl_inst_t g_cell_0 = {
+const bm_exec_t g_cell_0 = {
     20u, "cell_0", &g_cell_state, NULL, NULL,
     NULL, 0u, NULL, 0u, &g_cell_ops
 };
 
-static const bm_ctrl_inst_t *const g_instances[] = {
+static const bm_exec_t *const g_instances[] = {
     &g_pack_sampler,
     &g_cell_0
 };
@@ -198,16 +197,16 @@ int main(void) {
     (void)bm_hal_timer_init(1000u);
     bm_hal_comp_sim_set_threshold(&BM_HAL_COMP_SIM0, 3000u);
 
-    rc = bm_ctrl_init_all(g_instances, 2u);
+    rc = bm_exec_init_all(g_instances, 2u);
     if (rc != BM_OK) {
         BM_LOGE(TAG, "ctrl init failed, rc=%d", rc);
         hybrid_print("EXAMPLE_HRT_BMS_COULOMB: FAIL init\n");
         return 1;
     }
-    rc = bm_ctrl_start_all(g_instances, 2u);
+    rc = bm_exec_start_all(g_instances, 2u);
     if (rc != BM_OK) {
         BM_LOGE(TAG, "ctrl start failed, rc=%d", rc);
-        bm_ctrl_safe_stop_all(g_instances, 2u);
+        bm_exec_safe_stop_all(g_instances, 2u);
         return 1;
     }
 #ifdef BM_EXAMPLE_QEMU
@@ -217,7 +216,7 @@ int main(void) {
     rc = bm_ticker_init(g_cell_ticker, 1u);
     if (rc != BM_OK) {
         BM_LOGE(TAG, "ticker init failed, rc=%d", rc);
-        bm_ctrl_safe_stop_all(g_instances, 2u);
+        bm_exec_safe_stop_all(g_instances, 2u);
         return 1;
     }
 
@@ -250,11 +249,11 @@ int main(void) {
                 (double)g_cell_state.coulomb_ah,
                 bm_hal_pwm_sim_outputs_enabled(&BM_HAL_PWM_SIM0));
         hybrid_print("EXAMPLE_HRT_BMS_COULOMB: FAIL metrics\n");
-        bm_ctrl_safe_stop_all(g_instances, 2u);
+        bm_exec_safe_stop_all(g_instances, 2u);
         return 1;
     }
 
-    bm_ctrl_safe_stop_all(g_instances, 2u);
+    bm_exec_safe_stop_all(g_instances, 2u);
 #ifdef NATIVE_SIM
     return 0;
 #else

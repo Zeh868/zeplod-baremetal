@@ -21,8 +21,8 @@ struct bm_hal_timer {
 };
 
 static const struct bm_hal_timer dummy_timer_storage;
-static const bm_ctrl_inst_t dummy_member;
-static const bm_ctrl_inst_t *const members[] = { &dummy_member };
+static const bm_exec_t dummy_member;
+static const bm_exec_t *const members[] = { &dummy_member };
 static const uint32_t phases[] = { 0u };
 
 static bm_sync_domain_t domain;
@@ -115,7 +115,7 @@ void test_sync_configure_switches_active_domain(void) {
 }
 
 void test_sync_rejects_duplicate_members(void) {
-    static const bm_ctrl_inst_t *const duplicate_members[] = {
+    static const bm_exec_t *const duplicate_members[] = {
         &dummy_member, &dummy_member
     };
     static const uint32_t duplicate_phases[] = { 0u, 1u };

@@ -8,7 +8,7 @@ set(BM_ENABLE_SHELL OFF CACHE BOOL "" FORCE)
 set(BM_ENABLE_WDG OFF CACHE BOOL "" FORCE)
 set(BM_ENABLE_HRT ${EXAMPLE_ENABLE_HRT} CACHE BOOL "" FORCE)
 set(BM_ENABLE_TICKER ${EXAMPLE_ENABLE_TICKER} CACHE BOOL "" FORCE)
-set(BM_ENABLE_CTRL_INST ${EXAMPLE_ENABLE_CTRL_INST} CACHE BOOL "" FORCE)
+set(BM_ENABLE_EXEC ${EXAMPLE_ENABLE_EXEC} CACHE BOOL "" FORCE)
 set(BM_ENABLE_SYNC ${EXAMPLE_ENABLE_SYNC} CACHE BOOL "" FORCE)
 set(BM_SYNC_HAL_NATIVE ${EXAMPLE_ENABLE_SYNC} CACHE BOOL "" FORCE)
 set(BM_CONFIG_FILE "${CMAKE_CURRENT_SOURCE_DIR}/bm_config.h" CACHE FILEPATH "" FORCE)
@@ -30,10 +30,19 @@ function(bm_add_native_sim_example TARGET)
         ${EX_EXTRA_SOURCES}
     )
     target_compile_definitions(${TARGET} PRIVATE NATIVE_SIM)
+    target_compile_options(${TARGET} PRIVATE
+        "$<$<C_COMPILER_ID:MSVC>:/utf-8>"
+    )
 
     target_include_directories(${TARGET} PRIVATE
         "${CMAKE_CURRENT_SOURCE_DIR}"
         "${ZEPLOD_ROOT}/Demo/common"
+        "${ZEPLOD_ROOT}/include"
+        "${ZEPLOD_ROOT}/include/bm/common"
+        "${ZEPLOD_ROOT}/include/bm/core"
+        "${ZEPLOD_ROOT}/include/bm/hybrid"
+        "${ZEPLOD_ROOT}/include/hal"
+        "${ZEPLOD_ROOT}/include/drv"
         "${ZEPLOD_ROOT}/portable/native_sim"
     )
     target_link_libraries(${TARGET} PRIVATE
@@ -41,5 +50,4 @@ function(bm_add_native_sim_example TARGET)
         bm_hal_native
         ${EX_FRAMEWORK_LIBS}
     )
-    bm_target_internal_includes(${TARGET})
 endfunction()
