@@ -64,10 +64,10 @@ Zeplod Baremetal 定位于电机驱动、数字电源、电池管理系统（BMS
 
 | 层级 | Flash | RAM | 典型 MCU | 包含组件 |
 |------|-------|-----|---------|---------|
-| **Ultra** | < 8 KB | < 1 KB | STM8、AVR、8051 | `bm_ultra.h`（纯头文件库） |
-| **Nano** | 8–32 KB | 1–4 KB | CH32V003、STM32F030 | `bm_core` + 可选 `bm_module` |
-| **Lite** | 32–128 KB | 4–16 KB | STM32F103、nRF51822、ESP32-WROOM-32E | `bm_core` + `bm_module` + `bm_channel` + `bm_shell` |
-| **Control** | 32–128 KB+ | 4–16 KB+ | STM32G4、STM32F3 | 上述全部 + `bm_hrt` + `bm_ctrl_inst` + `bm_sync` |
+| **Ultra** | < 8 KB | < 1 KB | STM8、AVR、8051 | `BM_CONFIG_ENABLE_ULTRA` / `bm_ultra.h` |
+| **Nano** | 8–32 KB | 1–4 KB | CH32V003、STM32F030 | `zeplod.h` 或 `bm_lite.h` |
+| **Lite** | 32–128 KB | 4–16 KB | STM32F103、nRF51822、ESP32-WROOM-32E | + channel / shell（`BM_CONFIG_ENABLE_*`） |
+| **Control** | 32–128 KB+ | 4–16 KB+ | STM32G4、STM32F3 | + HRT / ctrl_inst / sync（`bm_hybrid.h`） |
 
 ---
 
@@ -170,7 +170,13 @@ target_sources(app PRIVATE Core/Src/bm_port.c)
 zeplod_link(app)
 ```
 
-详见 [`docs/13-集成到现有工程.md`](docs/13-集成到现有工程.md)。
+```c
+/* 应用侧：Include Path 只需框架 include/ 一条 */
+#include "zeplod.h"
+#include "bm_hal_uart.h"   /* 板级 HAL 按需 */
+```
+
+详见 [`docs/13-集成到现有工程.md`](docs/13-集成到现有工程.md)、[`docs/20-头文件布局.md`](docs/20-头文件布局.md)。
 
 ### 快速开始（本地模拟）
 
@@ -229,7 +235,17 @@ cd build && ctest
 #define BM_CONFIG_MAX_RESOURCE_CLAIMS        64
 ```
 
-将 `bm_config.h` 放在应用层的 include 路径中，或在 CMake 中设置 `BM_CONFIG_FILE`。
+将 `bm_config.h` 放在应用层的 include 路径中（须优先于框架 `include/`），或在 CMake 中设置 `BM_CONFIG_FILE`。
+
+组件开关（与 CMake `BM_ENABLE_*` 对齐）：
+
+```c
+#define BM_CONFIG_ENABLE_MODULE             1
+#define BM_CONFIG_ENABLE_HRT                0   /* Control 层再置 1 */
+#define BM_CONFIG_ENABLE_ULTRA              0   /* Ultra 剖面置 1 */
+```
+
+应用 API 入口：`#include "zeplod.h"`。Include Path 只需 `zeplod-baremetal/include/` 一条。
 
 ---
 
@@ -273,7 +289,7 @@ Zeplod Baremetal 被设计为机器人/电子系统三层架构的底层：
 | 12 | [运行时与实例模型](docs/12-运行时与实例模型.md) |
 | 13 | [集成到现有工程](docs/13-集成到现有工程.md) |
 | 14–19 | [Port](docs/14-Port移植层.md) · [静态库](docs/15-静态库构建.md) · [CubeMX](docs/16-STM32-CubeMX集成.md) · [MCUX](docs/17-NXP-MCUXpresso集成.md) · [Keil](docs/18-Keil集成.md) · [IAR](docs/19-IAR集成.md) |
-| 20 | [头文件布局](docs/20-头文件布局.md) |
+| 20 | [头文件布局](docs/20-头文件布局.md)（`zeplod.h` 入口） |
 | 21 | [测试覆盖率基线](docs/21-测试覆盖率基线.md) |
 
 API 参考：[docs/api/](docs/api/)

@@ -5,7 +5,7 @@
 
 ## 1. 定位
 
-类比 FreeRTOS `portable/<compiler>/<mcu>/port.c`：Port 是**应用工程侧**的平台胶水，不在预编译静态库内。
+类比 FreeRTOS `portable/<compiler>/<mcu>/port.c`：Port 是**应用工程侧**的平台胶水，不在预编译静态库内。驱动 API 头文件为 `include/bm_drv_*.h`（与 `bm_hal_*.h` 同在 `include/` 根目录）。
 
 **模板：** [`portable/template/bm_port.c`](../portable/template/bm_port.c)
 

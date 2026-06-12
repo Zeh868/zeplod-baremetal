@@ -36,7 +36,7 @@
 | 17 | [NXP MCUXpresso 集成](17-NXP-MCUXpresso集成.md) | MCUX SDK 接入 |
 | 18 | [Keil 集成](18-Keil集成.md) | MDK-ARM 工程 |
 | 19 | [IAR 集成](19-IAR集成.md) | EWARM 工程 |
-| 20 | [头文件布局](20-头文件布局.md) | `include/` 分层与 Include 路径 |
+| 20 | [头文件布局](20-头文件布局.md) | `zeplod.h` 入口、扁平 `include/`、组件开关 |
 
 ### 测试、演进与安全
 

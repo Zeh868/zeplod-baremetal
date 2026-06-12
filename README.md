@@ -66,10 +66,10 @@ Zeplod Baremetal targets motor drives, digital power, battery management systems
 
 | Tier | Flash | RAM | Typical MCU | Components |
 |------|-------|-----|-------------|------------|
-| **Ultra** | < 8 KB | < 1 KB | STM8, AVR, 8051 | `bm_ultra.h` (header-only) |
-| **Nano** | 8–32 KB | 1–4 KB | CH32V003, STM32F030 | `bm_core` + optional `bm_module` |
-| **Lite** | 32–128 KB | 4–16 KB | STM32F103, nRF51822, ESP32-WROOM-32E | `bm_core` + `bm_module` + `bm_channel` + `bm_shell` |
-| **Control** | 32–128 KB+ | 4–16 KB+ | STM32G4, STM32F3 | All above + `bm_hrt` + `bm_ctrl_inst` + `bm_sync` |
+| **Ultra** | < 8 KB | < 1 KB | STM8, AVR, 8051 | `BM_CONFIG_ENABLE_ULTRA` / `bm_ultra.h` |
+| **Nano** | 8–32 KB | 1–4 KB | CH32V003, STM32F030 | `zeplod.h` or `bm_lite.h` |
+| **Lite** | 32–128 KB | 4–16 KB | STM32F103, nRF51822, ESP32-WROOM-32E | + channel / shell via `BM_CONFIG_ENABLE_*` |
+| **Control** | 32–128 KB+ | 4–16 KB+ | STM32G4, STM32F3 | + HRT / ctrl_inst / sync (`bm_hybrid.h`) |
 
 ---
 
@@ -112,70 +112,51 @@ Zeplod Baremetal is purpose-built for **electromechanical control nodes** on res
 
 ```text
 zeplod-baremetal/
-├── include/              # Public API headers
-│   ├── bm_core.h         # Event system, mempool, critical sections, types
-│   ├── bm_module.h       # Module lifecycle (optional)
-│   ├── bm_channel.h      # SPSC data channel (optional)
-│   ├── bm_shell.h        # Serial CLI (optional)
-│   ├── bm_ultra.h        # Ultra-minimal header-only library
-│   ├── bm_hrt.h          # Hard real-time dispatcher
-│   ├── bm_ticker.h       # Soft real-time periodic tasks
-│   ├── bm_ctrl_inst.h    # Multi-instance control abstraction
-│   ├── bm_sync.h         # Synchronization domain (multi-axis phase sync)
-│   ├── bm_snapshot.h     # Triple-buffer cross-domain mailbox
-│   ├── bm_resource.h     # Resource claim and conflict detection
-│   └── bm_hal_*.h        # HAL contracts (UART, timer, PWM, ADC, COMP, encoder, ...)
-├── src/
-│   ├── core/             # bm_event, bm_mempool, bm_critical, bm_wdg
-│   ├── module/           # bm_module
-│   ├── channel/          # bm_channel
-│   ├── shell/            # bm_shell
-│   ├── hrt/              # bm_hrt, bm_ticker
-│   └── ctrl/             # bm_ctrl_inst, bm_resource, bm_sync
-├── platform/boot/        # QEMU boot (startup, linker scripts)
-│   ├── native_sim/       # PC-native simulation (no hardware)
-│   ├── qemu_cortex_m0/   # QEMU ARM Cortex-M0
-│   ├── qemu_riscv32/     # QEMU RISC-V 32-bit
-│   ├── stm32f0/          # STM32F0 real hardware
-│   ├── stm32g4/          # STM32G4 real hardware
-│   ├── ch32v003/         # CH32V003 Nano-tier peripherals
-│   └── esp32wroom32e/    # ESP32-WROOM-32E (UART0, TG0 timer, Xtensa critical)
-├── examples/             # Progressive examples (see below)
+├── include/              # Public API (flat; see include/README.md)
+│   ├── zeplod.h          # Unified entry (#include after bm_config.h)
+│   ├── bm_*.h            # Framework subsystems + HAL contracts
+│   └── bm_drv_*.h        # Driver API (Port authors)
+├── Source/               # Library kernel (like FreeRTOS/Source/)
+│   ├── core/             # Events, mempool, module, shell, wdg…
+│   ├── hal/              # HAL dispatch layer
+│   └── hybrid/           # HRT, ctrl_inst, sync…
+├── portable/             # Platform ports (template + reference backends)
+├── Demo/                 # Progressive examples (like FreeRTOS/Demo/)
 ├── tests/
-│   ├── unit/             # Unity-based unit tests (PC native)
+│   ├── unit/             # Unity unit tests (PC native)
 │   └── qemu/             # QEMU smoke tests
 ├── docs/
-│   ├── README.md         # Doc index (00–21, Chinese)
+│   ├── README.md         # Doc index (00–21)
 │   ├── 00-快速开始.md … 21-测试覆盖率基线.md
-│   └── api/              # API reference (only subfolder)
-├── CMakeLists.txt        # CMake build (32-bit mainstream)
-└── Makefile              # Pure Makefile (8-bit toolchain friendly)
+│   └── api/              # API reference
+├── CMakeLists.txt
+└── Makefile
 ```
 
 ---
 
 ## Examples
 
-The [`examples/`](examples/) directory contains progressive demonstrations:
+The [`Demo/`](Demo/) directory contains progressive demonstrations:
 
 | Example | Focus | Tier |
 |---------|-------|------|
-| [`ultra_blink`](examples/ultra_blink) | Minimal header-only event queue | Ultra |
-| [`core_sensor`](examples/core_sensor) | Events, mempool, and module lifecycle | Nano |
-| [`full_system`](examples/full_system) | Multi-module, event priorities, watchdog | Lite |
-| [`interrupt_demo`](examples/interrupt_demo) | SysTick, peripheral IRQ, and ISR event publishing | Nano |
-| [`hrt_servo_stub`](examples/hrt_servo_stub) | Hybrid-domain servo (current HRT + speed HRT + position SRT) | Control |
-| [`hrt_bms_coulomb`](examples/hrt_bms_coulomb) | BMS pack sampler (ADC HRT) + cell coulomb counting (SRT) | Control |
-| [`multi_axis_sync`](examples/multi_axis_sync) | Multi-instance control with synchronization domain | Control |
-| [`multi_channel_bms`](examples/multi_channel_bms) | Multi-channel BMS instance model | Control |
+| [`ultra_blink`](Demo/ultra_blink) | Minimal header-only event queue | Ultra |
+| [`core_sensor`](Demo/core_sensor) | Events, mempool, and module lifecycle | Nano |
+| [`full_system`](Demo/full_system) | Multi-module, event priorities, watchdog | Lite |
+| [`interrupt_demo`](Demo/interrupt_demo) | SysTick, peripheral IRQ, and ISR event publishing | Nano |
+| [`hrt_servo_stub`](Demo/hrt_servo_stub) | Hybrid-domain servo (current HRT + speed HRT + position SRT) | Control |
+| [`hrt_bms_coulomb`](Demo/hrt_bms_coulomb) | BMS pack sampler (ADC HRT) + cell coulomb counting (SRT) | Control |
+| [`multi_axis_sync`](Demo/multi_axis_sync) | Multi-instance control with synchronization domain | Control |
+| [`multi_channel_bms`](Demo/multi_channel_bms) | Multi-channel BMS instance model | Control |
 
-See [`examples/README.md`](examples/README.md) for build and run instructions.
+See [`docs/06-示例与上手路径.md`](docs/06-示例与上手路径.md) for build and run instructions.
 
 ### Quick start (native simulation)
 
 ```bash
 # Build and run an example on PC (no QEMU, no hardware)
-cmake -B build -S examples/core_sensor -DZEPLOD_BAREMETAL_DIR=../..
+cmake -B build/demo/manual/core_sensor -S Demo/core_sensor
 cmake --build build
 ./build/core_sensor
 ```
@@ -183,12 +164,29 @@ cmake --build build
 ### Quick start (QEMU Cortex-M0)
 
 ```bash
-cmake -B build_qemu -S examples/interrupt_demo \
-    -DZEPLOD_BAREMETAL_DIR=../.. \
-    -DBOARD=qemu_cortex_m0
+.\tools\demo\run_qemu.ps1 interrupt_demo
+# or: cmake -B build/demo/qemu/interrupt_demo -S Demo/interrupt_demo ...
 cmake --build build_qemu
 qemu-system-arm -M microbit -kernel build_qemu/interrupt_demo.elf -nographic -serial stdio
 ```
+
+### Integrate into an existing project
+
+**① Port** `portable/template/bm_port.c` → wire to Cube/SDK HAL  
+**② Library** add `Source/` sources or link `libbm_*.a` (see `cmake/static-lib/`)
+
+```cmake
+zeplod_configure(ROOT ... PROFILE event BACKEND external CONFIG bm_config.h)
+target_sources(app PRIVATE Core/Src/bm_port.c)
+zeplod_link(app)
+```
+
+```c
+#include "zeplod.h"
+#include "bm_hal_uart.h"   /* board HAL as needed */
+```
+
+See [`docs/13-集成到现有工程.md`](docs/13-集成到现有工程.md) and [`docs/20-头文件布局.md`](docs/20-头文件布局.md).
 
 ---
 
@@ -233,7 +231,16 @@ All framework limits are configurable at compile-time via `bm_config.h` (force-i
 #define BM_CONFIG_MAX_RESOURCE_CLAIMS        64
 ```
 
-Place `bm_config.h` in your application include path, or set `BM_CONFIG_FILE` in CMake.
+Place `bm_config.h` in your application include path (before `zeplod-baremetal/include`), or set `BM_CONFIG_FILE` in CMake.
+
+Application entry:
+
+```c
+#include "zeplod.h"         /* exposes APIs per BM_CONFIG_ENABLE_* */
+#include "bm_hal_uart.h"    /* board HAL as needed */
+```
+
+Include path: **one** directory — `zeplod-baremetal/include/`. See [docs/20-头文件布局.md](docs/20-头文件布局.md).
 
 ---
 
@@ -262,6 +269,7 @@ Start at [`docs/README.md`](docs/README.md) (numbered guides 00–21 in Chinese)
 
 - [`docs/01-框架概览与资源层级.md`](docs/01-框架概览与资源层级.md) — Architecture overview
 - [`docs/13-集成到现有工程.md`](docs/13-集成到现有工程.md) — Integrate into existing Cube/SDK/Keil/IAR projects
+- [`docs/20-头文件布局.md`](docs/20-头文件布局.md) — `zeplod.h` entry and flat `include/` layout
 - [`docs/08-HAL移植指南.md`](docs/08-HAL移植指南.md) — HAL contracts and porting
 - [`docs/api/`](docs/api/) — Hybrid-domain API reference
 - [`docs/06-示例与上手路径.md`](docs/06-示例与上手路径.md) — Examples and hardware porting

@@ -1,7 +1,7 @@
 # bm_resource — 硬件资源声明与冲突检测
 
 头文件：`include/bm_resource.h`  
-实现：`src/hybrid/bm_resource.c`
+实现：`Source/hybrid/bm_resource.c`
 
 ## 概述
 
