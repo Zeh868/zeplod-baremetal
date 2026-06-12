@@ -53,8 +53,12 @@ const struct bm_memory_driver_api bm_drv_memory_api = {
 static uint32_t g_tick_freq = 1000u;
 static uint32_t g_tick_count;
 static void (*g_tick_callback)(void);
+static int g_timer_init_result;
 
 static int native_timer_init(uint32_t freq_hz) {
+    if (g_timer_init_result != BM_OK) {
+        return g_timer_init_result;
+    }
     g_tick_freq = freq_hz ? freq_hz : 1000u;
     BM_LOGI(TAG_TIMER, "init: freq_hz=%u", g_tick_freq);
     return BM_OK;
@@ -111,6 +115,10 @@ void bm_hal_timer_native_deinit(void) {
     g_tick_freq = 0u;
     g_tick_count = 0u;
     g_tick_callback = NULL;
+}
+
+void bm_hal_timer_native_set_init_result(int result) {
+    g_timer_init_result = result;
 }
 
 /* --- uart --- */

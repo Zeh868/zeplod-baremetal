@@ -19,6 +19,8 @@
 #include "bm_hal_wdg_native.h"
 #include "bm_log.h"
 
+#include <string.h>
+
 void setUp(void) {
     bm_wdg_reset();
     bm_hal_timer_native_reset_ticks();
@@ -35,6 +37,25 @@ void test_wdg_register_rejects_null(void) {
 void test_wdg_register_rejects_duplicate(void) {
     TEST_ASSERT_EQUAL(BM_OK, bm_wdg_register("mod_a"));
     TEST_ASSERT_EQUAL(BM_ERR_ALREADY, bm_wdg_register("mod_a"));
+}
+
+void test_wdg_register_copies_name(void) {
+    char name[] = "mutable";
+
+    TEST_ASSERT_EQUAL(BM_OK, bm_wdg_register(name));
+    name[0] = 'x';
+    bm_wdg_feed_module("mutable");
+    bm_wdg_feed();
+    TEST_ASSERT_EQUAL(1u, bm_hal_wdg_native_get_feed_count());
+}
+
+void test_wdg_register_rejects_empty_and_long_names(void) {
+    char long_name[BM_CONFIG_WDG_MAX_NAME_LEN + 1u];
+
+    memset(long_name, 'a', sizeof(long_name));
+    long_name[sizeof(long_name) - 1u] = '\0';
+    TEST_ASSERT_EQUAL(BM_ERR_INVALID, bm_wdg_register(""));
+    TEST_ASSERT_EQUAL(BM_ERR_INVALID, bm_wdg_register(long_name));
 }
 
 void test_wdg_feed_module_null_safe(void) {
@@ -92,6 +113,8 @@ int main(void) {
     UNITY_BEGIN();
     RUN_TEST(test_wdg_register_rejects_null);
     RUN_TEST(test_wdg_register_rejects_duplicate);
+    RUN_TEST(test_wdg_register_copies_name);
+    RUN_TEST(test_wdg_register_rejects_empty_and_long_names);
     RUN_TEST(test_wdg_feed_module_null_safe);
     RUN_TEST(test_wdg_blocks_hw_feed_until_module_fed);
     RUN_TEST(test_wdg_feed_at_tick_zero);

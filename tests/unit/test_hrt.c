@@ -31,6 +31,7 @@ void setUp(void) {
     g_slot_a = 0u;
     g_slot_b = 0u;
     bm_hal_timer_native_reset_ticks();
+    bm_hal_timer_native_set_init_result(BM_OK);
     bm_hrt_reset();
 }
 
@@ -93,9 +94,25 @@ void test_hrt_stop_clears_callback(void) {
     TEST_ASSERT_EQUAL(0u, g_slot_a);
 }
 
-void test_hrt_start_ok_with_no_timer_slots(void) {
+void test_hrt_start_requires_init(void) {
+    TEST_ASSERT_EQUAL(BM_ERR_NOT_INIT, bm_hrt_start());
+}
+
+void test_hrt_start_ok_with_initialized_zero_slots(void) {
+    TEST_ASSERT_EQUAL(BM_OK, bm_hrt_init(NULL, 0u));
     TEST_ASSERT_EQUAL(BM_OK, bm_hrt_start());
     bm_hrt_stop();
+}
+
+void test_hrt_propagates_hal_init_error(void) {
+    static const bm_hrt_slot_t slots[] = {
+        { 1000u, BM_HRT_TRIGGER_TIMER, slot_a_cb, NULL, "a" },
+    };
+
+    TEST_ASSERT_EQUAL(BM_OK, bm_hrt_init(slots, 1u));
+    bm_hal_timer_native_set_init_result(BM_ERR_BUSY);
+    TEST_ASSERT_EQUAL(BM_ERR_BUSY, bm_hrt_start());
+    TEST_ASSERT_EQUAL(0, bm_hrt_is_started());
 }
 
 void test_hrt_tick_wraparound(void) {
@@ -142,7 +159,9 @@ int main(void) {
     RUN_TEST(test_hrt_deadline_miss);
     RUN_TEST(test_hrt_rejects_invalid_period);
     RUN_TEST(test_hrt_stop_clears_callback);
-    RUN_TEST(test_hrt_start_ok_with_no_timer_slots);
+    RUN_TEST(test_hrt_start_requires_init);
+    RUN_TEST(test_hrt_start_ok_with_initialized_zero_slots);
+    RUN_TEST(test_hrt_propagates_hal_init_error);
     RUN_TEST(test_hrt_tick_wraparound);
     RUN_TEST(test_hrt_rejects_slot_overflow);
     RUN_TEST(test_hrt_rejects_init_while_started);

@@ -1,25 +1,23 @@
-# Zeplod Baremetal 头文件搜索路径（保持 #include "bm_*.h" 扁平写法）
-set(BM_INCLUDE_COMMON   ${CMAKE_CURRENT_LIST_DIR}/../include/bm/common)
-set(BM_INCLUDE_CORE     ${CMAKE_CURRENT_LIST_DIR}/../include/bm/core)
-set(BM_INCLUDE_HYBRID   ${CMAKE_CURRENT_LIST_DIR}/../include/bm/hybrid)
-set(BM_INCLUDE_HAL      ${CMAKE_CURRENT_LIST_DIR}/../include/bm/hal)
-set(BM_INCLUDE_ULTRA    ${CMAKE_CURRENT_LIST_DIR}/../include/bm/ultra)
-set(BM_INCLUDE_DRV      ${CMAKE_CURRENT_LIST_DIR}/../include/drv)
+# Zeplod Baremetal 头文件路径
+# 应用只需 include/（对外 API 在根目录）；库编译额外搜索子目录
+set(BM_INCLUDE_ROOT ${CMAKE_CURRENT_LIST_DIR}/../include)
 
-# 应用可见路径
-set(BM_INCLUDE_APP_DIRS
-    ${BM_INCLUDE_COMMON}
-    ${BM_INCLUDE_CORE}
-    ${BM_INCLUDE_HYBRID}
-    ${BM_INCLUDE_HAL}
-    ${BM_INCLUDE_ULTRA}
+set(BM_INCLUDE_PUBLIC_DIRS ${BM_INCLUDE_ROOT})
+
+set(BM_INCLUDE_INTERNAL_DIRS
+    ${BM_INCLUDE_ROOT}/bm/common
+    ${BM_INCLUDE_ROOT}/bm/core
+    ${BM_INCLUDE_ROOT}/bm/hybrid
+    ${BM_INCLUDE_ROOT}/hal
+    ${BM_INCLUDE_ROOT}/drv
 )
 
-# 后端实现额外需要 drv/
-set(BM_INCLUDE_BACKEND_DIRS
-    ${BM_INCLUDE_APP_DIRS}
-    ${BM_INCLUDE_DRV}
-)
+set(BM_INCLUDE_APP_DIRS ${BM_INCLUDE_PUBLIC_DIRS})
+set(BM_INCLUDE_BACKEND_DIRS ${BM_INCLUDE_PUBLIC_DIRS})
+
+function(bm_target_internal_includes target)
+    target_include_directories(${target} PRIVATE ${BM_INCLUDE_INTERNAL_DIRS})
+endfunction()
 
 # QEMU Cortex-M0 引导（启动汇编 / crt0 / 链接脚本）
 set(BM_BOOT_QEMU_CM0_DIR ${CMAKE_CURRENT_LIST_DIR}/../portable/boot/qemu_cortex_m0)

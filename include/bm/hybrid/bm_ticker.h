@@ -16,8 +16,8 @@
 #ifndef BM_TICKER_H
 #define BM_TICKER_H
 
-#include "bm_event.h"
-#include "bm_types.h"
+#include "bm/core/bm_event.h"
+#include "bm/common/bm_types.h"
 
 /** Ticker 槽位配置 */
 typedef struct {
@@ -30,6 +30,8 @@ typedef struct {
 /**
  * @brief 初始化 ticker 并注册 slot 表
  *
+ * 仅限主上下文调用；不可与 `bm_ticker_poll` 并发。
+ *
  * @param slots slot 描述数组
  * @param slot_count slot 数量
  * @return BM_OK 成功；BM_ERR_INVALID 参数无效
@@ -38,6 +40,8 @@ int bm_ticker_init(const bm_ticker_slot_t *slots, uint32_t slot_count);
 
 /**
  * @brief 轮询 ticker 并发布到期事件
+ *
+ * 非可重入，仅限主循环调用。
  *
  * @return 本次发布的事件数；负值为未初始化或事件发布错误
  */
@@ -53,6 +57,8 @@ uint32_t bm_ticker_get_dropped(uint32_t slot_index);
 
 /**
  * @brief 重置 ticker 内部状态
+ *
+ * 仅限主上下文调用；不可与 `bm_ticker_poll` 并发。
  */
 void bm_ticker_reset(void);
 

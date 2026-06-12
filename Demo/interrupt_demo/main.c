@@ -5,7 +5,7 @@
 #include "app_events.h"
 #include "bm_core.h"
 #include "bm_event.h"
-#include "bm_hal_uart.h"
+#include "hal/bm_hal_uart.h"
 #include "bm_log.h"
 #include "bm_module.h"
 #include "example_support.h"

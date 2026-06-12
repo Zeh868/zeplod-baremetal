@@ -16,6 +16,7 @@
 #include "bm_event.h"
 #include "bm_critical_wrap.h"
 #include "bm_log.h"
+#include "bm_safety.h"
 
 #include <stdbool.h>
 #include <stddef.h>
@@ -42,6 +43,14 @@
 #error "BM_EVENT_QUEUE_DEPTH_PER_PRIO 须为 2 的幂且至少为 2"
 #endif
 
+#if defined(_MSC_VER)
+#define BM_EVENT_ALIGNAS(bytes) __declspec(align(bytes))
+#elif defined(__GNUC__) || defined(__clang__)
+#define BM_EVENT_ALIGNAS(bytes) __attribute__((aligned(bytes)))
+#else
+#error "bm_event requires compiler support for explicit data alignment"
+#endif
+
 /** 订阅者节点 */
 typedef struct bm_subscriber {
     bm_event_callback_t           cb;
@@ -59,8 +68,11 @@ typedef struct {
 /** 队列项：事件 + 内联数据缓冲 */
 typedef struct {
     bm_event_t  event;
-    uint8_t     inline_data[BM_CONFIG_EVENT_INLINE_DATA_SIZE];
+    BM_EVENT_ALIGNAS(8) uint8_t
+        inline_data[BM_CONFIG_EVENT_INLINE_DATA_SIZE];
 } bm_queue_item_t;
+
+#undef BM_EVENT_ALIGNAS
 
 /** 分发阶段订阅者快照（避免回调期间链表被修改） */
 typedef struct {
@@ -93,6 +105,18 @@ static void _queue_item_copy(bm_queue_item_t *dst, const bm_queue_item_t *src) {
     }
 }
 
+static int _queue_item_valid(const bm_queue_item_t *item) {
+    if (item->event.type >= BM_CONFIG_MAX_EVENT_TYPES ||
+        item->event.priority >= BM_CONFIG_EVENT_PRIORITIES ||
+        item->event.data_len > BM_CONFIG_EVENT_INLINE_DATA_SIZE) {
+        return BM_ERR_INVALID;
+    }
+    if (item->event.data_len == 0u) {
+        return item->event.data == NULL ? BM_OK : BM_ERR_INVALID;
+    }
+    return item->event.data == item->inline_data ? BM_OK : BM_ERR_INVALID;
+}
+
 static void _prio_queues_reset(void) {
     memset(_prio_items, 0, sizeof(_prio_items));
     memset(_prio_read, 0, sizeof(_prio_read));
@@ -109,7 +133,8 @@ void bm_event_reset(void) {
     bm_irq_state_t s = BM_CRITICAL_ENTER();
 
     if (_dispatch_active) {
-        _reentrancy_rejected++;
+        _reentrancy_rejected =
+            bm_u32_saturating_inc(_reentrancy_rejected);
         BM_CRITICAL_EXIT(s);
         return;
     }
@@ -133,7 +158,8 @@ int bm_event_register_type(bm_event_type_t type, const char *name) {
     }
     bm_irq_state_t s = BM_CRITICAL_ENTER();
     if (_dispatch_active) {
-        _reentrancy_rejected++;
+        _reentrancy_rejected =
+            bm_u32_saturating_inc(_reentrancy_rejected);
         BM_CRITICAL_EXIT(s);
         return BM_ERR_BUSY;
     }
@@ -160,7 +186,8 @@ int bm_event_subscribe(bm_event_type_t type, bm_event_callback_t cb,
     int i;
 
     if (_dispatch_active) {
-        _reentrancy_rejected++;
+        _reentrancy_rejected =
+            bm_u32_saturating_inc(_reentrancy_rejected);
         BM_CRITICAL_EXIT(s);
         return BM_ERR_BUSY;
     }
@@ -206,7 +233,8 @@ int bm_event_unsubscribe(bm_event_type_t type, bm_event_subscriber_id_t id) {
     bm_irq_state_t s = BM_CRITICAL_ENTER();
 
     if (_dispatch_active) {
-        _reentrancy_rejected++;
+        _reentrancy_rejected =
+            bm_u32_saturating_inc(_reentrancy_rejected);
         BM_CRITICAL_EXIT(s);
         return BM_ERR_BUSY;
     }
@@ -255,7 +283,7 @@ static int _prio_push_copy(bm_event_priority_t prio, const bm_event_t *event,
     }
     next = (_prio_write[prio] + 1u) & mask;
     if (next == _prio_read[prio]) {
-        _queue_dropped++;
+        _queue_dropped = bm_u32_saturating_inc(_queue_dropped);
         BM_CRITICAL_EXIT(s);
         BM_LOGW("event", "queue overflow type=%u prio=%u",
                 (unsigned)event->type, (unsigned)prio);
@@ -297,7 +325,8 @@ int bm_event_publish_copy(bm_event_type_t type, bm_event_priority_t prio,
     }
     s = BM_CRITICAL_ENTER();
     if (_dispatch_active) {
-        _reentrancy_rejected++;
+        _reentrancy_rejected =
+            bm_u32_saturating_inc(_reentrancy_rejected);
         BM_CRITICAL_EXIT(s);
         return BM_ERR_BUSY;
     }
@@ -354,7 +383,8 @@ int bm_event_publish_event(const bm_event_t *event) {
     }
     s = BM_CRITICAL_ENTER();
     if (_dispatch_active) {
-        _reentrancy_rejected++;
+        _reentrancy_rejected =
+            bm_u32_saturating_inc(_reentrancy_rejected);
         BM_CRITICAL_EXIT(s);
         return BM_ERR_BUSY;
     }
@@ -392,6 +422,7 @@ static int _queue_pop_highest_prio(bm_queue_item_t *out) {
     uint32_t prio;
     uint32_t selected = BM_CONFIG_EVENT_PRIORITIES;
     uint32_t mask = BM_EVENT_QUEUE_DEPTH_PER_PRIO - 1u;
+    bool lower_prio_pending = false;
 
     for (prio = 0u; prio < BM_CONFIG_EVENT_PRIORITIES; ++prio) {
         if (_prio_indices_valid(_prio_read[prio], _prio_write[prio], mask) !=
@@ -407,24 +438,37 @@ static int _queue_pop_highest_prio(bm_queue_item_t *out) {
     }
 
     if (selected == BM_CONFIG_EVENT_PRIORITIES) {
+        _events_since_fair = 0u;
         BM_CRITICAL_EXIT(s);
         return BM_ERR_WOULD_BLOCK;
     }
 
-    if (_events_since_fair >= BM_CONFIG_EVENT_PRIORITY_BURST_MAX) {
+    for (prio = selected + 1u; prio < BM_CONFIG_EVENT_PRIORITIES; ++prio) {
+        if (_prio_read[prio] != _prio_write[prio]) {
+            lower_prio_pending = true;
+            break;
+        }
+    }
+
+    if (lower_prio_pending &&
+        _events_since_fair >= BM_CONFIG_EVENT_PRIORITY_BURST_MAX) {
         for (prio = 0u; prio < BM_CONFIG_EVENT_PRIORITIES; ++prio) {
             uint32_t candidate =
                 (_fair_prio_cursor + prio) % BM_CONFIG_EVENT_PRIORITIES;
 
-            if (_prio_read[candidate] != _prio_write[candidate]) {
+            if (candidate > selected &&
+                _prio_read[candidate] != _prio_write[candidate]) {
                 selected = candidate;
                 break;
             }
         }
         _fair_prio_cursor = (selected + 1u) % BM_CONFIG_EVENT_PRIORITIES;
         _events_since_fair = 0u;
+    } else if (lower_prio_pending) {
+        _events_since_fair =
+            bm_u32_saturating_inc(_events_since_fair);
     } else {
-        _events_since_fair++;
+        _events_since_fair = 0u;
     }
 
     {
@@ -464,7 +508,8 @@ int bm_event_process(uint32_t max_events) {
     bm_irq_state_t entry_state = BM_CRITICAL_ENTER();
 
     if (_dispatch_active) {
-        _reentrancy_rejected++;
+        _reentrancy_rejected =
+            bm_u32_saturating_inc(_reentrancy_rejected);
         BM_CRITICAL_EXIT(entry_state);
         return BM_ERR_BUSY;
     }
@@ -478,7 +523,8 @@ int bm_event_process(uint32_t max_events) {
 
         if (rc == BM_ERR_INVALID) {
             bm_irq_state_t s = BM_CRITICAL_ENTER();
-            _dispatch_skipped++;
+            _dispatch_skipped =
+                bm_u32_saturating_inc(_dispatch_skipped);
             BM_CRITICAL_EXIT(s);
             BM_LOGE("event", "process corrupt queue");
             break;
@@ -487,11 +533,13 @@ int bm_event_process(uint32_t max_events) {
             break;
         }
 
-        if (item.event.type >= BM_CONFIG_MAX_EVENT_TYPES) {
-            BM_LOGE("event", "process invalid type=%u",
-                    (unsigned)item.event.type);
+        if (_queue_item_valid(&item) != BM_OK) {
+            BM_LOGE("event", "process invalid queued event type=%u len=%u",
+                    (unsigned)item.event.type,
+                    (unsigned)item.event.data_len);
             bm_irq_state_t s = BM_CRITICAL_ENTER();
-            _dispatch_skipped++;
+            _dispatch_skipped =
+                bm_u32_saturating_inc(_dispatch_skipped);
             BM_CRITICAL_EXIT(s);
             processed++;
             continue;
@@ -505,7 +553,8 @@ int bm_event_process(uint32_t max_events) {
             while (sub) {
                 if (sub->cb) {
                     if (snap_count >= BM_CONFIG_MAX_EVENT_SUBSCRIBERS) {
-                        _dispatch_skipped++;
+                        _dispatch_skipped =
+                            bm_u32_saturating_inc(_dispatch_skipped);
                         snap_truncated = true;
                     } else {
                         _dispatch_snap[snap_count].cb = sub->cb;
@@ -543,9 +592,37 @@ int bm_event_process(uint32_t max_events) {
 
 #ifdef BM_ENABLE_EVENT_TEST_HOOK
 int bm_event_test_inject(const bm_event_t *event, bm_event_priority_t prio) {
+    uint32_t mask = BM_EVENT_QUEUE_DEPTH_PER_PRIO - 1u;
+    uint32_t next;
+    bm_queue_item_t *item;
+    bm_irq_state_t s;
+
     if (!event || prio >= BM_CONFIG_EVENT_PRIORITIES) {
         return BM_ERR_INVALID;
     }
-    return _prio_push_copy(prio, event, event->data, event->data_len);
+
+    s = BM_CRITICAL_ENTER();
+    if (_prio_indices_valid(_prio_read[prio], _prio_write[prio], mask) !=
+        BM_OK) {
+        BM_CRITICAL_EXIT(s);
+        return BM_ERR_INVALID;
+    }
+    next = (_prio_write[prio] + 1u) & mask;
+    if (next == _prio_read[prio]) {
+        _queue_dropped = bm_u32_saturating_inc(_queue_dropped);
+        BM_CRITICAL_EXIT(s);
+        return BM_ERR_OVERFLOW;
+    }
+
+    item = &_prio_items[prio][_prio_write[prio] & mask];
+    memset(item, 0, sizeof(*item));
+    item->event = *event;
+    if (event->data && event->data_len <= sizeof(item->inline_data)) {
+        memcpy(item->inline_data, event->data, event->data_len);
+        item->event.data = item->inline_data;
+    }
+    _prio_write[prio] = next;
+    BM_CRITICAL_EXIT(s);
+    return BM_OK;
 }
 #endif /* BM_ENABLE_EVENT_TEST_HOOK */

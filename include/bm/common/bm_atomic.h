@@ -17,7 +17,7 @@
 #ifndef BM_ATOMIC_H
 #define BM_ATOMIC_H
 
-#include "bm_types.h"
+#include "bm/common/bm_types.h"
 
 /**
  * @brief 原子读取 32 位无符号整数值

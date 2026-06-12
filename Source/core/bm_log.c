@@ -24,33 +24,6 @@ static const char *const k_level_chars[] = {
     "E", "W", "I", "D", "T"
 };
 
-#if !BM_CONFIG_LOG_USE_STDIO
-#if defined(__GNUC__) || defined(__clang__)
-__attribute__((weak))
-#endif
-/**
- * @brief 日志输出钩子（弱符号默认空实现）
- *
- * @param buf 格式化后的日志缓冲区
- * @param len 缓冲区有效字节长度
- */
-void bm_log_output(const char *buf, size_t len) {
-    (void)buf;
-    (void)len;
-}
-#else
-/**
- * @brief 日志输出钩子（stdio 实现，写入 stdout）
- *
- * @param buf 格式化后的日志缓冲区
- * @param len 缓冲区有效字节长度
- */
-void bm_log_output(const char *buf, size_t len) {
-    fwrite(buf, 1, len, stdout);
-    fflush(stdout);
-}
-#endif
-
 /**
  * @brief 按等级格式化并输出一条日志
  *
@@ -60,24 +33,25 @@ void bm_log_output(const char *buf, size_t len) {
  */
 void bm_log(bm_log_level_t level, const char *tag, const char *fmt, ...) {
     char buf[BM_CONFIG_LOG_BUF_SIZE];
+    int level_index = (int)level;
     int prefix_len;
     va_list ap;
 
     if (!fmt) {
         return;
     }
-    if (level < BM_LOG_ERROR) {
-        level = BM_LOG_ERROR;
+    if (level_index < (int)BM_LOG_ERROR) {
+        level_index = (int)BM_LOG_ERROR;
     }
-    if (level > BM_LOG_TRACE) {
-        level = BM_LOG_TRACE;
+    if (level_index > (int)BM_LOG_TRACE) {
+        level_index = (int)BM_LOG_TRACE;
     }
     if (!tag) {
         tag = "bm";
     }
 
     prefix_len = snprintf(buf, sizeof(buf), "[%s][%s] ",
-                          k_level_chars[level], tag);
+                          k_level_chars[level_index], tag);
     if (prefix_len < 0 || (size_t)prefix_len >= sizeof(buf)) {
         return;
     }

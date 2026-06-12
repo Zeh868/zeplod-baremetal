@@ -5,7 +5,7 @@
 #ifndef BM_DRV_CRITICAL_H
 #define BM_DRV_CRITICAL_H
 
-#include "bm_hal_critical.h"
+#include "hal/bm_hal_critical.h"
 
 struct bm_critical_driver_api {
     bm_irq_state_t (*enter)(void);

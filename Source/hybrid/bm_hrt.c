@@ -38,8 +38,12 @@ typedef struct {
 
 static bm_hrt_runtime_slot_t g_slots[BM_CONFIG_HRT_MAX_SLOTS];
 static uint32_t g_slot_count;
+static int g_initialized;
 static int g_started;
 
+#if !defined(BM_CONFIG_HRT_EXTERNAL_DEADLINE_HOOK) || \
+    !(BM_CONFIG_HRT_EXTERNAL_DEADLINE_HOOK)
+/* IAR/ARMCC/MSVC 不识别 weak：须设 BM_CONFIG_HRT_EXTERNAL_DEADLINE_HOOK=1 由应用提供钩子 */
 #if defined(__GNUC__) || defined(__clang__)
 __attribute__((weak))
 #endif
@@ -51,6 +55,7 @@ __attribute__((weak))
 void bm_hrt_deadline_missed_hook(const bm_hrt_slot_t *slot) {
     (void)slot;
 }
+#endif
 
 /**
  * @brief 根据配置计算 HRT 定时器频率（Hz）
@@ -196,6 +201,7 @@ int bm_hrt_init(const bm_hrt_slot_t *slots, uint32_t slot_count) {
         g_slots[i].next_tick =
             hrt_deadline_from(now, g_slots[i].period_ticks);
     }
+    g_initialized = 1;
 
     BM_LOGI("hrt", "init %u slots tick_us=%u", (unsigned)slot_count,
             (unsigned)BM_CONFIG_HRT_TICK_US);
@@ -208,7 +214,8 @@ out:
 /**
  * @brief 启动 HRT 定时器并注册 ISR 回调
  *
- * @return BM_OK 成功；BM_ERR_ALREADY 已启动；BM_ERR_INVALID HAL 初始化失败
+ * @return BM_OK 成功；BM_ERR_ALREADY 已启动；BM_ERR_NOT_INIT 未初始化；
+ *         其他为 HAL 初始化错误码
  */
 int bm_hrt_start(void) {
     bm_irq_state_t irq_state = BM_CRITICAL_ENTER();
@@ -219,6 +226,11 @@ int bm_hrt_start(void) {
         rc = BM_ERR_ALREADY;
         goto out;
     }
+    if (!g_initialized) {
+        BM_LOGE("hrt", "start before init");
+        rc = BM_ERR_NOT_INIT;
+        goto out;
+    }
     if (g_slot_count == 0u) {
         BM_LOGI("hrt", "start with zero slots");
         goto out;
@@ -226,9 +238,11 @@ int bm_hrt_start(void) {
 
     BM_CRITICAL_EXIT(irq_state);
 
-    if (bm_hal_timer_init(hrt_tick_hz()) != 0) {
-        BM_LOGE("hrt", "hal timer init failed");
-        return BM_ERR_INVALID;
+    bm_hal_timer_set_callback(NULL);
+    rc = bm_hal_timer_init(hrt_tick_hz());
+    if (rc != BM_OK) {
+        BM_LOGE("hrt", "hal timer init failed rc=%d", rc);
+        return rc;
     }
 
     irq_state = BM_CRITICAL_ENTER();
@@ -283,6 +297,7 @@ void bm_hrt_reset(void) {
     hrt_stop_locked();
     memset(g_slots, 0, sizeof(g_slots));
     g_slot_count = 0u;
+    g_initialized = 0;
     BM_LOGI("hrt", "reset");
     BM_CRITICAL_EXIT(irq_state);
 }

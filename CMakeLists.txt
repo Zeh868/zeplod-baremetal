@@ -34,9 +34,11 @@ if(NOT BM_CONFIG_FILE AND EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/bm_config.h)
 endif()
 
 include(${CMAKE_CURRENT_LIST_DIR}/cmake/bm_include_dirs.cmake)
+include(${CMAKE_CURRENT_LIST_DIR}/cmake/bm_config_export.cmake)
 
 add_library(bm_config INTERFACE)
 target_include_directories(bm_config INTERFACE ${BM_INCLUDE_BACKEND_DIRS})
+bm_export_config_enable(bm_config)
 
 if(BM_CONFIG_FILE)
     get_filename_component(BM_CONFIG_FILE "${BM_CONFIG_FILE}" ABSOLUTE)
@@ -61,6 +63,7 @@ add_library(bm_hal STATIC
     Source/hal/bm_hal_encoder.c
 )
 target_link_libraries(bm_hal PUBLIC bm_config)
+bm_target_internal_includes(bm_hal)
 
 if(BM_BUILD_TESTS AND NOT BM_BACKEND)
     set(BM_BACKEND "native_sim")
@@ -77,9 +80,11 @@ add_library(bm_core STATIC
     Source/core/bm_critical.c
     Source/core/bm_event.c
     Source/core/bm_log.c
+    Source/core/bm_log_output.c
     Source/core/bm_ultra.c
 )
 target_link_libraries(bm_core PUBLIC bm_config bm_hal)
+bm_target_internal_includes(bm_core)
 if(BM_BUILD_TESTS)
     target_compile_definitions(bm_core PRIVATE
         BM_ENABLE_EVENT_TEST_HOOK=1
@@ -93,36 +98,42 @@ target_link_libraries(bm_framework INTERFACE bm_core bm_hal)
 if(BM_ENABLE_MODULE)
     add_library(bm_module STATIC Source/core/bm_module.c)
     target_link_libraries(bm_module PUBLIC bm_core)
+    bm_target_internal_includes(bm_module)
     target_link_libraries(bm_framework INTERFACE bm_module)
 endif()
 
 if(BM_ENABLE_CHANNEL)
     add_library(bm_channel STATIC Source/core/bm_channel.c)
     target_link_libraries(bm_channel PUBLIC bm_core)
+    bm_target_internal_includes(bm_channel)
     target_link_libraries(bm_framework INTERFACE bm_channel)
 endif()
 
 if(BM_ENABLE_SHELL)
     add_library(bm_shell STATIC Source/core/bm_shell.c)
     target_link_libraries(bm_shell PUBLIC bm_core)
+    bm_target_internal_includes(bm_shell)
     target_link_libraries(bm_framework INTERFACE bm_shell)
 endif()
 
 if(BM_ENABLE_WDG)
     add_library(bm_wdg STATIC Source/core/bm_wdg.c)
     target_link_libraries(bm_wdg PUBLIC bm_core)
+    bm_target_internal_includes(bm_wdg)
     target_link_libraries(bm_framework INTERFACE bm_wdg)
 endif()
 
 if(BM_ENABLE_HRT)
     add_library(bm_hrt STATIC Source/hybrid/bm_hrt.c)
     target_link_libraries(bm_hrt PUBLIC bm_core)
+    bm_target_internal_includes(bm_hrt)
     target_link_libraries(bm_framework INTERFACE bm_hrt)
 endif()
 
 if(BM_ENABLE_TICKER)
     add_library(bm_ticker STATIC Source/hybrid/bm_ticker.c)
     target_link_libraries(bm_ticker PUBLIC bm_core)
+    bm_target_internal_includes(bm_ticker)
     target_link_libraries(bm_framework INTERFACE bm_ticker)
 endif()
 
@@ -130,12 +141,14 @@ if(BM_BUILD_TESTS OR BM_ENABLE_CTRL_INST)
     if(NOT TARGET bm_resource)
         add_library(bm_resource STATIC Source/hybrid/bm_resource.c)
         target_link_libraries(bm_resource PUBLIC bm_core)
+        bm_target_internal_includes(bm_resource)
     endif()
 endif()
 
 if(BM_ENABLE_CTRL_INST)
     add_library(bm_ctrl_inst STATIC Source/hybrid/bm_ctrl_inst.c)
     target_link_libraries(bm_ctrl_inst PUBLIC bm_hrt bm_core bm_resource)
+    bm_target_internal_includes(bm_ctrl_inst)
     if(BM_ENABLE_SYNC)
         target_sources(bm_ctrl_inst PRIVATE Source/hybrid/bm_sync.c)
         if(BM_SYNC_HAL_NATIVE OR BM_BUILD_TESTS)

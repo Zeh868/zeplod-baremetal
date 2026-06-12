@@ -15,3 +15,4 @@ target_include_directories(bm_backend_qemu_cortex_m0 PUBLIC
 )
 target_compile_definitions(bm_backend_qemu_cortex_m0 PUBLIC BM_DRV_HAS_BACKEND)
 target_link_libraries(bm_backend_qemu_cortex_m0 PUBLIC bm_hal bm_config)
+bm_target_internal_includes(bm_backend_qemu_cortex_m0)

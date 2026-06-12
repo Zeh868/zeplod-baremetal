@@ -1,4 +1,4 @@
-#include "bm_hal_timer.h"
+#include "hal/bm_hal_timer.h"
 #include "bm_log.h"
 #include "bm_module.h"
 #include "interrupt_timer.h"

@@ -13,11 +13,11 @@
 ## 2. Include 路径（顺序重要）
 
 1. 应用目录（含 `bm_config.h`，**最先**）
-2. `include/bm/common`、`core`、`hybrid`、`hal`、`ultra`
-3. 编写 Port 时再加 `include/drv`
+2. 框架 `include/`（对外 API 在根目录）
+3. 编写 Port 时再加 `include/bm/*`、`include/hal`、`include/drv`（见 `list_sources.py --list-includes`）
 4. 厂商 CMSIS / 设备头文件
 
-详见 [20-头文件布局](20-头文件布局.md)。
+应用：`#include "zeplod.h"`、`#include "hal/bm_hal_uart.h"`。详见 [20-头文件布局](20-头文件布局.md)。
 
 ## 3. 库源文件列表
 

@@ -102,6 +102,39 @@ void test_mempool_exhausted(void) {
     TEST_ASSERT_NULL(bm_mempool_alloc(&pool));
 }
 
+void test_mempool_rejects_overflowing_descriptor(void) {
+    uint32_t bitmap = 0u;
+    uint8_t storage[8] = {0};
+    bm_mempool_t pool = {
+        .bitmap = &bitmap,
+        .pool = storage,
+        .obj_size = SIZE_MAX,
+        .count = 2u,
+        .bitmap_words = 1u,
+    };
+
+    TEST_ASSERT_NULL(bm_mempool_alloc(&pool));
+    bm_mempool_free(&pool, storage);
+}
+
+void test_mempool_ignores_excess_bitmap_words(void) {
+    uint32_t bitmap[2] = {0u, 0xA5A5A5A5u};
+    uint8_t storage[2] = {0};
+    bm_mempool_t pool = {
+        .bitmap = bitmap,
+        .pool = storage,
+        .obj_size = 1u,
+        .count = 2u,
+        .bitmap_words = 2u,
+    };
+
+    TEST_ASSERT_NOT_NULL(bm_mempool_alloc(&pool));
+    TEST_ASSERT_NOT_NULL(bm_mempool_alloc(&pool));
+    TEST_ASSERT_NULL(bm_mempool_alloc(&pool));
+    bm_mempool_reset(&pool);
+    TEST_ASSERT_EQUAL_HEX32(0xA5A5A5A5u, bitmap[1]);
+}
+
 int main(void) {
     UNITY_BEGIN();
     RUN_TEST(test_mempool_alloc_free);
@@ -111,5 +144,7 @@ int main(void) {
     RUN_TEST(test_mempool_reset);
     RUN_TEST(test_mempool_exhausted);
     RUN_TEST(test_mempool_double_free_ignored);
+    RUN_TEST(test_mempool_rejects_overflowing_descriptor);
+    RUN_TEST(test_mempool_ignores_excess_bitmap_words);
     return UNITY_END();
 }

@@ -18,7 +18,7 @@
 #ifndef BM_CHANNEL_H
 #define BM_CHANNEL_H
 
-#include "bm_types.h"
+#include "bm/common/bm_types.h"
 
 #include <stdbool.h>
 #include <stdint.h>

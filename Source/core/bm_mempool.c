@@ -17,44 +17,57 @@
 #include "bm_mempool.h"
 #include "bm_critical_wrap.h"
 #include "bm_log.h"
-#include "bm_safety.h"
-
 #include <string.h>
 
 /**
  * @brief 校验内存池描述符基本字段
  */
 static int mempool_validate_pool(const bm_mempool_t *pool) {
+    uint32_t min_words;
+    size_t total_bytes;
+
     if (!pool || !pool->bitmap || !pool->pool || pool->obj_size == 0u ||
         pool->count == 0u) {
         return BM_ERR_INVALID;
     }
-    {
-        uint32_t min_words = (pool->count + 31u) / 32u;
-        if (pool->bitmap_words < min_words) {
-            return BM_ERR_INVALID;
-        }
+    min_words = pool->count / 32u;
+    if ((pool->count % 32u) != 0u) {
+        min_words++;
+    }
+    if (pool->bitmap_words < min_words) {
+        return BM_ERR_INVALID;
+    }
+    if (pool->obj_size > (SIZE_MAX / pool->count)) {
+        return BM_ERR_INVALID;
+    }
+    total_bytes = pool->obj_size * pool->count;
+    if (total_bytes > (size_t)UINTPTR_MAX ||
+        (uintptr_t)pool->pool >
+            UINTPTR_MAX - (uintptr_t)total_bytes) {
+        return BM_ERR_INVALID;
     }
     return BM_OK;
+}
+
+static uint32_t mempool_required_bitmap_words(const bm_mempool_t *pool) {
+    uint32_t words = pool->count / 32u;
+
+    return words + (((pool->count % 32u) != 0u) ? 1u : 0u);
 }
 
 /**
  * @brief 计算池内存上界（溢出安全）
  */
 static int mempool_pool_end(const bm_mempool_t *pool, uintptr_t *end_out) {
-    uint32_t total_bytes = 0u;
+    size_t total_bytes;
     uintptr_t pool_start;
-    uintptr_t pool_end;
 
-    if (bm_mul_u32_overflow((uint32_t)pool->obj_size, pool->count, &total_bytes)) {
+    if (mempool_validate_pool(pool) != BM_OK || !end_out) {
         return BM_ERR_INVALID;
     }
+    total_bytes = pool->obj_size * pool->count;
     pool_start = (uintptr_t)pool->pool;
-    pool_end = pool_start + (uintptr_t)total_bytes;
-    if (pool_end < pool_start) {
-        return BM_ERR_INVALID;
-    }
-    *end_out = pool_end;
+    *end_out = pool_start + total_bytes;
     return BM_OK;
 }
 
@@ -67,14 +80,16 @@ static int mempool_pool_end(const bm_mempool_t *pool, uintptr_t *end_out) {
 void *bm_mempool_alloc(bm_mempool_t *pool) {
     void *obj = NULL;
     uint32_t allocated_idx = 0u;
+    uint32_t bitmap_words;
 
     if (mempool_validate_pool(pool) != BM_OK) {
         BM_LOGE("mempool", "alloc invalid pool");
         return NULL;
     }
 
+    bitmap_words = mempool_required_bitmap_words(pool);
     bm_irq_state_t s = BM_CRITICAL_ENTER();
-    for (uint32_t w = 0u; w < pool->bitmap_words; w++) {
+    for (uint32_t w = 0u; w < bitmap_words; w++) {
         if (pool->bitmap[w] != 0xFFFFFFFFU) {
             for (int b = 0; b < 32; b++) {
                 if (!(pool->bitmap[w] & (1U << b))) {
@@ -84,7 +99,8 @@ void *bm_mempool_alloc(bm_mempool_t *pool) {
                     }
 
                     pool->bitmap[w] |= (1U << b);
-                    obj = (uint8_t *)pool->pool + idx * pool->obj_size;
+                    obj = (uint8_t *)pool->pool +
+                          (size_t)idx * pool->obj_size;
                     allocated_idx = idx;
                     BM_CRITICAL_EXIT(s);
                     memset(obj, 0, pool->obj_size);
@@ -159,13 +175,16 @@ void bm_mempool_free(bm_mempool_t *pool, void *obj) {
 }
 
 void bm_mempool_reset(bm_mempool_t *pool) {
+    uint32_t bitmap_words;
+
     if (mempool_validate_pool(pool) != BM_OK) {
         BM_LOGE("mempool", "reset invalid pool");
         return;
     }
 
+    bitmap_words = mempool_required_bitmap_words(pool);
     bm_irq_state_t s = BM_CRITICAL_ENTER();
-    memset(pool->bitmap, 0, pool->bitmap_words * sizeof(uint32_t));
+    memset(pool->bitmap, 0, (size_t)bitmap_words * sizeof(uint32_t));
     BM_CRITICAL_EXIT(s);
     BM_LOGT("mempool", "reset all slots free");
 }

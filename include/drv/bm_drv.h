@@ -12,7 +12,7 @@
 #ifndef BM_DRV_H
 #define BM_DRV_H
 
-#include "bm_types.h"
+#include "bm/common/bm_types.h"
 
 /** 设备实例：API 表 + 后端私有配置（均建议 const，占 Flash） */
 struct bm_device {

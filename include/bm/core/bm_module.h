@@ -18,7 +18,7 @@
 #ifndef BM_MODULE_H
 #define BM_MODULE_H
 
-#include "bm_types.h"
+#include "bm/common/bm_types.h"
 
 #ifndef BM_CONFIG_MAX_MODULES
 #define BM_CONFIG_MAX_MODULES 8
@@ -44,7 +44,7 @@ typedef struct {
 } bm_module_t;
 
 /**
- * 单模块描述符（每模块一个 .c）。未使用的回调传 NULL。
+ * 单模块描述符（每模块一个 .c）。未使用的回调传 NULL，按成功的空操作处理。
  *
  * @code
  * BM_MODULE_DEFINE(sensor, 2,
@@ -90,6 +90,8 @@ int bm_module_init_all(void);
 
 /**
  * @brief 按优先级启动所有已初始化模块
+ *
+ * 已通过 bm_module_stop_all() 停止的模块也可再次启动。
  */
 int bm_module_start_all(void);
 
@@ -100,6 +102,8 @@ int bm_module_stop_all(void);
 
 /**
  * @brief 按优先级反初始化所有模块
+ *
+ * 若模块仍在运行，会先调用 stop；stop 失败的模块不会执行 deinit。
  */
 int bm_module_deinit_all(void);
 

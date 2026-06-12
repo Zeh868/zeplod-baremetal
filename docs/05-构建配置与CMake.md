@@ -63,7 +63,19 @@ zeplod_link(my_app)
 
 所有上限在编译期固定。在应用 include 路径放置 `bm_config.h`，或通过 CMake 设置 `BM_CONFIG_FILE`。
 
-常用宏：
+应用 API 入口：`#include "zeplod.h"`。Include Path 只需框架 `include/` 一条（见 [20-头文件布局](20-头文件布局.md)）。
+
+CMake 通过 `bm_config` 目标将 `BM_ENABLE_*` 同步为 `BM_CONFIG_ENABLE_*`；容量宏仍在应用 `bm_config.h` 中定义。
+
+组件开关示例：
+
+```c
+#define BM_CONFIG_ENABLE_MODULE             1
+#define BM_CONFIG_ENABLE_HRT                0   /* Control 层再置 1 */
+#define BM_CONFIG_ENABLE_ULTRA              0   /* Ultra 剖面置 1 */
+```
+
+常用容量宏：
 
 ```c
 /* 事件 */

@@ -17,10 +17,10 @@
 #ifndef BM_CTRL_INST_H
 #define BM_CTRL_INST_H
 
-#include "bm_hal_hrt.h"
-#include "bm_hrt.h"
-#include "bm_resource.h"
-#include "bm_types.h"
+#include "hal/bm_hal_hrt.h"
+#include "bm/hybrid/bm_hrt.h"
+#include "bm/hybrid/bm_resource.h"
+#include "bm/common/bm_types.h"
 
 typedef struct bm_ctrl_inst bm_ctrl_inst_t;
 
@@ -75,6 +75,9 @@ struct bm_ctrl_inst {
 
 /**
  * @brief 批量初始化控制实例
+ *
+ * 参数校验通过后，总是先安全停止任何既有会话（HRT、硬件解绑、safe_stop），
+ * 再重新初始化。无效参数不会触发 teardown。
  *
  * @param instances 控制实例指针数组
  * @param count 实例数量

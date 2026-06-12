@@ -16,8 +16,8 @@
 #ifndef BM_SYNC_H
 #define BM_SYNC_H
 
-#include "bm_ctrl_inst.h"
-#include "bm_types.h"
+#include "bm/hybrid/bm_ctrl_inst.h"
+#include "bm/common/bm_types.h"
 
 typedef struct bm_hal_timer bm_hal_timer_t;
 
@@ -37,6 +37,8 @@ typedef enum {
     BM_SYNC_STATE_ARMED,
     BM_SYNC_STATE_TRANSITION
 } bm_sync_state_t;
+
+/** 同步 API 仅限主上下文调用，不可在 ISR 中调用。 */
 
 /**
  * @brief 配置同步域并委托 HAL 完成硬件设置

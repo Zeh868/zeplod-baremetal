@@ -14,11 +14,13 @@
 #include "bm_log.h"
 
 static int g_count = 0;
+static uintptr_t g_data_address = 0u;
 
 #define EVENT_TEST 1
 
 static void test_cb(const void *data, uint8_t len) {
     g_count++;
+    g_data_address = (uintptr_t)data;
     if (data && len == sizeof(uint16_t)) {
         uint16_t val = *(const uint16_t *)data;
         TEST_ASSERT_EQUAL(42, val);
@@ -32,6 +34,7 @@ BM_ULTRA_CALLBACK_TABLE_DEFINE(
 void setUp(void) {
     BM_LOGI("test_ultra", "setUp: reset ultra subsystem");
     g_count = 0;
+    g_data_address = 0u;
     bm_ultra_init();
 }
 void tearDown(void) {}
@@ -42,6 +45,7 @@ void test_ultra_publish_and_process(void) {
     TEST_ASSERT_EQUAL(1, bm_ultra_event_count());
     TEST_ASSERT_EQUAL(1, bm_ultra_process());
     TEST_ASSERT_EQUAL(1, g_count);
+    TEST_ASSERT_EQUAL(0u, g_data_address % 8u);
     TEST_ASSERT_EQUAL(0, bm_ultra_event_count());
 }
 
@@ -68,6 +72,18 @@ void test_ultra_dispatch_skipped_invalid_type(void) {
     TEST_ASSERT_EQUAL(0u, bm_ultra_get_dispatch_skipped_count());
     TEST_ASSERT_EQUAL(BM_OK, bm_ultra_test_inject(&bad));
     TEST_ASSERT_EQUAL(1u, bm_ultra_process());
+    TEST_ASSERT_EQUAL(1u, bm_ultra_get_dispatch_skipped_count());
+}
+
+void test_ultra_dispatch_skips_invalid_payload_length(void) {
+    bm_ultra_queue_item_t bad = {
+        .event_type = EVENT_TEST,
+        .data_len = (uint8_t)(BM_CONFIG_ULTRA_MAX_EVENT_DATA_SIZE + 1u)
+    };
+
+    TEST_ASSERT_EQUAL(BM_OK, bm_ultra_test_inject(&bad));
+    TEST_ASSERT_EQUAL(1u, bm_ultra_process());
+    TEST_ASSERT_EQUAL(0, g_count);
     TEST_ASSERT_EQUAL(1u, bm_ultra_get_dispatch_skipped_count());
 }
 
@@ -103,6 +119,7 @@ int main(void) {
     RUN_TEST(test_ultra_rejects_invalid_event_type);
     RUN_TEST(test_ultra_rejects_null_payload);
     RUN_TEST(test_ultra_dispatch_skipped_invalid_type);
+    RUN_TEST(test_ultra_dispatch_skips_invalid_payload_length);
     RUN_TEST(test_ultra_dispatch_skipped_corrupt_queue);
     RUN_TEST(test_ultra_queue_overflow);
     return UNITY_END();

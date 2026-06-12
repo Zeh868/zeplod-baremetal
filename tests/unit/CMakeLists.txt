@@ -5,6 +5,7 @@ function(bm_add_test TEST_NAME TEST_SRC TEST_LIBRARY)
         ${TEST_LIBRARY}
         bm_hal_native
     )
+    bm_target_internal_includes(${TEST_NAME})
     target_include_directories(${TEST_NAME} PRIVATE
         ${CMAKE_SOURCE_DIR}/tests/unit/unity
     )
@@ -60,6 +61,7 @@ endif()
 if(BM_ENABLE_SYNC)
     add_executable(test_sync test_sync.c)
     target_link_libraries(test_sync PRIVATE unity bm_ctrl_inst bm_hal_native)
+    bm_target_internal_includes(test_sync)
     target_include_directories(test_sync PRIVATE
         ${CMAKE_SOURCE_DIR}/tests/unit/unity
         ${CMAKE_SOURCE_DIR}/portable/native_sim)
@@ -69,6 +71,7 @@ endif()
 if(BM_BUILD_TESTS)
     add_executable(test_snapshot test_snapshot.c)
     target_link_libraries(test_snapshot PRIVATE unity bm_core bm_hal_native)
+    bm_target_internal_includes(test_snapshot)
     target_include_directories(test_snapshot PRIVATE
         ${CMAKE_SOURCE_DIR}/tests/unit/unity
         ${CMAKE_SOURCE_DIR}/portable/native_sim)
@@ -83,6 +86,7 @@ if(BM_BUILD_TESTS)
         BM_HAL_HAS_PRIORITY_MASK=1
     )
     target_link_libraries(test_priority_mask PRIVATE unity bm_config)
+    bm_target_internal_includes(test_priority_mask)
     target_include_directories(test_priority_mask PRIVATE
         ${CMAKE_SOURCE_DIR}/tests/unit/unity
         ${CMAKE_SOURCE_DIR}/tests/unit/fakes)

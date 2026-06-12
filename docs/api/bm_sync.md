@@ -1,7 +1,7 @@
 # bm_sync — 多实例硬件同步域
 
 头文件：`include/bm_sync.h`  
-实现：`src/hybrid/bm_sync.c` + 平台 `bm_sync_hal_*.c`
+实现：`Source/hybrid/bm_sync.c` + 平台 `bm_sync_hal_*.c`
 
 ## 概述
 

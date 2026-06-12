@@ -89,15 +89,15 @@ PROFILES: dict[str, dict[str, bool]] = {
     },
 }
 
-INCLUDE_APP = [
+INCLUDE_APP = ["include"]
+
+INCLUDE_PORT_EXTRA = [
     "include/bm/common",
     "include/bm/core",
     "include/bm/hybrid",
-    "include/bm/hal",
-    "include/bm/ultra",
+    "include/hal",
+    "include/drv",
 ]
-
-INCLUDE_DRV = ["include/drv"]
 
 
 def enabled(value: str) -> bool:
@@ -142,7 +142,7 @@ def collect_sources(args: argparse.Namespace) -> list[str]:
 def collect_includes(args: argparse.Namespace) -> list[str]:
     paths = list(INCLUDE_APP)
     if args.with_hal or args.backend:
-        paths.extend(INCLUDE_DRV)
+        paths.extend(INCLUDE_PORT_EXTRA)
     if args.backend and args.backend != "external":
         paths.append(f"portable/{args.backend}")
     return paths

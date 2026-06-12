@@ -19,7 +19,7 @@
 #ifndef BM_WDG_H
 #define BM_WDG_H
 
-#include "bm_types.h"
+#include "bm/common/bm_types.h"
 
 #ifndef BM_CONFIG_MAX_WDG_MODULES
 #define BM_CONFIG_MAX_WDG_MODULES 4
@@ -29,10 +29,18 @@
 #define BM_CONFIG_WDG_MODULE_TIMEOUT_MS 1000
 #endif
 
+#ifndef BM_CONFIG_WDG_MAX_NAME_LEN
+#define BM_CONFIG_WDG_MAX_NAME_LEN 32
+#endif
+
+#if BM_CONFIG_WDG_MAX_NAME_LEN < 2
+#error "BM_CONFIG_WDG_MAX_NAME_LEN must be at least 2"
+#endif
+
 /**
  * @brief 注册一个需喂狗的逻辑模块
  *
- * @param name 模块名称（非 NULL）
+ * @param name 模块名称（非 NULL，注册时复制）
  * @return BM_OK 成功；BM_ERR_NO_MEM 注册表已满；BM_ERR_INVALID 参数无效；
  *         BM_ERR_ALREADY 同名模块已注册
  */

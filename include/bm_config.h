@@ -17,6 +17,39 @@
 #ifndef BM_CONFIG_H
 #define BM_CONFIG_H
 
+/*
+ * 组件开关（与 CMake BM_ENABLE_* / PROFILE 对齐）。
+ * 应用 bm_config.h 可用 #define 覆盖；CMake 集成时由 bm_config 目标注入 -D。
+ * Ultra 剖面设 BM_CONFIG_ENABLE_ULTRA=1，其余组件开关忽略。
+ */
+#ifndef BM_CONFIG_ENABLE_ULTRA
+#define BM_CONFIG_ENABLE_ULTRA               0
+#endif
+#ifndef BM_CONFIG_ENABLE_MODULE
+#define BM_CONFIG_ENABLE_MODULE              1
+#endif
+#ifndef BM_CONFIG_ENABLE_CHANNEL
+#define BM_CONFIG_ENABLE_CHANNEL             0
+#endif
+#ifndef BM_CONFIG_ENABLE_SHELL
+#define BM_CONFIG_ENABLE_SHELL               0
+#endif
+#ifndef BM_CONFIG_ENABLE_WDG
+#define BM_CONFIG_ENABLE_WDG                 1
+#endif
+#ifndef BM_CONFIG_ENABLE_HRT
+#define BM_CONFIG_ENABLE_HRT                 0
+#endif
+#ifndef BM_CONFIG_ENABLE_TICKER
+#define BM_CONFIG_ENABLE_TICKER              0
+#endif
+#ifndef BM_CONFIG_ENABLE_CTRL_INST
+#define BM_CONFIG_ENABLE_CTRL_INST           0
+#endif
+#ifndef BM_CONFIG_ENABLE_SYNC
+#define BM_CONFIG_ENABLE_SYNC                0
+#endif
+
 /* 日志子系统 */
 #define BM_CONFIG_ENABLE_LOG                 1
 #define BM_CONFIG_LOG_LEVEL                  3   /* BM_LOG_INFO */
@@ -40,6 +73,7 @@
 #define BM_CONFIG_SHELL_MAX_NAME_LEN         16
 #define BM_CONFIG_MAX_WDG_MODULES            4
 #define BM_CONFIG_WDG_MODULE_TIMEOUT_MS      1000
+#define BM_CONFIG_WDG_MAX_NAME_LEN           32
 
 /* Ultra 超轻量剖面（header-only） */
 #define BM_CONFIG_ULTRA_MAX_EVENT_TYPES      8

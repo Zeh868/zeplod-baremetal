@@ -16,8 +16,8 @@
 #ifndef BM_HAL_COMP_H
 #define BM_HAL_COMP_H
 
-#include "bm_drv_comp.h"
-#include "bm_types.h"
+#include "drv/bm_drv_comp.h"
+#include "bm/common/bm_types.h"
 
 typedef struct bm_hal_comp bm_hal_comp_t;
 

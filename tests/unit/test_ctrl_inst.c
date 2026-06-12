@@ -218,6 +218,17 @@ static const bm_ctrl_slot_t bind_fail_slots[] = {
     },
 };
 
+static const bm_ctrl_slot_t invalid_hardware_trigger_slots[] = {
+    {
+        BM_CTRL_SLOT_HARDWARE,
+        0u,
+        BM_HRT_TRIGGER_TIMER,
+        hardware_step,
+        bind_adc,
+        "bad_hw_trigger"
+    },
+};
+
 static const bm_ctrl_inst_t fail_init_inst = {
     2u, "fail_init", NULL, NULL, NULL,
     scheduled_slots,
@@ -239,6 +250,14 @@ static const bm_ctrl_inst_t bind_fail_inst = {
     NULL, 0u, &fail_bind_ops
 };
 
+static const bm_ctrl_inst_t invalid_hardware_trigger_inst = {
+    4u, "bad_hw_trigger", NULL, NULL, NULL,
+    invalid_hardware_trigger_slots,
+    (uint32_t)(sizeof(invalid_hardware_trigger_slots) /
+               sizeof(invalid_hardware_trigger_slots[0])),
+    NULL, 0u, &mock_ops
+};
+
 static const bm_ctrl_inst_t wrong_inst = {
     99u, "wrong", NULL, NULL, NULL,
     NULL, 0u, NULL, 0u, &wrong_ops
@@ -254,6 +273,7 @@ void setUp(void) {
     g_fire_hardware_during_stop = 0u;
     g_wrong_safe_stop_count = 0u;
     bm_hal_timer_native_reset_ticks();
+    bm_hal_timer_native_set_init_result(BM_OK);
     bm_hrt_reset();
 }
 
@@ -287,11 +307,11 @@ void test_ctrl_hardware_bind_fires_step(void) {
     bm_ctrl_safe_stop_all(instances, 1u);
 }
 
-void test_ctrl_hardware_only_hrt_start_ok(void) {
+void test_ctrl_hardware_only_does_not_initialize_hrt(void) {
     const bm_ctrl_inst_t *const instances[] = { &hw_inst };
 
     TEST_ASSERT_EQUAL(BM_OK, bm_ctrl_init_all(instances, 1u));
-    TEST_ASSERT_EQUAL(BM_OK, bm_hrt_start());
+    TEST_ASSERT_EQUAL(BM_ERR_NOT_INIT, bm_hrt_start());
     bm_hal_adc_sim_fire_complete(&BM_HAL_ADC_SIM0);
     TEST_ASSERT_EQUAL(0u, g_hw_step_count);
     TEST_ASSERT_EQUAL(BM_OK, bm_ctrl_start_all(instances, 1u));
@@ -375,6 +395,25 @@ void test_ctrl_bind_failure_rolls_back(void) {
     TEST_ASSERT_EQUAL(0u, g_hw_step_count);
 }
 
+void test_ctrl_rejects_hardware_slot_with_timer_trigger(void) {
+    const bm_ctrl_inst_t *const instances[] = {
+        &invalid_hardware_trigger_inst
+    };
+
+    TEST_ASSERT_EQUAL(BM_ERR_INVALID, bm_ctrl_init_all(instances, 1u));
+}
+
+void test_ctrl_hrt_start_failure_keeps_session_closed(void) {
+    const bm_ctrl_inst_t *const instances[] = { &sched_inst };
+
+    TEST_ASSERT_EQUAL(BM_OK, bm_ctrl_init_all(instances, 1u));
+    bm_hal_timer_native_set_init_result(BM_ERR_BUSY);
+    TEST_ASSERT_EQUAL(BM_ERR_BUSY, bm_ctrl_start_all(instances, 1u));
+    TEST_ASSERT_EQUAL(BM_CTRL_SESSION_NONE, bm_ctrl_get_session());
+    TEST_ASSERT_EQUAL(0, bm_hrt_is_started());
+    TEST_ASSERT_EQUAL(1u, g_safe_stop_count);
+}
+
 void test_ctrl_find_instance(void) {
     const bm_ctrl_inst_t *const instances[] = { &sched_inst, &hw_inst };
 
@@ -418,10 +457,12 @@ int main(void) {
     UNITY_BEGIN();
     RUN_TEST(test_ctrl_init_and_scheduled_slot);
     RUN_TEST(test_ctrl_hardware_bind_fires_step);
-    RUN_TEST(test_ctrl_hardware_only_hrt_start_ok);
+    RUN_TEST(test_ctrl_hardware_only_does_not_initialize_hrt);
     RUN_TEST(test_ctrl_init_failure_rolls_back_safe_stop);
     RUN_TEST(test_ctrl_start_failure_rolls_back_safe_stop);
     RUN_TEST(test_ctrl_bind_failure_rolls_back);
+    RUN_TEST(test_ctrl_rejects_hardware_slot_with_timer_trigger);
+    RUN_TEST(test_ctrl_hrt_start_failure_keeps_session_closed);
     RUN_TEST(test_ctrl_find_instance);
     RUN_TEST(test_ctrl_reinit_teardowns_previous_session);
     RUN_TEST(test_ctrl_start_all_starts_hrt_after_all_instances);

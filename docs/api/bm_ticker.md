@@ -1,7 +1,7 @@
 # bm_ticker — 毫秒级周期事件发布器
 
 头文件：`include/bm_ticker.h`  
-实现：`src/hybrid/bm_ticker.c`
+实现：`Source/hybrid/bm_ticker.c`
 
 ## 概述
 

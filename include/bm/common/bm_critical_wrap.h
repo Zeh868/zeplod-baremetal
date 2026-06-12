@@ -16,7 +16,7 @@
 #ifndef BM_CRITICAL_WRAP_H
 #define BM_CRITICAL_WRAP_H
 
-#include "bm_hal_critical.h"
+#include "hal/bm_hal_critical.h"
 
 #ifndef BM_CONFIG_ENABLE_PRIORITY_MASK
 #define BM_CONFIG_ENABLE_PRIORITY_MASK 0

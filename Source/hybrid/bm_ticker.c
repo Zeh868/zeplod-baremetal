@@ -11,7 +11,7 @@
  *
  *    Date         Version        Author          Description
  * 2026-06-10       1.0            zeh            正式发布
- * 2026-06-11       1.1            zeh            SIL-2 重入守卫与队列满时推进周期
+ * 2026-06-11       1.1            zeh            SIL-2 队列满时推进周期
  * 2026-06-11       1.2            zeh            init 校验 event 索引与定时器频率
  * 2026-06-11       1.3            zeh            get_dropped 临界区读取
  *
@@ -128,6 +128,8 @@ int bm_ticker_init(const bm_ticker_slot_t *slots, uint32_t slot_count) {
 /**
  * @brief 轮询到期槽并向事件总线发布事件
  *
+ * 非可重入，仅限主循环调用。
+ *
  * @return 本次发布的事件数；BM_ERR_NOT_INIT 未初始化
  */
 int bm_ticker_poll(void) {
@@ -169,11 +171,10 @@ int bm_ticker_poll(void) {
                 catchup++;
                 slot->next_tick = ticker_deadline_from(
                     slot->next_tick, slot->period_ticks);
-                if ((uint32_t)(now - slot->next_tick) >= slot->period_ticks) {
-                    slot->next_tick =
-                        ticker_deadline_from(now, slot->period_ticks);
-                    break;
-                }
+            }
+            if (bm_time_reached_u32(now, slot->next_tick)) {
+                slot->next_tick =
+                    ticker_deadline_from(now, slot->period_ticks);
             }
         }
     }

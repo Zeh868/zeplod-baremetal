@@ -16,9 +16,9 @@
 #ifndef BM_HAL_ADC_H
 #define BM_HAL_ADC_H
 
-#include "bm_drv_adc.h"
-#include "bm_hal_hrt.h"
-#include "bm_types.h"
+#include "drv/bm_drv_adc.h"
+#include "hal/bm_hal_hrt.h"
+#include "bm/common/bm_types.h"
 
 typedef struct bm_hal_adc bm_hal_adc_t;
 

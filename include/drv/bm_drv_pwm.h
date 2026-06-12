@@ -5,9 +5,9 @@
 #ifndef BM_DRV_PWM_H
 #define BM_DRV_PWM_H
 
-#include "bm_drv.h"
-#include "bm_hal_hrt.h"
-#include "bm_types.h"
+#include "drv/bm_drv.h"
+#include "hal/bm_hal_hrt.h"
+#include "bm/common/bm_types.h"
 
 #include <stdint.h>
 

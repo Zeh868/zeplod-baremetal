@@ -15,7 +15,7 @@
 #ifndef BM_SYNC_HAL_H
 #define BM_SYNC_HAL_H
 
-#include "bm_sync.h"
+#include "bm/hybrid/bm_sync.h"
 
 int bm_sync_hal_configure(const bm_sync_domain_t *domain);
 int bm_sync_hal_arm(const bm_sync_domain_t *domain);
