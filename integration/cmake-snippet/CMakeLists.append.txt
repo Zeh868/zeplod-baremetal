@@ -1,0 +1,13 @@
+# 追加到厂商 CMake 工程（CubeMX / MCUXpresso 生成的主 CMakeLists.txt 末尾）
+
+set(ZEPLOD_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/zeplod-baremetal")
+include(${ZEPLOD_ROOT}/cmake/zeplod.cmake)
+
+zeplod_configure(
+    ROOT    ${ZEPLOD_ROOT}
+    PROFILE event
+    BACKEND register_stm32g4
+    CONFIG  ${CMAKE_CURRENT_SOURCE_DIR}/Core/Inc/bm_config.h
+)
+
+zeplod_link(${CMAKE_PROJECT_NAME})

@@ -58,12 +58,16 @@ PWM/ADC/COMP/Encoder 契约头文件：`bm_hal_pwm.h`、`bm_hal_adc.h` 等。
 
 移植检查：实现本应用用到的 API → `native_sim` 单测 → 真机时序。
 
-## IDE 与示例附录
+## 集成到现有工程
+
+挂库步骤（CubeMX / MCUXpresso / Keil / IAR）见 [13-集成到现有工程](13-集成到现有工程.md) 与 [integration/](../integration/README.md)。HAL 实现细节仍参考本文与 `platform/backends/`。
+
+## IDE 附录
 
 | 路径 | 内容 |
 |------|------|
-| [porting/keil-integration.md](porting/keil-integration.md) | Keil |
-| [porting/iar-integration.md](porting/iar-integration.md) | IAR |
-| [examples/PORTING.md](../examples/PORTING.md) | 示例板级替换 |
+| [integration/](../integration/README.md) | CMake / Cube / NXP 快速接入 |
+| [porting/keil-integration.md](porting/keil-integration.md) | Keil 补充 |
+| [porting/iar-integration.md](porting/iar-integration.md) | IAR 补充 |
 
 硬件验证：[reports/stm32g4-hardware-validation.md](reports/stm32g4-hardware-validation.md)（若存在）。

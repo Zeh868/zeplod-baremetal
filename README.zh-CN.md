@@ -161,6 +161,16 @@ zeplod-baremetal/
 
 构建与运行说明见 [`examples/README.md`](examples/README.md)。
 
+### 集成到已有工程（CubeMX / Keil / IAR / MCUXpresso）
+
+```cmake
+include(ThirdParty/zeplod-baremetal/cmake/zeplod.cmake)
+zeplod_configure(ROOT .../zeplod-baremetal PROFILE event BACKEND external CONFIG Core/Inc/bm_config.h)
+zeplod_link(${CMAKE_PROJECT_NAME})
+```
+
+非 CMake 工程用 `python tools/list_sources.py --profile event --backend register_stm32g4 --format keil` 生成文件列表。详见 [`integration/README.md`](integration/README.md) 与 [`docs/13-集成到现有工程.md`](docs/13-集成到现有工程.md)。
+
 ### 快速开始（本地模拟）
 
 ```bash
@@ -264,8 +274,9 @@ Zeplod Baremetal 被设计为机器人/电子系统三层架构的底层：
 | 09 | [测试与调试](docs/09-测试与调试.md) |
 | 10 | [迁移与演进](docs/10-迁移与演进.md) |
 | 11 | [安全与可靠性](docs/11-安全与可靠性.md) |
+| 13 | [集成到现有工程](docs/13-集成到现有工程.md) |
 
-专题：[architecture.md](docs/architecture.md) · [api/](docs/api/) · [porting/](docs/porting/)（Keil/IAR 附录）
+专题：[integration/](integration/) · [architecture.md](docs/architecture.md) · [api/](docs/api/) · [porting/](docs/porting/)
 
 ---
 

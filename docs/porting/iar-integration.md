@@ -34,13 +34,16 @@ src/core/bm_shell.c
 src/core/bm_wdg.c
 ```
 
-Generate the list with:
+Generate lists with:
 
 ```bash
-python tools/list_sources.py --format iar \
-  --enable-module ON --enable-channel OFF \
-  --enable-shell OFF --enable-wdg ON
+python tools/list_sources.py --profile event --backend register_stm32g4 \
+  --format iar --root-macro ZEPLOD_ROOT
+python tools/list_sources.py --profile event --backend register_stm32g4 \
+  --list-includes --format iar --root-macro ZEPLOD_ROOT
 ```
+
+See [integration/README.md](../../integration/README.md).
 
 `bm_ultra.h` is header-only.
 

@@ -36,20 +36,29 @@ BM_ENABLE_SYNC → BM_ENABLE_CTRL_INST → BM_ENABLE_HRT
 
 应用应**只链接用到的目标**；需要全开时用 `bm_framework`。
 
-## 应用工程示例
+## 应用工程集成（推荐）
+
+使用单入口 `cmake/zeplod.cmake`（见 [13-集成到现有工程](13-集成到现有工程.md)）：
 
 ```cmake
-cmake_minimum_required(VERSION 3.20)
-project(my_app C)
+include(${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/zeplod-baremetal/cmake/zeplod.cmake)
 
-set(ZEPLOD_BAREMETAL_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../zeplod-baremetal")
-add_subdirectory(${ZEPLOD_BAREMETAL_DIR} zeplod)
+zeplod_configure(
+    ROOT    ${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/zeplod-baremetal
+    PROFILE event
+    BACKEND register_stm32g4
+    CONFIG  ${CMAKE_CURRENT_SOURCE_DIR}/bm_config.h
+)
 
-add_executable(my_app main.c)
-target_link_libraries(my_app PRIVATE bm_hal_native bm_framework)
+add_executable(my_app main.c)   # 或与 CubeMX 目标合并
+zeplod_link(my_app)
 ```
 
-示例目录通过 `-DZEPLOD_BAREMETAL_DIR=../..` 指向框架根。
+`PROFILE` 预设裁剪组件；`BACKEND external` 表示胶水层在应用工程内对接厂商 HAL。
+
+## 底层 add_subdirectory（高级）
+
+仍可直接 `add_subdirectory(zeplod-baremetal)` 并手动设置 `BM_ENABLE_*`、`BM_BACKEND`。框架内示例与单元测试采用此方式。
 
 ## `bm_config.h`
 

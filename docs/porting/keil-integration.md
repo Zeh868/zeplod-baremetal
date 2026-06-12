@@ -42,13 +42,17 @@ src/core/bm_shell.c
 src/core/bm_wdg.c
 ```
 
-Generate a source list with:
+Generate source and include lists (recommended):
 
 ```bash
-python tools/list_sources.py --format keil \
-  --enable-module ON --enable-channel OFF \
-  --enable-shell OFF --enable-wdg ON
+python tools/list_sources.py --profile event --backend register_stm32g4 \
+  --format keil --root-macro ZEPLOD_ROOT > zeplod_sources.txt
+python tools/list_sources.py --profile event --backend register_stm32g4 \
+  --list-includes --format keil --root-macro ZEPLOD_ROOT > zeplod_includes.txt
 ```
+
+Define `ZEPLOD_ROOT` in the project to the framework checkout path.
+See [integration/README.md](../../integration/README.md) for CubeMX workflow.
 
 `bm_ultra.h` is header-only and does not require framework `.c` files.
 
