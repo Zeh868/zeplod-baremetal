@@ -142,16 +142,19 @@ zeplod-baremetal/
 
 [`Demo/`](Demo/) 目录包含逐步扩展的演示程序（类比 FreeRTOS/Demo/）：
 
-| 示例 | 重点 | 层级 |
-|---------|-------|------|
-| [`ultra_blink`](Demo/ultra_blink) | 最小化的头文件版事件队列 | Ultra |
-| [`core_sensor`](Demo/core_sensor) | 事件、内存池与模块生命周期 | Nano |
-| [`full_system`](Demo/full_system) | 多模块、事件优先级、看门狗 | Lite |
-| [`interrupt_demo`](Demo/interrupt_demo) | SysTick、外设中断与 ISR 事件发布 | Nano |
-| [`hrt_servo_stub`](Demo/hrt_servo_stub) | 混合域伺服 | Control |
-| [`hrt_bms_coulomb`](Demo/hrt_bms_coulomb) | BMS 混合域 | Control |
-| [`multi_axis_sync`](Demo/multi_axis_sync) | 同步域多轴 | Control |
-| [`multi_channel_bms`](Demo/multi_channel_bms) | 多通道 BMS | Control |
+| 示例 | 重点 | 层级 | 成熟度 |
+|---------|-------|------|--------|
+| [`ultra_blink`](Demo/ultra_blink) | 最小化的头文件版事件队列 | Ultra | `D0` |
+| [`core_sensor`](Demo/core_sensor) | 事件、内存池与模块生命周期 | Nano | `D0` |
+| [`full_system`](Demo/full_system) | 多模块、事件优先级、看门狗 | Lite | `D0` |
+| [`interrupt_demo`](Demo/interrupt_demo) | SysTick、外设中断与 ISR 事件发布 | Nano | `D0` |
+| [`hrt_servo_stub`](Demo/hrt_servo_stub) | 混合域伺服 | Control | `D0` |
+| [`hrt_bms_coulomb`](Demo/hrt_bms_coulomb) | BMS 混合域 | Control | `D0` |
+| [`multi_axis_sync`](Demo/multi_axis_sync) | 同步域多轴 | Control | `D0` |
+| [`multi_channel_bms`](Demo/multi_channel_bms) | 多通道 BMS | Control | `D0` |
+
+`D0` 表示机制演示，不代表相关领域算法达到产品或工业成熟度。成熟度定义见
+[领域算法与模块化路线图](docs/22-领域算法与模块化路线图.md#11-技术深度与成熟度要求)。
 
 构建说明见 [`Demo/README.md`](Demo/README.md)。
 

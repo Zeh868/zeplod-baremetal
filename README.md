@@ -139,16 +139,20 @@ zeplod-baremetal/
 
 The [`Demo/`](Demo/) directory contains progressive demonstrations:
 
-| Example | Focus | Tier |
-|---------|-------|------|
-| [`ultra_blink`](Demo/ultra_blink) | Minimal header-only event queue | Ultra |
-| [`core_sensor`](Demo/core_sensor) | Events, mempool, and module lifecycle | Nano |
-| [`full_system`](Demo/full_system) | Multi-module, event priorities, watchdog | Lite |
-| [`interrupt_demo`](Demo/interrupt_demo) | SysTick, peripheral IRQ, and ISR event publishing | Nano |
-| [`hrt_servo_stub`](Demo/hrt_servo_stub) | Hybrid-domain servo (current HRT + speed HRT + position SRT) | Control |
-| [`hrt_bms_coulomb`](Demo/hrt_bms_coulomb) | BMS pack sampler (ADC HRT) + cell coulomb counting (SRT) | Control |
-| [`multi_axis_sync`](Demo/multi_axis_sync) | Multi-instance control with synchronization domain | Control |
-| [`multi_channel_bms`](Demo/multi_channel_bms) | Multi-channel BMS instance model | Control |
+| Example | Focus | Tier | Maturity |
+|---------|-------|------|----------|
+| [`ultra_blink`](Demo/ultra_blink) | Minimal header-only event queue | Ultra | `D0` |
+| [`core_sensor`](Demo/core_sensor) | Events, mempool, and module lifecycle | Nano | `D0` |
+| [`full_system`](Demo/full_system) | Multi-module, event priorities, watchdog | Lite | `D0` |
+| [`interrupt_demo`](Demo/interrupt_demo) | SysTick, peripheral IRQ, and ISR event publishing | Nano | `D0` |
+| [`hrt_servo_stub`](Demo/hrt_servo_stub) | Hybrid-domain servo (current HRT + speed HRT + position SRT) | Control | `D0` |
+| [`hrt_bms_coulomb`](Demo/hrt_bms_coulomb) | BMS pack sampler (ADC HRT) + cell coulomb counting (SRT) | Control | `D0` |
+| [`multi_axis_sync`](Demo/multi_axis_sync) | Multi-instance control with synchronization domain | Control | `D0` |
+| [`multi_channel_bms`](Demo/multi_channel_bms) | Multi-channel BMS instance model | Control | `D0` |
+
+`D0` means mechanism demonstration. It does not claim product-ready or industrially
+mature servo, FOC, BMS, or synchronization algorithms. See the
+[domain algorithm roadmap](docs/22-领域算法与模块化路线图.md#11-技术深度与成熟度要求).
 
 See [`docs/06-示例与上手路径.md`](docs/06-示例与上手路径.md) for build and run instructions.
 
