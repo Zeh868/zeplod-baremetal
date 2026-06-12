@@ -2,11 +2,13 @@
 
 A resource-scalable deterministic event, control, and streaming-compute framework for MCUs.
 
-The current stable implementation focuses on motor drives, digital power, battery management systems (BMS), and robotic end-nodes. Its roadmap extends the same static-resource and deterministic-execution model to audio DSP, condition monitoring, instrumentation, sensor fusion, ultrasonic/radar front ends, and low-resolution vision. It provides a unified programming model from 8-bit microcontrollers to mid-range ARM Cortex-M, with a migration path to [Zeplod on Zephyr](https://github.com/zeplod/zeplod).
+The stable implementation is a deterministic execution foundation aimed at motor drives, digital power, BMS, and robotic end-nodes, not a set of industrially mature domain algorithms. Its roadmap extends the same static-resource and deterministic-execution model to audio DSP, condition monitoring, instrumentation, sensor fusion, ultrasonic/radar front ends, and low-resolution vision. It provides a unified programming model from 8-bit microcontrollers to mid-range ARM Cortex-M, with a migration path to [Zeplod on Zephyr](https://github.com/zeplod/zeplod).
 
 > Multi-domain capabilities are planned in the
 > [deterministic streaming architecture](docs/23-多领域确定性流式架构.md);
 > planned components are not presented as currently implemented features.
+> Per-industry boundaries, physical pain points, and maturity evidence are
+> defined in the [physical-domain depth matrix](docs/24-物理世界领域与算法深度矩阵.md).
 
 ---
 
@@ -15,11 +17,11 @@ The current stable implementation focuses on motor drives, digital power, batter
 - **Resource-scalable tiers**: From `<8 KB Flash / <1 KB RAM` (header-only `bm-ultra`) to `~12 KB Flash / ~4 KB RAM` (full hybrid-domain control).
 - **Zero-heap design**: All memory is statically allocated at compile-time or during early `init()`. No `malloc` / `free`.
 - **Hybrid-domain execution**: Hard real-time (HRT) control loops are isolated from soft real-time (SRT) event-driven business logic.
-- **Multi-instance control**: Run multiple independent control algorithms (multi-axis servos, multi-cell BMS) with explicit resource claims and conflict detection.
+- **Multi-instance execution**: Run multiple control, acquisition, or estimation instances with explicit resource claims and conflict detection.
 - **Synchronization domains**: Phase-lock multiple PWM/ADC instances for interleaved power stages or synchronized robotic joints.
 - **Cross-domain data exchange**: Lock-free triple-buffer snapshots (`bm_snapshot`) for safe HRT-to-SRT data hand-off.
 - **Failure-safe startup**: `bm_exec_init_all()` validates all instances, resources, and bindings before execution; any failure triggers orderly rollback and safe-stop.
-- **Multi-domain roadmap**: Static zero-copy block streams, DMA block/frame deadlines, and generic execution instances are planned for audio, vision, acquisition, and edge DSP while preserving control API compatibility.
+- **Multi-domain roadmap**: Static zero-copy block streams and DMA block/frame deadlines are planned; `bm_exec` is the common execution model for control, acquisition, audio, vision, and edge DSP.
 
 ---
 
@@ -43,7 +45,7 @@ The current stable implementation focuses on motor drives, digital power, batter
 │  │  Hybrid Domain (optional)                                       │ │
 │  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────────┐ │ │
 │  │  │   bm_hrt    │  │  bm_ticker  │  │      bm_exec       │ │ │
-│  │  │(scheduled  │  │  (SRT       │  │ (multi-instance control │ │ │
+│  │  │(scheduled  │  │  (SRT       │  │ (generic execution      │ │ │
 │  │  │  dispatch)  │  │  periodic)  │  │  + resource claims)     │ │ │
 │  │  └─────────────┘  └─────────────┘  └─────────────────────────┘ │ │
 │  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────────┐ │ │
@@ -77,7 +79,7 @@ audio, FFT, acquisition, or vision work before the next block/frame arrives.
 | **Ultra** | < 8 KB | < 1 KB | STM8, AVR, 8051 | `BM_CONFIG_ENABLE_ULTRA` / `bm_ultra.h` |
 | **Nano** | 8–32 KB | 1–4 KB | CH32V003, STM32F030 | `zeplod.h` or `bm_lite.h` |
 | **Lite** | 32–128 KB | 4–16 KB | STM32F103, nRF51822, ESP32-WROOM-32E | + channel / shell via `BM_CONFIG_ENABLE_*` |
-| **Control** | 32–128 KB+ | 4–16 KB+ | STM32G4, STM32F3 | + HRT / exec / sync (`bm_hybrid.h`) |
+| **Control** | 32–128 KB+ | 4–16 KB+ | STM32G4, STM32F3 | + HRT / `bm_exec` / sync (`bm_hybrid.h`) |
 | **DSP (planned)** | 64–256 KB | 16–128 KB | Cortex-M4F/M7, ESP32-S3 | + algorithm / stream / pipeline |
 | **Media Edge (planned)** | 128 KB+ | 64 KB+ / external RAM | Cortex-M7, PSRAM MCUs | + audio / frame / camera HAL |
 
@@ -87,6 +89,8 @@ audio, FFT, acquisition, or vision work before the next block/frame arrives.
 
 Zeplod Baremetal targets **deterministic control and streaming-compute nodes** on
 resource-constrained MCUs. Current and planned coverage are distinguished below.
+Coverage means the real-time MCU subsystem, not a complete PLC runtime, protocol
+stack, SLAM system, medical diagnosis, safety certification, or media platform.
 
 ### ★★★★★ Native fit — core design targets
 
@@ -99,6 +103,8 @@ resource-constrained MCUs. Current and planned coverage are distinguished below.
 | **Acoustic/condition monitoring** | Noise, bearing, structural monitoring | DMA blocks, FFT/envelope/features | R1-R3 planned |
 | **Instrumentation/metering** | Acquisition, power quality, recorders | Synchronous blocks and spectral/statistical DSP | R1-R3 planned |
 | **Sensor fusion/perception** | IMU/AHRS, ultrasonic, low-rate radar | Timestamps, fusion, correlation/FFT | R2-R3 planned |
+| **Mobile/work machinery low level** | AGV, agriculture, hydraulics, conveyors, 3D printers | Motion/process loops, fusion, interlocks | Component roadmap |
+| **Process/building nodes** | HVAC, irrigation, door drives, semiconductor auxiliaries | Multi-rate control, sequences, derating | Component roadmap |
 
 ### ★★★★☆ Strong fit — minor gaps (protocol stacks)
 
@@ -113,6 +119,7 @@ resource-constrained MCUs. Current and planned coverage are distinguished below.
 | **Low-resolution vision** | Thresholding, morphology, marker/line detection | Needs frame streams, camera HAL, cache/external RAM |
 | **Biomedical signals** | ECG/PPG/EMG preprocessing | Medical algorithms and certification remain product responsibilities |
 | **Communications DSP / TinyML** | DTMF/FSK, features, anomaly detection | Protocol and inference runtimes remain external |
+| **PLC/gateway/real-time Ethernet adapters** | Process images, shaping, deterministic QoS | Language runtimes and certified stacks remain external |
 
 ### ★★★☆☆ Moderate fit — viable with extra work
 
@@ -122,8 +129,9 @@ resource-constrained MCUs. Current and planned coverage are distinguished below.
 | **Medical devices** | Infusion pump, ventilator motor, hospital bed | Needs IEC 62304 process and safety certification (framework itself is uncertified) |
 | **Smart lighting** | LED driver, DALI/DMX decoder | Needs DALI/DMX and wireless mesh protocols |
 
-> **Not a fit**: Commercial avionics (DO-178C), ASIL-D systems, complex GUI/HMI,
-> high-resolution software video codecs, large neural audio/vision models, or desktop media stacks.
+> **Not a fit**: Commercial avionics, ASIL-D control, SIL4 train control,
+> implantable medical devices, complete 5G baseband, high-resolution software
+> video codecs, large neural models, or desktop media stacks.
 
 ---
 
@@ -138,7 +146,7 @@ zeplod-baremetal/
 ├── Source/               # Library kernel (like FreeRTOS/Source/)
 │   ├── core/             # Events, mempool, module, shell, wdg…
 │   ├── hal/              # HAL dispatch layer
-│   └── hybrid/           # HRT, exec, sync…
+│   └── hybrid/           # HRT, bm_exec, sync…
 ├── portable/             # Platform ports (template + reference backends)
 ├── Demo/                 # Progressive examples (like FreeRTOS/Demo/)
 ├── tests/
