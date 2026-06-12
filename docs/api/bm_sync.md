@@ -60,7 +60,7 @@ HAL 失败时立即执行 safe-stop，后续必须重新 configure。
 configure → arm → trigger → （须 re-arm 才能再次 trigger）→ safe_stop
 ```
 
-`configure` / `arm` 可在 `bm_ctrl_start_all` 之前或之后完成；`trigger` 通常在 `start_all` 之后（Scheduled 槽依赖 HRT 已启动）。示例见 `examples/multi_axis_sync`。
+`configure` / `arm` 可在 `bm_ctrl_start_all` 之前或之后完成；`trigger` 通常在 `start_all` 之后（Scheduled 槽依赖 HRT 已启动）。示例见 `Demo/multi_axis_sync`。
 
 ## 平台实现
 

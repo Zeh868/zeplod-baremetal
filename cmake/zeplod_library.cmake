@@ -1,5 +1,5 @@
 # 将 Zeplod 编译为静态库（库本体，不含 Port）
-# 用法见 integration/static-lib/CMakeLists.txt
+# 用法见 docs/15-静态库构建.md 与 cmake/static-lib/CMakeLists.txt
 
 include(${CMAKE_CURRENT_LIST_DIR}/zeplod_profiles.cmake)
 

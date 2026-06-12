@@ -1,6 +1,9 @@
 # 08 HAL 移植指南
 
-应用与 `Source/` 只依赖 `include/bm_hal_*.h`；厂商 Port 在 `portable/`（量产用 `template/bm_port.c` 接 SDK）。混合域 **bind 如何接到向量 ISR** 见 [03 §3.1](03-执行域与跨域通讯.md#31-直接-hal-绑定不用-bm_ctrl_inst)。Port 目录说明见 [portable/README.md](../portable/README.md)。
+> **本文职责**：HAL 契约、driver API 分层、参考平台与混合域外设移植要点。  
+> **不负责**：Keil/IAR 加源文件 → [18](18-Keil集成.md)、[19](19-IAR集成.md)；挂库总览 → [13](13-集成到现有工程.md)。
+
+应用与 `Source/` 只依赖 `include/bm_hal_*.h`；厂商 Port 在 `portable/`（量产用 `template/bm_port.c` 接 SDK）。混合域 **bind 如何接到向量 ISR** 见 [03 §3.1](03-执行域与跨域通讯.md#31-直接-hal-绑定不用-bm_ctrl_inst)。
 
 ## 三层结构（driver API）
 
@@ -64,17 +67,16 @@ PWM/ADC/COMP/Encoder 契约头文件：`bm_hal_pwm.h`、`bm_hal_adc.h` 等。
 | 概念 | 内容 | 位置 |
 |------|------|------|
 | **库** | 事件、HAL 分发层、混合域 | `Source/`、`include/` |
-| **Port** | `bm_drv_*_api` 实现 | [`portable/template/bm_port.c`](../portable/template/bm_port.c)，[integration/port.md](integration/port.md) |
+| **Port** | `bm_drv_*_api` 实现 | [`portable/template/bm_port.c`](../portable/template/bm_port.c)，[14-Port移植层](14-Port移植层.md) |
 | **集成** | 库怎么进 Keil/IAR/CMake | [13-集成到现有工程](13-集成到现有工程.md) |
 
-本文描述 **Port 要实现什么**；挂库步骤见 [integration/](../integration/README.md)。
+本文描述 **Port 要实现什么**；挂库步骤见 [13](13-集成到现有工程.md)。
 
-## IDE 附录
+## 相关集成文档
 
-| 路径 | 内容 |
+| 文档 | 内容 |
 |------|------|
-| [integration/](../integration/README.md) | CMake / Cube / NXP 快速接入 |
-| [porting/keil-integration.md](porting/keil-integration.md) | Keil 补充 |
-| [porting/iar-integration.md](porting/iar-integration.md) | IAR 补充 |
-
-硬件验证：[reports/stm32g4-hardware-validation.md](reports/stm32g4-hardware-validation.md)（若存在）。
+| [13-集成到现有工程](13-集成到现有工程.md) | 两步挂库总览 |
+| [16-STM32-CubeMX集成](16-STM32-CubeMX集成.md) | Cube 工程 |
+| [17-NXP-MCUXpresso集成](17-NXP-MCUXpresso集成.md) | MCUX 工程 |
+| [18-Keil集成](18-Keil集成.md) / [19-IAR集成](19-IAR集成.md) | IDE 手工集成 |

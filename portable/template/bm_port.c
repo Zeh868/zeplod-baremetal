@@ -2,7 +2,7 @@
  * @file bm_port.c
  * @brief Zeplod Port 模板 — 类比 FreeRTOS portable/.../port.c
  *
- * 复制到应用工程，对接厂商 HAL。文档：docs/integration/port.md
+ * 复制到应用工程，对接厂商 HAL。文档：docs/14-Port移植层.md
  */
 
 #include <stddef.h>

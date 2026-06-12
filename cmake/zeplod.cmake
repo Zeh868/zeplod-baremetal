@@ -1,6 +1,6 @@
 # Zeplod Baremetal — CMake 便捷入口（库源码集成，方式 A′）
 #
-# 集成模型（见 docs/integration/README.md）：
+# 集成模型（见 docs/13-集成到现有工程.md）：
 #   ① 移植：portable/template/bm_port.c 复制到应用工程
 #   ② 库：zeplod_configure + zeplod_link 拉入 Source/ 源码目标
 #

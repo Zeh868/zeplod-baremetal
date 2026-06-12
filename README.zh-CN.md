@@ -130,12 +130,9 @@ zeplod-baremetal/
 │   ├── unit/             # Unity 单元测试（PC 本地运行）
 │   └── qemu/             # QEMU 冒烟测试
 ├── docs/
-│   ├── README.md         # 文档索引（00–11 导读）
-│   ├── 00-快速开始.md … 11-安全与可靠性.md
-│   ├── architecture.md   # 框架架构概述（英文）
-│   ├── api/              # API 参考文档
-│   ├── integration/      # 库集成指南（类 FreeRTOS 集成说明）
-│   └── porting/          # Keil / IAR 附录
+│   ├── README.md         # 文档索引（00–21）
+│   ├── 00-快速开始.md … 21-测试覆盖率基线.md
+│   └── api/              # API 参考（唯一子目录）
 ├── CMakeLists.txt        # CMake 构建（32 位主流平台）
 └── Makefile              # 纯 Makefile（8 位工具链友好）
 ```
@@ -176,7 +173,7 @@ target_sources(app PRIVATE Core/Src/bm_port.c)
 zeplod_link(app)
 ```
 
-详见 [`docs/integration/README.md`](docs/integration/README.md)。
+详见 [`docs/13-集成到现有工程.md`](docs/13-集成到现有工程.md)。
 
 ### 快速开始（本地模拟）
 
@@ -280,9 +277,13 @@ Zeplod Baremetal 被设计为机器人/电子系统三层架构的底层：
 | 09 | [测试与调试](docs/09-测试与调试.md) |
 | 10 | [迁移与演进](docs/10-迁移与演进.md) |
 | 11 | [安全与可靠性](docs/11-安全与可靠性.md) |
+| 12 | [运行时与实例模型](docs/12-运行时与实例模型.md) |
 | 13 | [集成到现有工程](docs/13-集成到现有工程.md) |
+| 14–19 | [Port](docs/14-Port移植层.md) · [静态库](docs/15-静态库构建.md) · [CubeMX](docs/16-STM32-CubeMX集成.md) · [MCUX](docs/17-NXP-MCUXpresso集成.md) · [Keil](docs/18-Keil集成.md) · [IAR](docs/19-IAR集成.md) |
+| 20 | [头文件布局](docs/20-头文件布局.md) |
+| 21 | [测试覆盖率基线](docs/21-测试覆盖率基线.md) |
 
-专题：[docs/integration/](docs/integration/) · [architecture.md](docs/architecture.md) · [api/](docs/api/) · [porting/](docs/porting/)
+API 参考：[docs/api/](docs/api/)
 
 ---
 

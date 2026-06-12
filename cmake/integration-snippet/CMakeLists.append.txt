@@ -1,4 +1,4 @@
-# 追加到厂商 CMake 工程末尾。文档：docs/integration/README.md
+# 追加到厂商 CMake 工程末尾。文档：docs/16-STM32-CubeMX集成.md
 
 set(ZEPLOD_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/zeplod-baremetal")
 include(${ZEPLOD_ROOT}/cmake/zeplod.cmake)

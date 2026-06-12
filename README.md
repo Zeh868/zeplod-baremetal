@@ -145,11 +145,9 @@ zeplod-baremetal/
 │   ├── unit/             # Unity-based unit tests (PC native)
 │   └── qemu/             # QEMU smoke tests
 ├── docs/
-│   ├── README.md         # Doc index (00–11 guides)
-│   ├── 00-快速开始.md … 11-安全与可靠性.md
-│   ├── architecture.md   # Framework architecture overview (English)
-│   ├── api/              # API reference docs
-│   └── porting/          # Keil / IAR toolchain appendices
+│   ├── README.md         # Doc index (00–21, Chinese)
+│   ├── 00-快速开始.md … 21-测试覆盖率基线.md
+│   └── api/              # API reference (only subfolder)
 ├── CMakeLists.txt        # CMake build (32-bit mainstream)
 └── Makefile              # Pure Makefile (8-bit toolchain friendly)
 ```
@@ -260,15 +258,13 @@ See [docs/10-迁移与演进.md](docs/10-迁移与演进.md) for detailed guides
 
 ## Documentation
 
-Start at [`docs/README.md`](docs/README.md) (numbered guides 00–11 in Chinese).
+Start at [`docs/README.md`](docs/README.md) (numbered guides 00–21 in Chinese).
 
-- [`docs/08-HAL移植指南.md`](docs/08-HAL移植指南.md) — HAL contracts, reference platforms, PWM/ADC porting
-- [`docs/10-迁移与演进.md`](docs/10-迁移与演进.md) — Ultra→Core→Hybrid→Zephyr migration
-- [`docs/11-安全与可靠性.md`](docs/11-安全与可靠性.md) — Safety posture and requirements traceability
-- [`docs/architecture.md`](docs/architecture.md) — Framework architecture (English)
-- [`docs/api/`](docs/api/) — API reference for hybrid-domain components
-- [`docs/porting/`](docs/porting/) — Keil / IAR integration appendices
-- [`examples/PORTING.md`](examples/PORTING.md) — Example porting guide for custom hardware
+- [`docs/01-框架概览与资源层级.md`](docs/01-框架概览与资源层级.md) — Architecture overview
+- [`docs/13-集成到现有工程.md`](docs/13-集成到现有工程.md) — Integrate into existing Cube/SDK/Keil/IAR projects
+- [`docs/08-HAL移植指南.md`](docs/08-HAL移植指南.md) — HAL contracts and porting
+- [`docs/api/`](docs/api/) — Hybrid-domain API reference
+- [`docs/06-示例与上手路径.md`](docs/06-示例与上手路径.md) — Examples and hardware porting
 
 ---
 

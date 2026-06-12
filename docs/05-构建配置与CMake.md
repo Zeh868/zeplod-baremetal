@@ -1,5 +1,8 @@
 # 05 构建配置与 CMake
 
+> **本文职责**：CMake 选项、`bm_config.h`、链接目标与 include 路径。  
+> **不负责**：运行时行为与 `main` 顺序 → [07](07-应用骨架与数据流.md)。
+
 ## 顶层 CMake 选项
 
 在框架根目录 `CMakeLists.txt` 中通过 `option` 裁剪组件：
@@ -96,7 +99,7 @@ zeplod_link(my_app)
 
 ## 8 位 Ultra
 
-不链接 `src/`，仅 `#include "bm_ultra.h"`。见 `examples/ultra_blink`。
+不链接 `Source/`，仅 `#include "bm_ultra.h"`。见 `Demo/ultra_blink`。
 
 ## 常见问题
 
