@@ -26,7 +26,14 @@ extern const uint32_t     _bm_module_count;
 
 static bm_module_t _modules[BM_CONFIG_MAX_MODULES];
 static uint32_t    _module_count = 0;
-static int         _modules_initialized = 0;
+
+enum {
+    BM_MODULES_UNINITIALIZED = 0,
+    BM_MODULES_READY,
+    BM_MODULES_CLEANUP_PENDING
+};
+
+static int _modules_initialized = BM_MODULES_UNINITIALIZED;
 
 /**
  * @brief 应用启动：复位事件总线并执行模块 init/start
@@ -58,31 +65,55 @@ static void _sort_modules(void) {
 /**
  * @brief init 失败时逆序回滚已初始化模块
  */
-static void _rollback_inits(uint32_t through_index) {
+static int _rollback_inits(uint32_t through_index) {
+    int rc = BM_OK;
+
     while (through_index > 0u) {
         through_index--;
         if (_modules[through_index].state == BM_MODULE_STATE_INITED) {
             if (_modules[through_index].deinit) {
-                (void)_modules[through_index].deinit();
+                int r = _modules[through_index].deinit();
+
+                if (r != BM_OK) {
+                    BM_LOGE("module", "init rollback failed idx=%u rc=%d",
+                            (unsigned)through_index, r);
+                    if (rc == BM_OK) {
+                        rc = r;
+                    }
+                    continue;
+                }
             }
             _modules[through_index].state = BM_MODULE_STATE_UNINIT;
         }
     }
+    return rc;
 }
 
 /**
  * @brief start 失败时逆序停止已启动模块
  */
-static void _rollback_starts(uint32_t through_index) {
+static int _rollback_starts(uint32_t through_index) {
+    int rc = BM_OK;
+
     while (through_index > 0u) {
         through_index--;
         if (_modules[through_index].state == BM_MODULE_STATE_STARTED) {
             if (_modules[through_index].stop) {
-                (void)_modules[through_index].stop();
+                int r = _modules[through_index].stop();
+
+                if (r != BM_OK) {
+                    BM_LOGE("module", "start rollback failed idx=%u rc=%d",
+                            (unsigned)through_index, r);
+                    if (rc == BM_OK) {
+                        rc = r;
+                    }
+                    continue;
+                }
             }
             _modules[through_index].state = BM_MODULE_STATE_INITED;
         }
     }
+    return rc;
 }
 
 /**
@@ -93,7 +124,7 @@ static void _rollback_starts(uint32_t through_index) {
 int bm_module_init_all(void) {
     bm_irq_state_t s = BM_CRITICAL_ENTER();
 
-    if (_modules_initialized) {
+    if (_modules_initialized != BM_MODULES_UNINITIALIZED) {
         BM_CRITICAL_EXIT(s);
         BM_LOGW("module", "init_all already done");
         return BM_ERR_ALREADY;
@@ -117,22 +148,28 @@ int bm_module_init_all(void) {
 
     BM_LOGI("module", "init_all count=%u", (unsigned)_module_count);
     for (uint32_t i = 0u; i < _module_count; i++) {
-        if (_modules[i].init) {
-            int r = _modules[i].init();
-            if (r == BM_OK) {
-                _modules[i].state = BM_MODULE_STATE_INITED;
-                BM_LOGD("module", "'%s' inited",
-                        _modules[i].name ? _modules[i].name : "(null)");
-            } else {
-                BM_LOGE("module", "'%s' init failed rc=%d",
-                        _modules[i].name ? _modules[i].name : "(null)", r);
-                _rollback_inits(i);
-                return r;
+        int r = _modules[i].init ? _modules[i].init() : BM_OK;
+
+        if (r == BM_OK) {
+            _modules[i].state = BM_MODULE_STATE_INITED;
+            BM_LOGD("module", "'%s' inited",
+                    _modules[i].name ? _modules[i].name : "(null)");
+        } else {
+            int rollback_rc;
+
+            BM_LOGE("module", "'%s' init failed rc=%d",
+                    _modules[i].name ? _modules[i].name : "(null)", r);
+            rollback_rc = _rollback_inits(i);
+            if (rollback_rc != BM_OK) {
+                s = BM_CRITICAL_ENTER();
+                _modules_initialized = BM_MODULES_CLEANUP_PENDING;
+                BM_CRITICAL_EXIT(s);
             }
+            return r;
         }
     }
     s = BM_CRITICAL_ENTER();
-    _modules_initialized = 1;
+    _modules_initialized = BM_MODULES_READY;
     BM_CRITICAL_EXIT(s);
     return BM_OK;
 }
@@ -147,13 +184,17 @@ int bm_module_start_all(void) {
     int initialized = _modules_initialized;
 
     BM_CRITICAL_EXIT(s);
-    if (!initialized) {
+    if (initialized == BM_MODULES_CLEANUP_PENDING) {
+        return BM_ERR_BUSY;
+    }
+    if (initialized != BM_MODULES_READY) {
         return BM_ERR_NOT_INIT;
     }
 
     for (uint32_t i = 0u; i < _module_count; i++) {
-        if (_modules[i].state == BM_MODULE_STATE_INITED && _modules[i].start) {
-            int r = _modules[i].start();
+        if (_modules[i].state == BM_MODULE_STATE_INITED) {
+            int r = _modules[i].start ? _modules[i].start() : BM_OK;
+
             if (r == BM_OK) {
                 _modules[i].state = BM_MODULE_STATE_STARTED;
                 BM_LOGD("module", "'%s' started",
@@ -161,7 +202,11 @@ int bm_module_start_all(void) {
             } else {
                 BM_LOGE("module", "'%s' start failed rc=%d",
                         _modules[i].name ? _modules[i].name : "(null)", r);
-                _rollback_starts(i);
+                if (_rollback_starts(i) != BM_OK) {
+                    s = BM_CRITICAL_ENTER();
+                    _modules_initialized = BM_MODULES_CLEANUP_PENDING;
+                    BM_CRITICAL_EXIT(s);
+                }
                 return r;
             }
         }
@@ -177,8 +222,9 @@ int bm_module_start_all(void) {
 int bm_module_stop_all(void) {
     int rc = BM_OK;
     for (int i = (int)_module_count - 1; i >= 0; i--) {
-        if (_modules[i].state == BM_MODULE_STATE_STARTED && _modules[i].stop) {
-            int r = _modules[i].stop();
+        if (_modules[i].state == BM_MODULE_STATE_STARTED) {
+            int r = _modules[i].stop ? _modules[i].stop() : BM_OK;
+
             if (r == BM_OK) {
                 _modules[i].state = BM_MODULE_STATE_STOPPED;
             } else {
@@ -200,18 +246,40 @@ int bm_module_deinit_all(void) {
     bm_irq_state_t s;
     int rc = BM_OK;
 
+    s = BM_CRITICAL_ENTER();
+    _modules_initialized = BM_MODULES_CLEANUP_PENDING;
+    BM_CRITICAL_EXIT(s);
+
     for (int i = (int)_module_count - 1; i >= 0; i--) {
+        if (_modules[i].state == BM_MODULE_STATE_STARTED) {
+            int r = _modules[i].stop ? _modules[i].stop() : BM_OK;
+
+            if (r != BM_OK) {
+                BM_LOGE("module", "deinit stop failed idx=%d rc=%d", i, r);
+                if (rc == BM_OK) {
+                    rc = r;
+                }
+                continue;
+            }
+            _modules[i].state = BM_MODULE_STATE_STOPPED;
+        }
         if (_modules[i].state != BM_MODULE_STATE_UNINIT &&
             _modules[i].deinit) {
             int r = _modules[i].deinit();
             if (r != BM_OK) {
-                rc = r;
+                if (rc == BM_OK) {
+                    rc = r;
+                }
+                continue;
             }
         }
         _modules[i].state = BM_MODULE_STATE_UNINIT;
     }
+    if (rc != BM_OK) {
+        return rc;
+    }
     s = BM_CRITICAL_ENTER();
-    _modules_initialized = 0;
+    _modules_initialized = BM_MODULES_UNINITIALIZED;
     _module_count = 0u;
     BM_CRITICAL_EXIT(s);
     BM_LOGI("module", "deinit_all done");

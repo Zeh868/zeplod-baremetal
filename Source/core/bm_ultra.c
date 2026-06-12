@@ -14,6 +14,7 @@
  */
 #include "bm_ultra.h"
 #include "bm_critical_wrap.h"
+#include "bm_safety.h"
 
 #include <string.h>
 
@@ -59,7 +60,7 @@ int bm_ultra_queue_push(const bm_ultra_queue_item_t *item) {
     next = (uint8_t)((_bm_ultra_q.write_idx + 1u) &
                      (BM_CONFIG_ULTRA_QUEUE_DEPTH - 1u));
     if (next == _bm_ultra_q.read_idx) {
-        _bm_ultra_dropped++;
+        _bm_ultra_dropped = bm_u32_saturating_inc(_bm_ultra_dropped);
         BM_CRITICAL_EXIT(s);
         return BM_ERR_OVERFLOW;
     }
@@ -124,8 +125,9 @@ uint8_t bm_ultra_queue_count(void) {
         BM_CRITICAL_EXIT(s);
         return 0u;
     }
-    count = (uint8_t)((_bm_ultra_q.write_idx - _bm_ultra_q.read_idx) &
-                      (BM_CONFIG_ULTRA_QUEUE_DEPTH - 1u));
+    count = (uint8_t)(((uint32_t)_bm_ultra_q.write_idx -
+                       (uint32_t)_bm_ultra_q.read_idx) &
+                      (uint32_t)(BM_CONFIG_ULTRA_QUEUE_DEPTH - 1u));
     BM_CRITICAL_EXIT(s);
     return count;
 }
@@ -142,7 +144,8 @@ uint8_t bm_ultra_process(void) {
     rc = bm_ultra_queue_pop(&item);
     if (rc == BM_ERR_INVALID) {
         bm_irq_state_t s = BM_CRITICAL_ENTER();
-        _bm_ultra_dispatch_skipped++;
+        _bm_ultra_dispatch_skipped =
+            bm_u32_saturating_inc(_bm_ultra_dispatch_skipped);
         BM_CRITICAL_EXIT(s);
         return 0u;
     }
@@ -151,7 +154,8 @@ uint8_t bm_ultra_process(void) {
     }
     if (item.event_type >= BM_CONFIG_ULTRA_MAX_EVENT_TYPES) {
         bm_irq_state_t s = BM_CRITICAL_ENTER();
-        _bm_ultra_dispatch_skipped++;
+        _bm_ultra_dispatch_skipped =
+            bm_u32_saturating_inc(_bm_ultra_dispatch_skipped);
         BM_CRITICAL_EXIT(s);
         return 1u;
     }
@@ -180,7 +184,7 @@ int bm_ultra_test_inject(const bm_ultra_queue_item_t *item) {
     next = (uint8_t)((_bm_ultra_q.write_idx + 1u) &
                      (BM_CONFIG_ULTRA_QUEUE_DEPTH - 1u));
     if (next == _bm_ultra_q.read_idx) {
-        _bm_ultra_dropped++;
+        _bm_ultra_dropped = bm_u32_saturating_inc(_bm_ultra_dropped);
         BM_CRITICAL_EXIT(s);
         return BM_ERR_OVERFLOW;
     }

@@ -44,7 +44,7 @@ typedef struct {
 } bm_module_t;
 
 /**
- * 单模块描述符（每模块一个 .c）。未使用的回调传 NULL。
+ * 单模块描述符（每模块一个 .c）。未使用的回调传 NULL，按成功的空操作处理。
  *
  * @code
  * BM_MODULE_DEFINE(sensor, 2,
@@ -100,6 +100,8 @@ int bm_module_stop_all(void);
 
 /**
  * @brief 按优先级反初始化所有模块
+ *
+ * 若模块仍在运行，会先调用 stop；stop 失败的模块不会执行 deinit。
  */
 int bm_module_deinit_all(void);
 

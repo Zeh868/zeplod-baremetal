@@ -85,10 +85,13 @@ void test_shell_feed_crlf(void) {
     bm_shell_feed(&my_shell, ' ');
     bm_shell_feed(&my_shell, '1');
     bm_shell_feed(&my_shell, '\r');
+    TEST_ASSERT_EQUAL(1u, my_shell.swallow_lf);
+    bm_shell_feed(&my_shell, '\n');
 
     TEST_ASSERT_EQUAL(1, g_cmd_count);
     TEST_ASSERT_EQUAL(2, g_last_argc);
     TEST_ASSERT_EQUAL_STRING("1", g_last_argv[1]);
+    TEST_ASSERT_EQUAL(0u, my_shell.swallow_lf);
 }
 
 void test_shell_too_many_args_rejected(void) {

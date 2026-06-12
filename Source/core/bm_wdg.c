@@ -215,14 +215,14 @@ void bm_wdg_feed(void) {
     BM_CRITICAL_EXIT(s);
 
     if (count == 0u) {
-        s = BM_CRITICAL_ENTER();
+        s = bm_hal_critical_enter();
         if (_wdg_generation != generation || _wdg_module_count != 0u) {
-            BM_CRITICAL_EXIT(s);
+            bm_hal_critical_exit(s);
             BM_LOGD("wdg", "hw feed blocked: module table changed");
             return;
         }
-        BM_CRITICAL_EXIT(s);
         bm_hal_wdg_feed();
+        bm_hal_critical_exit(s);
         BM_LOGT("wdg", "hw feed (no modules)");
         return;
     }
@@ -242,20 +242,28 @@ void bm_wdg_feed(void) {
         }
     }
 
-    s = BM_CRITICAL_ENTER();
+    /* 最终复核与硬件提交使用全 IRQ 屏蔽，避免优先级掩码允许 HRT 抢占。 */
+    s = bm_hal_critical_enter();
     if (_wdg_generation != generation || _wdg_module_count != count) {
-        BM_CRITICAL_EXIT(s);
+        bm_hal_critical_exit(s);
         BM_LOGD("wdg", "hw feed blocked: module state changed");
         return;
+    }
+    now = bm_hal_timer_get_ticks();
+    for (i = 0u; i < count; i++) {
+        if (!wdg_module_fresh(&_wdg_modules[i], now, timeout_ticks)) {
+            bm_hal_critical_exit(s);
+            BM_LOGD("wdg", "hw feed blocked: module became stale");
+            return;
+        }
     }
     for (i = 0u; i < count; i++) {
         _wdg_modules[i].fed = false;
         _wdg_modules[i].last_feed_ticks = 0u;
     }
     _wdg_generation++;
-    BM_CRITICAL_EXIT(s);
-
     bm_hal_wdg_feed();
+    bm_hal_critical_exit(s);
     BM_LOGT("wdg", "hw feed all modules ok");
 }
 

@@ -20,6 +20,7 @@ static bm_event_t g_last_event;
 static uint16_t g_last_data = 0;
 static uint8_t g_seen_data[4];
 static bm_event_type_t g_seen_types[4];
+static uintptr_t g_last_data_address;
 static int g_reentrant_publish_rc;
 static int g_reentrant_subscribe_rc;
 static int g_reentrant_process_rc;
@@ -35,6 +36,7 @@ static void test_cb(const bm_event_t *ev, void *user_data) {
     }
     (*count)++;
     g_last_event = *ev;
+    g_last_data_address = (uintptr_t)ev->data;
     if (ev->data && ev->data_len == sizeof(g_last_data)) {
         memcpy(&g_last_data, ev->data, sizeof(g_last_data));
     }
@@ -60,6 +62,7 @@ void setUp(void) {
     memset(&g_last_event, 0, sizeof(g_last_event));
     memset(g_seen_data, 0, sizeof(g_seen_data));
     memset(g_seen_types, 0, sizeof(g_seen_types));
+    g_last_data_address = 0u;
     g_reentrant_publish_rc = BM_OK;
     g_reentrant_subscribe_rc = BM_OK;
     g_reentrant_process_rc = BM_OK;
@@ -79,6 +82,7 @@ void test_event_publish_copy_and_process(void) {
     TEST_ASSERT_EQUAL(EVENT_TEST, g_last_event.type);
     TEST_ASSERT_EQUAL(sizeof(data), g_last_event.data_len);
     TEST_ASSERT_EQUAL(42, g_last_data);
+    TEST_ASSERT_EQUAL(0u, g_last_data_address % 8u);
 
     bm_event_unsubscribe(EVENT_TEST, id);
 }
@@ -198,6 +202,30 @@ void test_event_priority_fairness_bound(void) {
     TEST_ASSERT_EQUAL(EVENT_TEST, g_last_event.type);
 }
 
+void test_event_fairness_ignores_uncontended_history(void) {
+    uint32_t i;
+
+    TEST_ASSERT_EQUAL(BM_OK, bm_event_register_type(EVENT_TEST, "LOW"));
+    TEST_ASSERT_EQUAL(BM_OK, bm_event_register_type(EVENT_HIGH, "HIGH"));
+    TEST_ASSERT_EQUAL(BM_OK,
+        bm_event_subscribe(EVENT_TEST, test_cb, &g_count, NULL));
+    TEST_ASSERT_EQUAL(BM_OK,
+        bm_event_subscribe(EVENT_HIGH, test_cb, &g_count, NULL));
+
+    for (i = 0u; i < BM_CONFIG_EVENT_PRIORITY_BURST_MAX; i++) {
+        TEST_ASSERT_EQUAL(BM_OK,
+            bm_event_publish_copy(EVENT_TEST, 3u, NULL, 0u));
+        TEST_ASSERT_EQUAL(1, bm_event_process(1u));
+    }
+
+    TEST_ASSERT_EQUAL(BM_OK,
+        bm_event_publish_copy(EVENT_HIGH, 0u, NULL, 0u));
+    TEST_ASSERT_EQUAL(BM_OK,
+        bm_event_publish_copy(EVENT_TEST, 3u, NULL, 0u));
+    TEST_ASSERT_EQUAL(1, bm_event_process(1u));
+    TEST_ASSERT_EQUAL(EVENT_HIGH, g_last_event.type);
+}
+
 void test_event_register_type_rejects_duplicate(void) {
     TEST_ASSERT_EQUAL(BM_OK, bm_event_register_type(EVENT_TEST, "TEST"));
     TEST_ASSERT_EQUAL(BM_ERR_ALREADY, bm_event_register_type(EVENT_TEST, "TEST2"));
@@ -249,6 +277,7 @@ int main(void) {
     RUN_TEST(test_event_requires_registered_type);
     RUN_TEST(test_event_rejects_callback_reentrancy);
     RUN_TEST(test_event_priority_fairness_bound);
+    RUN_TEST(test_event_fairness_ignores_uncontended_history);
     RUN_TEST(test_event_dispatch_skipped_invalid_type);
     RUN_TEST(test_event_register_type_rejects_duplicate);
     RUN_TEST(test_event_subscribe_null_id);

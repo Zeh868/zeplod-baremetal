@@ -25,12 +25,22 @@
 
 typedef uint8_t bm_event_type_t;
 
+#if defined(_MSC_VER)
+#define BM_ULTRA_ALIGNAS(bytes) __declspec(align(bytes))
+#elif defined(__GNUC__) || defined(__clang__)
+#define BM_ULTRA_ALIGNAS(bytes) __attribute__((aligned(bytes)))
+#else
+#error "bm_ultra requires compiler support for explicit data alignment"
+#endif
+
 /** 队列元素（内联固定长度数据） */
 typedef struct {
     bm_event_type_t event_type;
-    uint8_t         data[BM_CONFIG_ULTRA_MAX_EVENT_DATA_SIZE];
+    BM_ULTRA_ALIGNAS(8) uint8_t data[BM_CONFIG_ULTRA_MAX_EVENT_DATA_SIZE];
     uint8_t         data_len;
 } bm_ultra_queue_item_t;
+
+#undef BM_ULTRA_ALIGNAS
 
 /** 事件分发回调 */
 typedef void (*bm_ultra_callback_t)(const void *data, uint8_t len);

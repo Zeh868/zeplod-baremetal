@@ -53,6 +53,7 @@ void bm_shell_init(bm_shell_t *shell) {
     shell->line_len = 0;
     shell->cursor = 0;
     shell->cmd_count = 0;
+    shell->swallow_lf = 0;
     BM_LOGI("shell", "init");
 }
 
@@ -161,6 +162,12 @@ int bm_shell_exec(bm_shell_t *shell, char *line) {
 void bm_shell_feed(bm_shell_t *shell, char c) {
     if (!shell) return;
 
+    if (c == '\n' && shell->swallow_lf) {
+        shell->swallow_lf = 0;
+        return;
+    }
+    shell->swallow_lf = 0;
+
     if (c == '\b' || c == 0x7F) {
         if (shell->cursor > 0) {
             shell->cursor--;
@@ -182,6 +189,9 @@ void bm_shell_feed(bm_shell_t *shell, char c) {
     }
 
     if (c == '\r' || c == '\n') {
+        if (c == '\r') {
+            shell->swallow_lf = 1;
+        }
         _puts("\r\n");
         if (shell->cursor > 0) {
             shell->buf[shell->cursor] = '\0';

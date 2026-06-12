@@ -14,11 +14,13 @@
 #include "bm_log.h"
 
 static int g_count = 0;
+static uintptr_t g_data_address = 0u;
 
 #define EVENT_TEST 1
 
 static void test_cb(const void *data, uint8_t len) {
     g_count++;
+    g_data_address = (uintptr_t)data;
     if (data && len == sizeof(uint16_t)) {
         uint16_t val = *(const uint16_t *)data;
         TEST_ASSERT_EQUAL(42, val);
@@ -32,6 +34,7 @@ BM_ULTRA_CALLBACK_TABLE_DEFINE(
 void setUp(void) {
     BM_LOGI("test_ultra", "setUp: reset ultra subsystem");
     g_count = 0;
+    g_data_address = 0u;
     bm_ultra_init();
 }
 void tearDown(void) {}
@@ -42,6 +45,7 @@ void test_ultra_publish_and_process(void) {
     TEST_ASSERT_EQUAL(1, bm_ultra_event_count());
     TEST_ASSERT_EQUAL(1, bm_ultra_process());
     TEST_ASSERT_EQUAL(1, g_count);
+    TEST_ASSERT_EQUAL(0u, g_data_address % 8u);
     TEST_ASSERT_EQUAL(0, bm_ultra_event_count());
 }
 
