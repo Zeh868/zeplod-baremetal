@@ -4,20 +4,26 @@ option(NATIVE_SIM_BUILD "Build for host native_sim" OFF)
 
 if(NATIVE_SIM_BUILD)
     project(multi_channel_bms_native C)
+    set(EXAMPLE_ENABLE_MODULE ON)
     set(EXAMPLE_ENABLE_HRT ON)
     set(EXAMPLE_ENABLE_TICKER ON)
     set(EXAMPLE_ENABLE_CTRL_INST ON)
     include(../cmake/native_sim_example.cmake)
+    file(GLOB MULTI_BMS_MODULES CONFIGURE_DEPENDS modules/*.c)
     bm_add_native_sim_example(multi_channel_bms
-        FRAMEWORK_LIBS bm_core bm_hrt bm_ticker bm_ctrl_inst
+        FRAMEWORK_LIBS bm_core bm_module bm_hrt bm_ticker bm_ctrl_inst
+        EXTRA_SOURCES ${MULTI_BMS_MODULES}
     )
 else()
     project(multi_channel_bms C ASM)
+    set(EXAMPLE_ENABLE_MODULE ON)
     set(EXAMPLE_ENABLE_HRT ON)
     set(EXAMPLE_ENABLE_TICKER ON)
     set(EXAMPLE_ENABLE_CTRL_INST ON)
     include(../cmake/qemu_example.cmake)
+    file(GLOB MULTI_BMS_MODULES CONFIGURE_DEPENDS modules/*.c)
     bm_add_qemu_example(multi_channel_bms
-        FRAMEWORK_LIBS bm_core bm_hrt bm_ticker bm_ctrl_inst
+        FRAMEWORK_LIBS bm_core bm_module bm_hrt bm_ticker bm_ctrl_inst
+        EXTRA_SOURCES ${MULTI_BMS_MODULES}
     )
 endif()

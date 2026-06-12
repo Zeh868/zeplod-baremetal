@@ -15,6 +15,7 @@
 #include "bm_event.h"
 #include "bm_hrt.h"
 #include "bm_log.h"
+#include "bm_module.h"
 #include "bm_ticker.h"
 #include "hybrid_print.h"
 
@@ -34,9 +35,6 @@
 
 #define TAG "hrt_servo"
 
-/** 位置更新事件类型 */
-#define EVENT_POSITION 1u
-
 /** 伺服实例运行时状态 */
 typedef struct {
     uint32_t current_hits;
@@ -46,7 +44,7 @@ typedef struct {
     int32_t position;
 } servo_state_t;
 
-static servo_state_t g_servo_state;
+servo_state_t g_servo_state;
 
 /** 电流环：ADC 采样后更新 PWM 占空比 */
 static void current_step(const bm_ctrl_inst_t *instance) {
@@ -147,13 +145,7 @@ static const bm_ticker_slot_t g_ticker_slots[] = {
     { SERVO_TICKER_MS, EVENT_POSITION, 1u, "position" }
 };
 
-/** 位置 ticker 触发时累加事件计数 */
-static void on_position_event(const bm_event_t *event, void *user_data) {
-    (void)user_data;
-    if (event->type == EVENT_POSITION) {
-        g_servo_state.position_events++;
-    }
-}
+#define EVENT_POSITION 1u
 
 /** 推进仿真时钟并轮询 ticker / 事件 */
 static int run_cycles(uint32_t cycles) {
@@ -182,14 +174,16 @@ static int run_cycles(uint32_t cycles) {
 }
 
 int main(void) {
-    bm_event_subscriber_id_t sub_id;
     int rc;
 
     BM_LOGI(TAG, "HRT servo stub example start");
     bm_hal_uart_init(NULL);
-    bm_event_reset();
-    bm_event_register_type(EVENT_POSITION, "POSITION");
-    bm_event_subscribe(EVENT_POSITION, on_position_event, NULL, &sub_id);
+
+    if (bm_module_boot() != BM_OK) {
+        BM_LOGE(TAG, "module boot failed");
+        hybrid_print("EXAMPLE_HRT_SERVO_STUB: FAIL boot\n");
+        return 1;
+    }
 
     (void)bm_hal_timer_init(10000u);
 

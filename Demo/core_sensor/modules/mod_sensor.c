@@ -22,5 +22,5 @@ static int sensor_deinit(void) {
     return BM_OK;
 }
 
-BM_MODULE_DEFINE(sensor, 2,
+BM_MODULE_DEFINE(sensor, 3,
     sensor_init, sensor_start, sensor_stop, sensor_deinit);
