@@ -29,7 +29,7 @@
 | 做伺服 / BMS | 02 → 03 → 07 §5 → `hrt_servo_stub` |
 | 写事件驱动业务 | 04 → 07 §3 |
 | 移植 MCU | 13 → 08（Hardware 绑定见 03 §3） |
-| 已有 Cube/SDK 工程挂库 | 13 → [integration/](../integration/README.md) |
+| 已有 Cube/SDK 工程挂库 | 13 → [integration/](integration/README.md) |
 
 ## 专题
 
@@ -38,6 +38,6 @@
 - [porting/](porting/) — Keil / IAR 附录
 - [reports/](reports/) — 硬件验证报告
 
-仓库入口：[README.zh-CN.md](../README.zh-CN.md) · [examples/README.md](../examples/README.md)
+仓库入口：[README.zh-CN.md](../README.zh-CN.md) · [Demo/README.md](../Demo/README.md)
 
 > `docs/superpowers/` 为本地草稿，不纳入版本控制。

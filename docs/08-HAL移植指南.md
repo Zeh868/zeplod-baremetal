@@ -1,14 +1,14 @@
 # 08 HAL 移植指南
 
-应用与 `src/` 只依赖 `include/bm_hal_*.h`；厂商实现在 `platform/backends/`（可用 SDK 替换 `register_*` 寄存器后端）。混合域 **bind 如何接到向量 ISR** 见 [03 §3.1](03-执行域与跨域通讯.md#31-直接-hal-绑定不用-bm_ctrl_inst)。后端开发见 [platform/README.md](../platform/README.md)。
+应用与 `Source/` 只依赖 `include/bm_hal_*.h`；厂商 Port 在 `portable/`（量产用 `template/bm_port.c` 接 SDK）。混合域 **bind 如何接到向量 ISR** 见 [03 §3.1](03-执行域与跨域通讯.md#31-直接-hal-绑定不用-bm_ctrl_inst)。Port 目录说明见 [portable/README.md](../portable/README.md)。
 
 ## 三层结构（driver API）
 
 ```text
 include/bm/hal/bm_hal_*.h   应用契约（稳定 API）
 include/drv/bm_drv_*.h    驱动 API 表（Zephyr 同构 vtable）
-src/hal/               分发层（契约 → driver API）
-platform/backends/     厂商 SDK / 寄存器 / 仿真实现
+Source/hal/            分发层（契约 → driver API）
+portable/              Port 实现（模板 + 参考后端）
 ```
 
 | 层级 | 职责 |
@@ -22,12 +22,13 @@ platform/backends/     厂商 SDK / 寄存器 / 仿真实现
 
 | 后端目录 | 定位 |
 |----------|------|
-| `platform/backends/native_sim` | PC 测试与示例 |
-| `platform/backends/register_stm32g4` | STM32G4 寄存器参考（可换 Cube LL 后端） |
-| `platform/backends/register_esp32wroom32e` | ESP32 寄存器参考（可换 ESP-IDF 后端） |
-| `platform/backends/register_ch32v003` | CH32V003 桩 |
-| `platform/backends/qemu_cortex_m0` | QEMU 冒烟 |
-| `platform/boot/qemu_cortex_m0/` | QEMU 启动汇编、`crt0`、链接脚本 |
+| `portable/native_sim` | PC 测试与示例 |
+| `portable/register_stm32g4` | STM32G4 寄存器参考 |
+| `portable/register_esp32wroom32e` | ESP32 寄存器参考 |
+| `portable/register_ch32v003` | CH32V003 桩 |
+| `portable/qemu_cortex_m0` | QEMU 冒烟 |
+| `portable/boot/qemu_cortex_m0/` | QEMU 启动、`crt0`、链接脚本 |
+| `portable/template/bm_port.c` | 量产 Port 模板 |
 
 ## CMake 链接
 
@@ -62,8 +63,8 @@ PWM/ADC/COMP/Encoder 契约头文件：`bm_hal_pwm.h`、`bm_hal_adc.h` 等。
 
 | 概念 | 内容 | 位置 |
 |------|------|------|
-| **库** | 事件、HAL 分发层、混合域（可源码或静态库） | `src/`、`include/` |
-| **Port** | `bm_drv_*_api` 实现，接厂商 HAL | 应用工程内 `bm_port.c`，模板见 [integration/port/](../integration/port/) |
+| **库** | 事件、HAL 分发层、混合域 | `Source/`、`include/` |
+| **Port** | `bm_drv_*_api` 实现 | [`portable/template/bm_port.c`](../portable/template/bm_port.c)，[integration/port.md](integration/port.md) |
 | **集成** | 库怎么进 Keil/IAR/CMake | [13-集成到现有工程](13-集成到现有工程.md) |
 
 本文描述 **Port 要实现什么**；挂库步骤见 [integration/](../integration/README.md)。

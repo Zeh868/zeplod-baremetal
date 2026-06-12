@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate Zeplod source/include lists for CMake, Keil, IAR, and Makefile."""
+"""Generate Zeplod Source/include file lists for CMake, Keil, IAR, and Makefile."""
 
 from __future__ import annotations
 
@@ -8,108 +8,84 @@ import json
 from pathlib import Path
 
 HAL_DISPATCH = [
-    "src/hal/bm_hal_critical.c",
-    "src/hal/bm_hal_uart.c",
-    "src/hal/bm_hal_timer.c",
-    "src/hal/bm_hal_wdg.c",
-    "src/hal/bm_hal_memory.c",
-    "src/hal/bm_hal_pwm.c",
-    "src/hal/bm_hal_adc.c",
-    "src/hal/bm_hal_comp.c",
-    "src/hal/bm_hal_encoder.c",
+    "Source/hal/bm_hal_critical.c",
+    "Source/hal/bm_hal_uart.c",
+    "Source/hal/bm_hal_timer.c",
+    "Source/hal/bm_hal_wdg.c",
+    "Source/hal/bm_hal_memory.c",
+    "Source/hal/bm_hal_pwm.c",
+    "Source/hal/bm_hal_adc.c",
+    "Source/hal/bm_hal_comp.c",
+    "Source/hal/bm_hal_encoder.c",
 ]
 
 CORE = [
-    "src/core/bm_critical.c",
-    "src/core/bm_event.c",
-    "src/core/bm_mempool.c",
-    "src/core/bm_log.c",
-    "src/core/bm_ultra.c",
+    "Source/core/bm_critical.c",
+    "Source/core/bm_event.c",
+    "Source/core/bm_mempool.c",
+    "Source/core/bm_log.c",
+    "Source/core/bm_ultra.c",
 ]
 
 COMPONENTS = {
-    "module": ["src/core/bm_module.c"],
-    "channel": ["src/core/bm_channel.c"],
-    "shell": ["src/core/bm_shell.c"],
-    "wdg": ["src/core/bm_wdg.c"],
-    "hrt": ["src/hybrid/bm_hrt.c"],
-    "ticker": ["src/hybrid/bm_ticker.c"],
-    "resource": ["src/hybrid/bm_resource.c"],
-    "ctrl_inst": ["src/hybrid/bm_ctrl_inst.c"],
-    "sync": ["src/hybrid/bm_sync.c"],
+    "module": ["Source/core/bm_module.c"],
+    "channel": ["Source/core/bm_channel.c"],
+    "shell": ["Source/core/bm_shell.c"],
+    "wdg": ["Source/core/bm_wdg.c"],
+    "hrt": ["Source/hybrid/bm_hrt.c"],
+    "ticker": ["Source/hybrid/bm_ticker.c"],
+    "resource": ["Source/hybrid/bm_resource.c"],
+    "ctrl_inst": ["Source/hybrid/bm_ctrl_inst.c"],
+    "sync": ["Source/hybrid/bm_sync.c"],
 }
 
 BACKENDS: dict[str, list[str]] = {
     "native_sim": [
-        "platform/backends/native_sim/bm_drv_singleton_native.c",
-        "platform/backends/native_sim/bm_drv_pwm_native.c",
-        "platform/backends/native_sim/bm_drv_adc_native.c",
-        "platform/backends/native_sim/bm_drv_comp_native.c",
-        "platform/backends/native_sim/bm_drv_encoder_native.c",
+        "portable/native_sim/bm_drv_singleton_native.c",
+        "portable/native_sim/bm_drv_pwm_native.c",
+        "portable/native_sim/bm_drv_adc_native.c",
+        "portable/native_sim/bm_drv_comp_native.c",
+        "portable/native_sim/bm_drv_encoder_native.c",
     ],
     "register_stm32g4": [
-        "platform/backends/register_stm32g4/bm_drv_singleton_stm32g4.c",
-        "platform/backends/register_stm32g4/bm_drv_pwm_stm32g4.c",
-        "platform/backends/register_stm32g4/bm_drv_adc_stm32g4.c",
-        "platform/backends/register_stm32g4/bm_drv_comp_stm32g4.c",
-        "platform/backends/register_stm32g4/bm_drv_encoder_stm32g4.c",
-        "platform/backends/register_stm32g4/bm_sync_hal_stm32g4.c",
+        "portable/register_stm32g4/bm_drv_singleton_stm32g4.c",
+        "portable/register_stm32g4/bm_drv_pwm_stm32g4.c",
+        "portable/register_stm32g4/bm_drv_adc_stm32g4.c",
+        "portable/register_stm32g4/bm_drv_comp_stm32g4.c",
+        "portable/register_stm32g4/bm_drv_encoder_stm32g4.c",
+        "portable/register_stm32g4/bm_sync_hal_stm32g4.c",
     ],
     "register_esp32wroom32e": [
-        "platform/backends/register_esp32wroom32e/bm_drv_singleton_esp32.c",
+        "portable/register_esp32wroom32e/bm_drv_singleton_esp32.c",
     ],
     "register_ch32v003": [
-        "platform/backends/register_ch32v003/bm_drv_singleton_ch32v003.c",
+        "portable/register_ch32v003/bm_drv_singleton_ch32v003.c",
     ],
     "qemu_cortex_m0": [
-        "platform/backends/qemu_cortex_m0/bm_drv_singleton_qemu.c",
-        "platform/backends/native_sim/bm_drv_pwm_native.c",
-        "platform/backends/native_sim/bm_drv_adc_native.c",
-        "platform/backends/native_sim/bm_drv_comp_native.c",
-        "platform/backends/native_sim/bm_drv_encoder_native.c",
+        "portable/qemu_cortex_m0/bm_drv_singleton_qemu.c",
+        "portable/native_sim/bm_drv_pwm_native.c",
+        "portable/native_sim/bm_drv_adc_native.c",
+        "portable/native_sim/bm_drv_comp_native.c",
+        "portable/native_sim/bm_drv_encoder_native.c",
     ],
 }
 
 PROFILES: dict[str, dict[str, bool]] = {
     "minimal": {
-        "module": False,
-        "channel": False,
-        "shell": False,
-        "wdg": False,
-        "hrt": False,
-        "ticker": False,
-        "ctrl_inst": False,
-        "sync": False,
+        "module": False, "channel": False, "shell": False, "wdg": False,
+        "hrt": False, "ticker": False, "ctrl_inst": False, "sync": False,
     },
     "event": {
-        "module": True,
-        "channel": False,
-        "shell": False,
-        "wdg": True,
-        "hrt": False,
-        "ticker": False,
-        "ctrl_inst": False,
-        "sync": False,
+        "module": True, "channel": False, "shell": False, "wdg": True,
+        "hrt": False, "ticker": False, "ctrl_inst": False, "sync": False,
     },
     "servo": {
-        "module": False,
-        "channel": False,
-        "shell": False,
-        "wdg": False,
-        "hrt": True,
-        "ticker": True,
-        "ctrl_inst": True,
-        "sync": False,
+        "module": False, "channel": False, "shell": False, "wdg": False,
+        "hrt": True, "ticker": True, "ctrl_inst": True, "sync": False,
     },
     "full": {
-        "module": True,
-        "channel": False,
-        "shell": False,
-        "wdg": True,
-        "hrt": True,
-        "ticker": True,
-        "ctrl_inst": True,
-        "sync": False,
+        "module": True, "channel": False, "shell": False, "wdg": True,
+        "hrt": True, "ticker": True, "ctrl_inst": True, "sync": False,
     },
 }
 
@@ -168,7 +144,7 @@ def collect_includes(args: argparse.Namespace) -> list[str]:
     if args.with_hal or args.backend:
         paths.extend(INCLUDE_DRV)
     if args.backend and args.backend != "external":
-        paths.append(f"platform/backends/{args.backend}")
+        paths.append(f"portable/{args.backend}")
     return paths
 
 
@@ -197,7 +173,7 @@ def format_cmake_list(name: str, paths: list[str]) -> str:
 
 
 def format_ide(paths: list[str], root_var: str) -> str:
-  return "\n".join(f"{root_var}/{path}" for path in paths)
+    return "\n".join(f"{root_var}/{path}" for path in paths)
 
 
 def format_json_payload(args: argparse.Namespace, root: Path) -> str:
@@ -214,11 +190,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(
         description="Generate Zeplod integration file lists for any IDE"
     )
-    parser.add_argument(
-        "--profile",
-        choices=sorted(PROFILES),
-        help="Preset component bundle (overrides individual --enable-*)",
-    )
+    parser.add_argument("--profile", choices=sorted(PROFILES))
     parser.add_argument("--enable-module", choices=["ON", "OFF"], default="ON")
     parser.add_argument("--enable-channel", choices=["ON", "OFF"], default="OFF")
     parser.add_argument("--enable-shell", choices=["ON", "OFF"], default="OFF")
@@ -229,48 +201,25 @@ def main() -> None:
     parser.add_argument("--enable-sync", choices=["ON", "OFF"], default="OFF")
     parser.add_argument(
         "--backend",
-        help="Optional: also list reference port sources under platform/backends/ "
-        "(for porting study). Production port: integration/port/bm_port.c",
+        help="Optional reference port under portable/ (study only). "
+        "Production: portable/template/bm_port.c in app project.",
     )
-    parser.add_argument(
-        "--with-hal",
-        action="store_true",
-        help="Include src/hal dispatch layer (required for hardware)",
-    )
-    parser.add_argument(
-        "--list-includes",
-        action="store_true",
-        help="Output include paths instead of sources",
-    )
+    parser.add_argument("--with-hal", action="store_true")
+    parser.add_argument("--list-includes", action="store_true")
     parser.add_argument(
         "--format",
-        choices=[
-            "relative",
-            "absolute",
-            "makefile",
-            "cmake",
-            "keil",
-            "iar",
-            "json",
-        ],
+        choices=["relative", "absolute", "makefile", "cmake", "keil", "iar", "json"],
         default="relative",
     )
-    parser.add_argument("--root", default=".", help="Framework repository root")
-    parser.add_argument(
-        "--root-macro",
-        default="ZEPLOD_ROOT",
-        help="IDE root macro for keil/iar/cmake output",
-    )
+    parser.add_argument("--root", default=".")
+    parser.add_argument("--root-macro", default="ZEPLOD_ROOT")
     args = parser.parse_args()
 
     if args.backend or args.with_hal:
         args.with_hal = True
 
     root = Path(args.root).resolve()
-    if args.list_includes:
-        paths = collect_includes(args)
-    else:
-        paths = collect_sources(args)
+    paths = collect_includes(args) if args.list_includes else collect_sources(args)
 
     if args.format == "absolute":
         output = format_plain(resolve_paths(paths, root))

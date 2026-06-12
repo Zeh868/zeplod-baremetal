@@ -117,18 +117,15 @@ zeplod-baremetal/
 │   ├── bm/hal/           # bm_hal_* 应用契约
 │   ├── bm/ultra/         # bm_ultra.h
 │   └── drv/              # bm_drv_* 后端驱动 API
-├── src/
-│   ├── core/             # bm_event、bm_mempool、bm_critical、bm_wdg
-│   ├── hal/              # bm_hal 分发层（契约 → driver API）
-│   ├── module/           # bm_module
-│   ├── channel/          # bm_channel
-│   ├── shell/            # bm_shell
-│   ├── hrt/              # bm_hrt、bm_ticker
-│   └── ctrl/             # bm_ctrl_inst、bm_resource、bm_sync
-├── platform/
-│   ├── backends/         # 驱动后端（SDK / 寄存器 / 仿真）
-│   └── boot/             # QEMU 启动汇编、链接脚本
-├── examples/             # 渐进式示例（见下表）
+├── Source/               # 库内核（类比 FreeRTOS/Source/）
+│   ├── core/             # 事件、内存池、模块、看门狗…
+│   ├── hal/              # HAL 分发层
+│   └── hybrid/           # HRT、ctrl_inst、sync…
+├── portable/             # 平台 Port（类比 FreeRTOS/portable/）
+│   ├── template/         # bm_port.c 模板（复制到应用工程）
+│   ├── boot/             # QEMU 启动与链接脚本
+│   └── native_sim/ …     # 参考 Port 实现
+├── Demo/                 # 示例（类比 FreeRTOS/Demo/）
 ├── tests/
 │   ├── unit/             # Unity 单元测试（PC 本地运行）
 │   └── qemu/             # QEMU 冒烟测试
@@ -137,7 +134,8 @@ zeplod-baremetal/
 │   ├── 00-快速开始.md … 11-安全与可靠性.md
 │   ├── architecture.md   # 框架架构概述（英文）
 │   ├── api/              # API 参考文档
-│   └── porting/          # Keil / IAR 工具链附录（HAL 主文档见 08）
+│   ├── integration/      # 库集成指南（类 FreeRTOS 集成说明）
+│   └── porting/          # Keil / IAR 附录
 ├── CMakeLists.txt        # CMake 构建（32 位主流平台）
 └── Makefile              # 纯 Makefile（8 位工具链友好）
 ```
@@ -146,25 +144,25 @@ zeplod-baremetal/
 
 ## 示例
 
-[`examples/`](examples/) 目录包含逐步扩展的演示程序：
+[`Demo/`](Demo/) 目录包含逐步扩展的演示程序（类比 FreeRTOS/Demo/）：
 
 | 示例 | 重点 | 层级 |
 |---------|-------|------|
-| [`ultra_blink`](examples/ultra_blink) | 最小化的头文件版事件队列 | Ultra |
-| [`core_sensor`](examples/core_sensor) | 事件、内存池与模块生命周期 | Nano |
-| [`full_system`](examples/full_system) | 多模块、事件优先级、看门狗 | Lite |
-| [`interrupt_demo`](examples/interrupt_demo) | SysTick、外设中断与 ISR 事件发布 | Nano |
-| [`hrt_servo_stub`](examples/hrt_servo_stub) | 混合域伺服（电流 HRT + 速度 HRT + 位置 SRT） | Control |
-| [`hrt_bms_coulomb`](examples/hrt_bms_coulomb) | BMS 包采样器（ADC HRT）+ 电芯库仑计数（SRT） | Control |
-| [`multi_axis_sync`](examples/multi_axis_sync) | 带同步域的多实例控制 | Control |
-| [`multi_channel_bms`](examples/multi_channel_bms) | 多通道 BMS 实例模型 | Control |
+| [`ultra_blink`](Demo/ultra_blink) | 最小化的头文件版事件队列 | Ultra |
+| [`core_sensor`](Demo/core_sensor) | 事件、内存池与模块生命周期 | Nano |
+| [`full_system`](Demo/full_system) | 多模块、事件优先级、看门狗 | Lite |
+| [`interrupt_demo`](Demo/interrupt_demo) | SysTick、外设中断与 ISR 事件发布 | Nano |
+| [`hrt_servo_stub`](Demo/hrt_servo_stub) | 混合域伺服 | Control |
+| [`hrt_bms_coulomb`](Demo/hrt_bms_coulomb) | BMS 混合域 | Control |
+| [`multi_axis_sync`](Demo/multi_axis_sync) | 同步域多轴 | Control |
+| [`multi_channel_bms`](Demo/multi_channel_bms) | 多通道 BMS | Control |
 
-构建与运行说明见 [`examples/README.md`](examples/README.md)。
+构建说明见 [`Demo/README.md`](Demo/README.md)。
 
 ### 集成到已有工程（类 FreeRTOS）
 
-**① 移植** `integration/port/bm_port.c` → 接 Cube/SDK HAL  
-**② 库集成** 源码加入 IDE，或链接 `libbm_*.a`（见 `integration/static-lib/`）
+**① 移植** `portable/template/bm_port.c` → 接 Cube/SDK HAL  
+**② 库集成** `Source/` 源码或 `libbm_*.a`（见 `cmake/static-lib/`）
 
 ```bash
 # 源码集成：库文件列表（不含 Port）
@@ -178,13 +176,12 @@ target_sources(app PRIVATE Core/Src/bm_port.c)
 zeplod_link(app)
 ```
 
-详见 [`integration/README.md`](integration/README.md)。
+详见 [`docs/integration/README.md`](docs/integration/README.md)。
 
 ### 快速开始（本地模拟）
 
 ```bash
-# 在 PC 上构建并运行示例（无需 QEMU 或硬件）
-cmake -B build -S examples/core_sensor -DZEPLOD_BAREMETAL_DIR=../..
+cmake -B build -S Demo/core_sensor
 cmake --build build
 ./build/core_sensor
 ```
@@ -192,7 +189,7 @@ cmake --build build
 ### 快速开始（QEMU Cortex-M0）
 
 ```bash
-cmake -B build_qemu -S examples/interrupt_demo \
+cmake -B build_qemu -S Demo/interrupt_demo \
     -DZEPLOD_BAREMETAL_DIR=../.. \
     -DBOARD=qemu_cortex_m0
 cmake --build build_qemu
@@ -285,7 +282,7 @@ Zeplod Baremetal 被设计为机器人/电子系统三层架构的底层：
 | 11 | [安全与可靠性](docs/11-安全与可靠性.md) |
 | 13 | [集成到现有工程](docs/13-集成到现有工程.md) |
 
-专题：[integration/](integration/) · [architecture.md](docs/architecture.md) · [api/](docs/api/) · [porting/](docs/porting/)
+专题：[docs/integration/](docs/integration/) · [architecture.md](docs/architecture.md) · [api/](docs/api/) · [porting/](docs/porting/)
 
 ---
 

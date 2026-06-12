@@ -1,133 +1,27 @@
 # Keil MDK-ARM Integration
 
-Zeplod is a C99 **library** (like FreeRTOS): integrate as **source** or **prebuilt
-`.lib`**, after implementing the **port** layer in your project.
+Zeplod integrates like FreeRTOS: **port** in the app, then **library** as source or `.lib`.
 
-See [integration/README.md](../../integration/README.md) for the full model.
+See [docs/integration/README.md](../integration/README.md).
 
-1. **Port** — copy `integration/port/bm_port.c`, wire to vendor HAL.
-2. **Library** — add Zeplod `.c` files (source mode) or link `libbm_*.a` (static lib mode).
+1. **Port** — copy `portable/template/bm_port.c`, wire to vendor HAL.
+2. **Library** — add `Source/` files (source mode) or link `libbm_*.a`.
 
-Arm Compiler 6 is recommended. Arm Compiler 5 has only partial C99 support and
-is not part of the verified toolchain set.
+## Include Paths
 
-## 1. Add Include Paths
+1. Application directory with `bm_config.h` (first)
+2. `include/bm/{common,core,hybrid,hal,ultra}` and `include/drv` for Port
+3. Vendor CMSIS / device headers
 
-In `Options for Target -> C/C++ (AC6) -> Include Paths`, add paths in this
-order:
-
-1. The application configuration directory containing `bm_config.h`
-2. Zeplod header layers (all under `<zeplod-baremetal>/include/`):
-   - `bm/common`, `bm/core`, `bm/hybrid`, `bm/hal`, `bm/ultra`
-   - `drv` (only when implementing a platform backend)
-3. The MCU vendor CMSIS and device include directories
-
-The application path must come first so its `bm_config.h` overrides the
-framework defaults in `include/bm/common/bm_config.h`.
-
-Copy `bm_config.h.template` into the application directory and tune the
-resource limits. Every translation unit must see the same configuration.
-
-## 2. Add Framework Sources
-
-The mandatory core is:
-
-```text
-src/core/bm_critical.c
-src/core/bm_event.c
-src/core/bm_mempool.c
-```
-
-Add optional components only when used:
-
-```text
-src/core/bm_module.c
-src/core/bm_channel.c
-src/core/bm_shell.c
-src/core/bm_wdg.c
-```
-
-Library sources (port **not** included):
+## Library Sources
 
 ```bash
 python tools/list_sources.py --profile event --format keil --root-macro ZEPLOD_ROOT
 python tools/list_sources.py --profile event --list-includes --format keil --root-macro ZEPLOD_ROOT
 ```
 
-Also add `integration/port/bm_port.c` to the project. Define `ZEPLOD_ROOT` to the
-framework checkout path.
+Also add your `bm_port.c`. Static libs: build `cmake/static-lib/`, link `libbm_*.a`, still compile Port in app.
 
-Static library mode: build with `integration/static-lib/`, link `libbm_*.a`, still
-compile `bm_port.c` in the application project.
+## HAL
 
-`bm_ultra.h` is header-only and does not require framework `.c` files.
-
-## 3. Provide Platform HAL
-
-The core requires:
-
-```c
-bm_irq_state_t bm_hal_critical_enter(void);
-void bm_hal_critical_exit(bm_irq_state_t state);
-```
-
-Implement `bm_drv_critical_api` in a `platform/backends/` target for your MCU
-(e.g. CMSIS `__disable_irq` / `__enable_irq`), or provide an equivalent
-implementation. Do not add native_sim or QEMU backend files to a hardware project.
-
-Optional component dependencies:
-
-| Component | Required HAL |
-|---|---|
-| Core, module, channel | Critical section |
-| Shell | Critical section and UART |
-| Watchdog | Critical section, timer, and watchdog |
-
-The UART, timer, and watchdog STM32F0 files are interface stubs and must be
-completed for the selected device and board.
-
-## 4. Compiler and Linker
-
-- Select a C99-compatible language mode.
-- Size optimization is recommended.
-- Use the device pack startup file and CMSIS system file.
-- Use the normal Keil scatter file or target memory configuration. The QEMU
-  `linker.ld` is not used by Keil.
-
-The framework uses no heap, constructors, custom linker sections, or runtime
-registration. Module registration is an application-defined
-`_bm_module_table`.
-
-## 5. Minimal Application
-
-```c
-#include "bm_event.h"
-
-static void on_event(const bm_event_t *event, void *user_data)
-{
-    (void)event;
-    (void)user_data;
-}
-
-int main(void)
-{
-    bm_event_subscriber_id_t subscriber_id;
-
-    bm_event_reset();
-    bm_event_register_type(1, "APP_EVENT");
-    bm_event_subscribe(1, on_event, 0, &subscriber_id);
-
-    for (;;) {
-        bm_event_process(4);
-    }
-}
-```
-
-## 6. Integration Checklist
-
-- Application `bm_config.h` is found before the framework default.
-- Exactly one target implementation of each required HAL symbol is linked.
-- `BM_CONFIG_EVENT_QUEUE_SIZE` is a power of two and at least 2.
-- `BM_CONFIG_EVENT_INLINE_DATA_SIZE` fits every `bm_event_publish_copy`
-  payload.
-- All framework and application files use the same configuration macros.
+Implement `bm_drv_*_api` in `bm_port.c`. Reference: `portable/register_stm32g4/`.

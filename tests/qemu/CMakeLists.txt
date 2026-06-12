@@ -29,11 +29,11 @@ set(BM_CONFIG_FILE "${CMAKE_CURRENT_SOURCE_DIR}/bm_config.h" CACHE FILEPATH "" F
 add_subdirectory(${BM_ROOT} zeplod EXCLUDE_FROM_ALL)
 
 set(_BM_QEMU_BOOT
-    ${BM_ROOT}/platform/boot/qemu_cortex_m0/startup_qemu_cm0.s
-    ${BM_ROOT}/platform/boot/qemu_cortex_m0/crt0_qemu.c
+    ${BM_ROOT}/portable/boot/qemu_cortex_m0/startup_qemu_cm0.s
+    ${BM_ROOT}/portable/boot/qemu_cortex_m0/crt0_qemu.c
 )
 set(_BM_QEMU_LINK
-    -T${BM_ROOT}/platform/boot/qemu_cortex_m0/linker.ld
+    -T${BM_ROOT}/portable/boot/qemu_cortex_m0/linker.ld
     -nostartfiles
     -Wl,--gc-sections
 )

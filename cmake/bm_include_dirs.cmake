@@ -22,4 +22,4 @@ set(BM_INCLUDE_BACKEND_DIRS
 )
 
 # QEMU Cortex-M0 引导（启动汇编 / crt0 / 链接脚本）
-set(BM_BOOT_QEMU_CM0_DIR ${CMAKE_CURRENT_LIST_DIR}/../platform/boot/qemu_cortex_m0)
+set(BM_BOOT_QEMU_CM0_DIR ${CMAKE_CURRENT_LIST_DIR}/../portable/boot/qemu_cortex_m0)

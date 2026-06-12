@@ -43,8 +43,8 @@ Zeplod 是库：**先移植 Port，再集成**（源码或静态库）。见 [13
 | 方式 | 入口 |
 |------|------|
 | 源码（CMake） | `cmake/zeplod.cmake` |
-| 源码（Keil/IAR） | `tools/list_sources.py` + `integration/port/bm_port.c` |
-| 静态库 | `integration/static-lib/` |
+| 源码（Keil/IAR） | `tools/list_sources.py` + `portable/template/bm_port.c` |
+| 静态库 | `cmake/static-lib/` |
 
 ```cmake
 zeplod_configure(ROOT ... PROFILE event BACKEND external CONFIG bm_config.h)
@@ -92,7 +92,7 @@ zeplod_link(my_app)
 
 ## Makefile 路径
 
-8 位或极简工具链可用根目录 `Makefile`，不依赖 CMake。见 `examples/` 中部分 Makefile 示例。
+8 位或极简工具链可用根目录 `Makefile`，不依赖 CMake。见 `Demo/` 中部分 Makefile 示例。
 
 ## 8 位 Ultra
 

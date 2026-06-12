@@ -18,7 +18,7 @@ option(BM_SYNC_HAL_NATIVE "Link native_sim sync HAL into bm_ctrl_inst" OFF)
 option(BM_SYNC_HAL_QEMU "Link QEMU sync HAL into bm_ctrl_inst" OFF)
 option(BM_BUILD_TESTS "Build unit tests" ON)
 set(BM_BACKEND "" CACHE STRING
-    "Driver backend: native_sim, register_stm32g4, qemu_cortex_m0, ...")
+    "Portable backend: native_sim, register_stm32g4, qemu_cortex_m0, external, ...")
 
 if(BM_ENABLE_CTRL_INST AND NOT BM_ENABLE_HRT)
     message(FATAL_ERROR "BM_ENABLE_CTRL_INST requires BM_ENABLE_HRT")
@@ -50,15 +50,15 @@ if(BM_CONFIG_FILE)
 endif()
 
 add_library(bm_hal STATIC
-    src/hal/bm_hal_critical.c
-    src/hal/bm_hal_uart.c
-    src/hal/bm_hal_timer.c
-    src/hal/bm_hal_wdg.c
-    src/hal/bm_hal_memory.c
-    src/hal/bm_hal_pwm.c
-    src/hal/bm_hal_adc.c
-    src/hal/bm_hal_comp.c
-    src/hal/bm_hal_encoder.c
+    Source/hal/bm_hal_critical.c
+    Source/hal/bm_hal_uart.c
+    Source/hal/bm_hal_timer.c
+    Source/hal/bm_hal_wdg.c
+    Source/hal/bm_hal_memory.c
+    Source/hal/bm_hal_pwm.c
+    Source/hal/bm_hal_adc.c
+    Source/hal/bm_hal_comp.c
+    Source/hal/bm_hal_encoder.c
 )
 target_link_libraries(bm_hal PUBLIC bm_config)
 
@@ -69,15 +69,15 @@ if(BM_BACKEND STREQUAL "external")
     target_compile_definitions(bm_hal PRIVATE BM_DRV_HAS_BACKEND)
 elseif(BM_BACKEND)
     target_compile_definitions(bm_hal PRIVATE BM_DRV_HAS_BACKEND)
-    add_subdirectory(platform/backends/${BM_BACKEND})
+    add_subdirectory(portable/${BM_BACKEND})
 endif()
 
 add_library(bm_core STATIC
-    src/core/bm_mempool.c
-    src/core/bm_critical.c
-    src/core/bm_event.c
-    src/core/bm_log.c
-    src/core/bm_ultra.c
+    Source/core/bm_mempool.c
+    Source/core/bm_critical.c
+    Source/core/bm_event.c
+    Source/core/bm_log.c
+    Source/core/bm_ultra.c
 )
 target_link_libraries(bm_core PUBLIC bm_config bm_hal)
 if(BM_BUILD_TESTS)
@@ -91,64 +91,64 @@ add_library(bm_framework INTERFACE)
 target_link_libraries(bm_framework INTERFACE bm_core bm_hal)
 
 if(BM_ENABLE_MODULE)
-    add_library(bm_module STATIC src/core/bm_module.c)
+    add_library(bm_module STATIC Source/core/bm_module.c)
     target_link_libraries(bm_module PUBLIC bm_core)
     target_link_libraries(bm_framework INTERFACE bm_module)
 endif()
 
 if(BM_ENABLE_CHANNEL)
-    add_library(bm_channel STATIC src/core/bm_channel.c)
+    add_library(bm_channel STATIC Source/core/bm_channel.c)
     target_link_libraries(bm_channel PUBLIC bm_core)
     target_link_libraries(bm_framework INTERFACE bm_channel)
 endif()
 
 if(BM_ENABLE_SHELL)
-    add_library(bm_shell STATIC src/core/bm_shell.c)
+    add_library(bm_shell STATIC Source/core/bm_shell.c)
     target_link_libraries(bm_shell PUBLIC bm_core)
     target_link_libraries(bm_framework INTERFACE bm_shell)
 endif()
 
 if(BM_ENABLE_WDG)
-    add_library(bm_wdg STATIC src/core/bm_wdg.c)
+    add_library(bm_wdg STATIC Source/core/bm_wdg.c)
     target_link_libraries(bm_wdg PUBLIC bm_core)
     target_link_libraries(bm_framework INTERFACE bm_wdg)
 endif()
 
 if(BM_ENABLE_HRT)
-    add_library(bm_hrt STATIC src/hybrid/bm_hrt.c)
+    add_library(bm_hrt STATIC Source/hybrid/bm_hrt.c)
     target_link_libraries(bm_hrt PUBLIC bm_core)
     target_link_libraries(bm_framework INTERFACE bm_hrt)
 endif()
 
 if(BM_ENABLE_TICKER)
-    add_library(bm_ticker STATIC src/hybrid/bm_ticker.c)
+    add_library(bm_ticker STATIC Source/hybrid/bm_ticker.c)
     target_link_libraries(bm_ticker PUBLIC bm_core)
     target_link_libraries(bm_framework INTERFACE bm_ticker)
 endif()
 
 if(BM_BUILD_TESTS OR BM_ENABLE_CTRL_INST)
     if(NOT TARGET bm_resource)
-        add_library(bm_resource STATIC src/hybrid/bm_resource.c)
+        add_library(bm_resource STATIC Source/hybrid/bm_resource.c)
         target_link_libraries(bm_resource PUBLIC bm_core)
     endif()
 endif()
 
 if(BM_ENABLE_CTRL_INST)
-    add_library(bm_ctrl_inst STATIC src/hybrid/bm_ctrl_inst.c)
+    add_library(bm_ctrl_inst STATIC Source/hybrid/bm_ctrl_inst.c)
     target_link_libraries(bm_ctrl_inst PUBLIC bm_hrt bm_core bm_resource)
     if(BM_ENABLE_SYNC)
-        target_sources(bm_ctrl_inst PRIVATE src/hybrid/bm_sync.c)
+        target_sources(bm_ctrl_inst PRIVATE Source/hybrid/bm_sync.c)
         if(BM_SYNC_HAL_NATIVE OR BM_BUILD_TESTS)
             target_sources(bm_ctrl_inst PRIVATE
-                platform/backends/native_sim/bm_sync_hal_native.c)
+                portable/native_sim/bm_sync_hal_native.c)
         elseif(BM_SYNC_HAL_QEMU)
             target_sources(bm_ctrl_inst PRIVATE
-                platform/backends/qemu_cortex_m0/bm_sync_hal_qemu.c)
+                portable/qemu_cortex_m0/bm_sync_hal_qemu.c)
         else()
             message(WARNING
                 "BM_ENABLE_SYNC without BM_SYNC_HAL_NATIVE/QEMU: "
                 "linking bm_sync_hal_stub.c (not for production)")
-            target_sources(bm_ctrl_inst PRIVATE src/hybrid/bm_sync_hal_stub.c)
+            target_sources(bm_ctrl_inst PRIVATE Source/hybrid/bm_sync_hal_stub.c)
         endif()
     endif()
     target_link_libraries(bm_framework INTERFACE bm_ctrl_inst)

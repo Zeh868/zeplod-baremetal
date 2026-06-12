@@ -1,14 +1,14 @@
 # Zeplod Baremetal — CMake 便捷入口（库源码集成，方式 A′）
 #
-# 集成模型（见 integration/README.md）：
-#   ① 移植：应用工程里的 bm_port.c（BACKEND external）
-#   ② 库：zeplod_configure + zeplod_link 拉入 src/ 源码目标
+# 集成模型（见 docs/integration/README.md）：
+#   ① 移植：portable/template/bm_port.c 复制到应用工程
+#   ② 库：zeplod_configure + zeplod_link 拉入 Source/ 源码目标
 #
 #   zeplod_configure(ROOT ... PROFILE event BACKEND external CONFIG bm_config.h)
 #   target_sources(app PRIVATE Core/Src/bm_port.c)
 #   zeplod_link(app)
 #
-# 静态库集成（方式 B）见 integration/static-lib/
+# 静态库集成（方式 B）见 cmake/static-lib/
 
 include_guard(GLOBAL)
 
@@ -70,7 +70,7 @@ function(zeplod_configure)
                 endif()
             else()
                 message(FATAL_ERROR "Unknown BACKEND '${ZP_BACKEND}'. "
-                    "Use external + bm_port.c, or a name from platform/backends/")
+                    "Use external + bm_port.c, or a name from portable/")
             endif()
         endif()
 

@@ -21,7 +21,7 @@ bm_add_test(test_event test_event.c bm_core)
 target_compile_definitions(test_event PRIVATE BM_ENABLE_EVENT_TEST_HOOK=1)
 bm_add_test(test_wdg test_wdg.c bm_wdg)
 target_include_directories(test_wdg PRIVATE
-    ${CMAKE_SOURCE_DIR}/platform/backends/native_sim)
+    ${CMAKE_SOURCE_DIR}/portable/native_sim)
 
 if(BM_ENABLE_MODULE)
     bm_add_test(test_module test_module.c bm_module)
@@ -38,13 +38,13 @@ endif()
 if(BM_ENABLE_HRT)
     bm_add_test(test_hrt test_hrt.c bm_hrt)
     target_include_directories(test_hrt PRIVATE
-        ${CMAKE_SOURCE_DIR}/platform/backends/native_sim)
+        ${CMAKE_SOURCE_DIR}/portable/native_sim)
 endif()
 
 if(BM_ENABLE_TICKER)
     bm_add_test(test_ticker test_ticker.c bm_ticker)
     target_include_directories(test_ticker PRIVATE
-        ${CMAKE_SOURCE_DIR}/platform/backends/native_sim)
+        ${CMAKE_SOURCE_DIR}/portable/native_sim)
 endif()
 
 if(TARGET bm_resource)
@@ -54,7 +54,7 @@ endif()
 if(BM_ENABLE_CTRL_INST)
     bm_add_test(test_ctrl_inst test_ctrl_inst.c bm_ctrl_inst)
     target_include_directories(test_ctrl_inst PRIVATE
-        ${CMAKE_SOURCE_DIR}/platform/backends/native_sim)
+        ${CMAKE_SOURCE_DIR}/portable/native_sim)
 endif()
 
 if(BM_ENABLE_SYNC)
@@ -62,7 +62,7 @@ if(BM_ENABLE_SYNC)
     target_link_libraries(test_sync PRIVATE unity bm_ctrl_inst bm_hal_native)
     target_include_directories(test_sync PRIVATE
         ${CMAKE_SOURCE_DIR}/tests/unit/unity
-        ${CMAKE_SOURCE_DIR}/platform/backends/native_sim)
+        ${CMAKE_SOURCE_DIR}/portable/native_sim)
     add_test(NAME test_sync COMMAND test_sync)
 endif()
 
@@ -71,7 +71,7 @@ if(BM_BUILD_TESTS)
     target_link_libraries(test_snapshot PRIVATE unity bm_core bm_hal_native)
     target_include_directories(test_snapshot PRIVATE
         ${CMAKE_SOURCE_DIR}/tests/unit/unity
-        ${CMAKE_SOURCE_DIR}/platform/backends/native_sim)
+        ${CMAKE_SOURCE_DIR}/portable/native_sim)
     add_test(NAME test_snapshot COMMAND test_snapshot)
 
     add_executable(test_priority_mask
