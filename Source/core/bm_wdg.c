@@ -31,7 +31,7 @@
 
 /** 已注册模块记录 */
 typedef struct {
-    const char *name;
+    char        name[BM_CONFIG_WDG_MAX_NAME_LEN];
     uint32_t    last_feed_ticks;
     bool        fed;
 } bm_wdg_module_t;
@@ -39,6 +39,22 @@ typedef struct {
 static bm_wdg_module_t _wdg_modules[BM_CONFIG_MAX_WDG_MODULES];
 static uint32_t        _wdg_module_count = 0;
 static uint32_t        _wdg_generation = 0;
+
+static int wdg_name_length(const char *name, size_t *length_out) {
+    size_t length = 0u;
+
+    if (!name || !length_out) {
+        return BM_ERR_INVALID;
+    }
+    while (length < BM_CONFIG_WDG_MAX_NAME_LEN && name[length] != '\0') {
+        length++;
+    }
+    if (length == 0u || length >= BM_CONFIG_WDG_MAX_NAME_LEN) {
+        return BM_ERR_INVALID;
+    }
+    *length_out = length;
+    return BM_OK;
+}
 
 /**
  * @brief 将毫秒超时转换为定时器 tick（溢出安全）
@@ -80,13 +96,15 @@ static int wdg_module_fresh(const bm_wdg_module_t *mod, uint32_t now,
  *         BM_ERR_ALREADY 同名模块已注册
  */
 int bm_wdg_register(const char *name) {
-    const char *registered_names[BM_CONFIG_MAX_WDG_MODULES];
+    char registered_names[BM_CONFIG_MAX_WDG_MODULES]
+                         [BM_CONFIG_WDG_MAX_NAME_LEN];
+    size_t name_len;
     uint32_t count;
     uint32_t generation;
     uint32_t i;
     bm_irq_state_t s;
 
-    if (!name) {
+    if (wdg_name_length(name, &name_len) != BM_OK) {
         return BM_ERR_INVALID;
     }
 
@@ -98,12 +116,13 @@ int bm_wdg_register(const char *name) {
         return BM_ERR_INVALID;
     }
     for (i = 0u; i < count; i++) {
-        registered_names[i] = _wdg_modules[i].name;
+        memcpy(registered_names[i], _wdg_modules[i].name,
+               BM_CONFIG_WDG_MAX_NAME_LEN);
     }
     BM_CRITICAL_EXIT(s);
 
     for (i = 0u; i < count; i++) {
-        if (registered_names[i] && strcmp(registered_names[i], name) == 0) {
+        if (strcmp(registered_names[i], name) == 0) {
             BM_LOGW("wdg", "module '%s' already registered", name);
             return BM_ERR_ALREADY;
         }
@@ -119,7 +138,7 @@ int bm_wdg_register(const char *name) {
         BM_LOGW("wdg", "register table full");
         return BM_ERR_NO_MEM;
     }
-    _wdg_modules[count].name = name;
+    memcpy(_wdg_modules[count].name, name, name_len + 1u);
     _wdg_modules[count].last_feed_ticks = 0u;
     _wdg_modules[count].fed = false;
     _wdg_module_count = count + 1u;
@@ -136,7 +155,9 @@ int bm_wdg_register(const char *name) {
  * @param name 模块名称字符串
  */
 void bm_wdg_feed_module(const char *name) {
-    const char *registered_names[BM_CONFIG_MAX_WDG_MODULES];
+    char registered_names[BM_CONFIG_MAX_WDG_MODULES]
+                         [BM_CONFIG_WDG_MAX_NAME_LEN];
+    size_t name_len;
     uint32_t count;
     uint32_t generation;
     uint32_t found = BM_CONFIG_MAX_WDG_MODULES;
@@ -144,10 +165,11 @@ void bm_wdg_feed_module(const char *name) {
     uint32_t now;
     bm_irq_state_t s;
 
-    if (!name) {
-        BM_LOGW("wdg", "feed_module null name");
+    if (wdg_name_length(name, &name_len) != BM_OK) {
+        BM_LOGW("wdg", "feed_module invalid name");
         return;
     }
+    (void)name_len;
 
     s = BM_CRITICAL_ENTER();
     count = _wdg_module_count;
@@ -158,12 +180,13 @@ void bm_wdg_feed_module(const char *name) {
         return;
     }
     for (i = 0u; i < count; i++) {
-        registered_names[i] = _wdg_modules[i].name;
+        memcpy(registered_names[i], _wdg_modules[i].name,
+               BM_CONFIG_WDG_MAX_NAME_LEN);
     }
     BM_CRITICAL_EXIT(s);
 
     for (i = 0u; i < count; i++) {
-        if (registered_names[i] && strcmp(registered_names[i], name) == 0) {
+        if (strcmp(registered_names[i], name) == 0) {
             found = i;
             break;
         }
@@ -176,7 +199,7 @@ void bm_wdg_feed_module(const char *name) {
     now = bm_hal_timer_get_ticks();
     s = BM_CRITICAL_ENTER();
     if (_wdg_generation != generation || _wdg_module_count != count ||
-        _wdg_modules[found].name != registered_names[found]) {
+        strcmp(_wdg_modules[found].name, registered_names[found]) != 0) {
         BM_CRITICAL_EXIT(s);
         BM_LOGW("wdg", "feed module table changed");
         return;
@@ -237,7 +260,7 @@ void bm_wdg_feed(void) {
     for (i = 0u; i < count; i++) {
         if (!wdg_module_fresh(&snapshot[i], now, timeout_ticks)) {
             BM_LOGD("wdg", "hw feed blocked: '%s' stale",
-                    snapshot[i].name ? snapshot[i].name : "(null)");
+                    snapshot[i].name);
             return;
         }
     }
@@ -272,6 +295,7 @@ void bm_wdg_feed(void) {
  */
 void bm_wdg_reset(void) {
     bm_irq_state_t s = BM_CRITICAL_ENTER();
+    memset(_wdg_modules, 0, sizeof(_wdg_modules));
     _wdg_module_count = 0u;
     _wdg_generation++;
     BM_CRITICAL_EXIT(s);

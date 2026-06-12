@@ -40,6 +40,7 @@
 #define BM_CONFIG_SHELL_MAX_NAME_LEN         16
 #define BM_CONFIG_MAX_WDG_MODULES            4
 #define BM_CONFIG_WDG_MODULE_TIMEOUT_MS      1000
+#define BM_CONFIG_WDG_MAX_NAME_LEN           32
 
 /* Ultra 超轻量剖面（header-only） */
 #define BM_CONFIG_ULTRA_MAX_EVENT_TYPES      8

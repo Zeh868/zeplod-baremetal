@@ -254,6 +254,25 @@ void test_event_dispatch_skipped_invalid_type(void) {
     TEST_ASSERT_EQUAL(1u, bm_event_get_dispatch_skipped_count());
 }
 
+void test_event_dispatch_skips_invalid_payload_metadata(void) {
+    uint8_t payload = 1u;
+    bm_event_t bad = {
+        .type = EVENT_TEST,
+        .priority = 0u,
+        .data = &payload,
+        .data_len = BM_CONFIG_EVENT_INLINE_DATA_SIZE + 1u,
+        .source_id = 0u,
+    };
+
+    TEST_ASSERT_EQUAL(BM_OK, bm_event_register_type(EVENT_TEST, "TEST"));
+    TEST_ASSERT_EQUAL(BM_OK,
+        bm_event_subscribe(EVENT_TEST, test_cb, &g_count, NULL));
+    TEST_ASSERT_EQUAL(BM_OK, bm_event_test_inject(&bad, 0u));
+    TEST_ASSERT_EQUAL(1, bm_event_process(1u));
+    TEST_ASSERT_EQUAL(0, g_count);
+    TEST_ASSERT_EQUAL(1u, bm_event_get_dispatch_skipped_count());
+}
+
 void test_event_subscribe_null_id(void) {
     TEST_ASSERT_EQUAL(BM_OK, bm_event_register_type(EVENT_TEST, "TEST"));
     TEST_ASSERT_EQUAL(BM_OK, bm_event_subscribe(EVENT_TEST, test_cb, &g_count, NULL));
@@ -279,6 +298,7 @@ int main(void) {
     RUN_TEST(test_event_priority_fairness_bound);
     RUN_TEST(test_event_fairness_ignores_uncontended_history);
     RUN_TEST(test_event_dispatch_skipped_invalid_type);
+    RUN_TEST(test_event_dispatch_skips_invalid_payload_metadata);
     RUN_TEST(test_event_register_type_rejects_duplicate);
     RUN_TEST(test_event_subscribe_null_id);
     return UNITY_END();

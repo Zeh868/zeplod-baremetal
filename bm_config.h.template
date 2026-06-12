@@ -26,6 +26,7 @@
 
 /* Watchdog */
 #define BM_CONFIG_MAX_WDG_MODULES           4
+#define BM_CONFIG_WDG_MAX_NAME_LEN          32
 
 /* bm-ultra */
 #define BM_CONFIG_ULTRA_MAX_EVENT_TYPES     8

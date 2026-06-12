@@ -77,6 +77,7 @@ add_library(bm_core STATIC
     Source/core/bm_critical.c
     Source/core/bm_event.c
     Source/core/bm_log.c
+    Source/core/bm_log_output.c
     Source/core/bm_ultra.c
 )
 target_link_libraries(bm_core PUBLIC bm_config bm_hal)

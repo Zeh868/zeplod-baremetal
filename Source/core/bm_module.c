@@ -19,6 +19,7 @@
 #include "bm_event.h"
 #include "bm_log.h"
 
+#include <stdbool.h>
 #include <string.h>
 
 extern const bm_module_t *_bm_module_table[];
@@ -29,23 +30,13 @@ static uint32_t    _module_count = 0;
 
 enum {
     BM_MODULES_UNINITIALIZED = 0,
+    BM_MODULES_INITIALIZING,
     BM_MODULES_READY,
+    BM_MODULES_TRANSITIONING,
     BM_MODULES_CLEANUP_PENDING
 };
 
 static int _modules_initialized = BM_MODULES_UNINITIALIZED;
-
-/**
- * @brief 应用启动：复位事件总线并执行模块 init/start
- */
-int bm_module_boot(void) {
-    bm_event_reset();
-    int r = bm_module_init_all();
-    if (r != BM_OK) {
-        return r;
-    }
-    return bm_module_start_all();
-}
 
 /**
  * @brief 按 priority 升序对模块表冒泡排序
@@ -121,7 +112,7 @@ static int _rollback_starts(uint32_t through_index) {
  *
  * @return BM_OK 全部成功；负值为首个失败模块的错误码
  */
-int bm_module_init_all(void) {
+static int _module_init_all(bool reset_event_bus) {
     bm_irq_state_t s = BM_CRITICAL_ENTER();
 
     if (_modules_initialized != BM_MODULES_UNINITIALIZED) {
@@ -129,16 +120,33 @@ int bm_module_init_all(void) {
         BM_LOGW("module", "init_all already done");
         return BM_ERR_ALREADY;
     }
+    _modules_initialized = BM_MODULES_INITIALIZING;
     BM_CRITICAL_EXIT(s);
+
+    if (reset_event_bus) {
+        bm_event_reset();
+    }
 
     if (_bm_module_count > BM_CONFIG_MAX_MODULES) {
         BM_LOGE("module", "module table truncated: %u > %u",
                 (unsigned)_bm_module_count, (unsigned)BM_CONFIG_MAX_MODULES);
+        s = BM_CRITICAL_ENTER();
+        _modules_initialized = BM_MODULES_UNINITIALIZED;
+        BM_CRITICAL_EXIT(s);
         return BM_ERR_OVERFLOW;
     }
 
     _module_count = _bm_module_count;
     for (uint32_t i = 0u; i < _module_count; i++) {
+        if (_bm_module_table[i] == NULL) {
+            BM_LOGE("module", "module table contains null entry idx=%u",
+                    (unsigned)i);
+            s = BM_CRITICAL_ENTER();
+            _module_count = 0u;
+            _modules_initialized = BM_MODULES_UNINITIALIZED;
+            BM_CRITICAL_EXIT(s);
+            return BM_ERR_INVALID;
+        }
         memcpy(&_modules[i], _bm_module_table[i], sizeof(bm_module_t));
     }
     for (uint32_t i = 0u; i < _module_count; i++) {
@@ -164,6 +172,11 @@ int bm_module_init_all(void) {
                 s = BM_CRITICAL_ENTER();
                 _modules_initialized = BM_MODULES_CLEANUP_PENDING;
                 BM_CRITICAL_EXIT(s);
+            } else {
+                s = BM_CRITICAL_ENTER();
+                _module_count = 0u;
+                _modules_initialized = BM_MODULES_UNINITIALIZED;
+                BM_CRITICAL_EXIT(s);
             }
             return r;
         }
@@ -172,6 +185,19 @@ int bm_module_init_all(void) {
     _modules_initialized = BM_MODULES_READY;
     BM_CRITICAL_EXIT(s);
     return BM_OK;
+}
+
+int bm_module_boot(void) {
+    int r = _module_init_all(true);
+
+    if (r != BM_OK) {
+        return r;
+    }
+    return bm_module_start_all();
+}
+
+int bm_module_init_all(void) {
+    return _module_init_all(false);
 }
 
 /**
@@ -183,16 +209,22 @@ int bm_module_start_all(void) {
     bm_irq_state_t s = BM_CRITICAL_ENTER();
     int initialized = _modules_initialized;
 
-    BM_CRITICAL_EXIT(s);
-    if (initialized == BM_MODULES_CLEANUP_PENDING) {
+    if (initialized == BM_MODULES_INITIALIZING ||
+        initialized == BM_MODULES_TRANSITIONING ||
+        initialized == BM_MODULES_CLEANUP_PENDING) {
+        BM_CRITICAL_EXIT(s);
         return BM_ERR_BUSY;
     }
     if (initialized != BM_MODULES_READY) {
+        BM_CRITICAL_EXIT(s);
         return BM_ERR_NOT_INIT;
     }
+    _modules_initialized = BM_MODULES_TRANSITIONING;
+    BM_CRITICAL_EXIT(s);
 
     for (uint32_t i = 0u; i < _module_count; i++) {
-        if (_modules[i].state == BM_MODULE_STATE_INITED) {
+        if (_modules[i].state == BM_MODULE_STATE_INITED ||
+            _modules[i].state == BM_MODULE_STATE_STOPPED) {
             int r = _modules[i].start ? _modules[i].start() : BM_OK;
 
             if (r == BM_OK) {
@@ -206,11 +238,18 @@ int bm_module_start_all(void) {
                     s = BM_CRITICAL_ENTER();
                     _modules_initialized = BM_MODULES_CLEANUP_PENDING;
                     BM_CRITICAL_EXIT(s);
+                } else {
+                    s = BM_CRITICAL_ENTER();
+                    _modules_initialized = BM_MODULES_READY;
+                    BM_CRITICAL_EXIT(s);
                 }
                 return r;
             }
         }
     }
+    s = BM_CRITICAL_ENTER();
+    _modules_initialized = BM_MODULES_READY;
+    BM_CRITICAL_EXIT(s);
     return BM_OK;
 }
 
@@ -220,7 +259,22 @@ int bm_module_start_all(void) {
  * @return BM_OK 全部成功；负值为首个失败模块的错误码
  */
 int bm_module_stop_all(void) {
+    bm_irq_state_t s = BM_CRITICAL_ENTER();
     int rc = BM_OK;
+
+    if (_modules_initialized == BM_MODULES_INITIALIZING ||
+        _modules_initialized == BM_MODULES_TRANSITIONING ||
+        _modules_initialized == BM_MODULES_CLEANUP_PENDING) {
+        BM_CRITICAL_EXIT(s);
+        return BM_ERR_BUSY;
+    }
+    if (_modules_initialized == BM_MODULES_UNINITIALIZED) {
+        BM_CRITICAL_EXIT(s);
+        return BM_OK;
+    }
+    _modules_initialized = BM_MODULES_TRANSITIONING;
+    BM_CRITICAL_EXIT(s);
+
     for (int i = (int)_module_count - 1; i >= 0; i--) {
         if (_modules[i].state == BM_MODULE_STATE_STARTED) {
             int r = _modules[i].stop ? _modules[i].stop() : BM_OK;
@@ -229,10 +283,15 @@ int bm_module_stop_all(void) {
                 _modules[i].state = BM_MODULE_STATE_STOPPED;
             } else {
                 BM_LOGE("module", "stop failed idx=%d rc=%d", i, r);
-                rc = r;
+                if (rc == BM_OK) {
+                    rc = r;
+                }
             }
         }
     }
+    s = BM_CRITICAL_ENTER();
+    _modules_initialized = BM_MODULES_READY;
+    BM_CRITICAL_EXIT(s);
     BM_LOGI("module", "stop_all done");
     return rc;
 }
@@ -247,6 +306,11 @@ int bm_module_deinit_all(void) {
     int rc = BM_OK;
 
     s = BM_CRITICAL_ENTER();
+    if (_modules_initialized == BM_MODULES_INITIALIZING ||
+        _modules_initialized == BM_MODULES_TRANSITIONING) {
+        BM_CRITICAL_EXIT(s);
+        return BM_ERR_BUSY;
+    }
     _modules_initialized = BM_MODULES_CLEANUP_PENDING;
     BM_CRITICAL_EXIT(s);
 

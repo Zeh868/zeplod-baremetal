@@ -90,6 +90,8 @@ int bm_module_init_all(void);
 
 /**
  * @brief 按优先级启动所有已初始化模块
+ *
+ * 已通过 bm_module_stop_all() 停止的模块也可再次启动。
  */
 int bm_module_start_all(void);
 

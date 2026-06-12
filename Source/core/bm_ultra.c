@@ -27,6 +27,10 @@
 #error "BM_CONFIG_ULTRA_QUEUE_DEPTH 使用 uint8_t 索引时不得超过 256"
 #endif
 
+#if BM_CONFIG_ULTRA_MAX_EVENT_DATA_SIZE > 255
+#error "BM_CONFIG_ULTRA_MAX_EVENT_DATA_SIZE must not exceed 255"
+#endif
+
 static bm_ultra_queue_t _bm_ultra_q;
 static uint32_t         _bm_ultra_dropped;
 static uint32_t         _bm_ultra_dispatch_skipped;
@@ -152,7 +156,8 @@ uint8_t bm_ultra_process(void) {
     if (rc != BM_OK) {
         return 0u;
     }
-    if (item.event_type >= BM_CONFIG_ULTRA_MAX_EVENT_TYPES) {
+    if (item.event_type >= BM_CONFIG_ULTRA_MAX_EVENT_TYPES ||
+        item.data_len > BM_CONFIG_ULTRA_MAX_EVENT_DATA_SIZE) {
         bm_irq_state_t s = BM_CRITICAL_ENTER();
         _bm_ultra_dispatch_skipped =
             bm_u32_saturating_inc(_bm_ultra_dispatch_skipped);
