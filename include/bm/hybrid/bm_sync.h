@@ -38,6 +38,8 @@ typedef enum {
     BM_SYNC_STATE_TRANSITION
 } bm_sync_state_t;
 
+/** 同步 API 仅限主上下文调用，不可在 ISR 中调用。 */
+
 /**
  * @brief 配置同步域并委托 HAL 完成硬件设置
  *

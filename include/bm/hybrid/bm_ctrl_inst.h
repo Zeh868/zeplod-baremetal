@@ -76,6 +76,9 @@ struct bm_ctrl_inst {
 /**
  * @brief 批量初始化控制实例
  *
+ * 参数校验通过后，总是先安全停止任何既有会话（HRT、硬件解绑、safe_stop），
+ * 再重新初始化。无效参数不会触发 teardown。
+ *
  * @param instances 控制实例指针数组
  * @param count 实例数量
  * @return BM_OK 全部成功；否则为首个失败实例的错误码

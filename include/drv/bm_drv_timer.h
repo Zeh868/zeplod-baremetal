@@ -12,7 +12,7 @@ struct bm_timer_driver_api {
     void (*stop)(void);
     uint32_t (*get_ticks)(void);
     uint32_t (*get_freq)(void);
-    void (*set_callback)(void (*cb)(void));
+    void (*set_callback)(void (*cb)(void)); /**< 周期性 tick 回调，按 init 的 freq_hz 触发 */
 };
 
 #ifdef BM_DRV_TIMER_API

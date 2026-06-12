@@ -52,6 +52,8 @@ typedef struct {
 /**
  * @brief 检查多实例资源声明是否存在冲突
  *
+ * 非可重入，仅限主上下文调用（使用内部静态展平缓冲）。
+ *
  * @param claims 各实例资源声明数组的指针数组
  * @param claim_counts 各实例声明条数数组
  * @param instance_count 实例数量

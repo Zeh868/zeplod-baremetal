@@ -43,6 +43,7 @@ static int g_started;
 
 #if !defined(BM_CONFIG_HRT_EXTERNAL_DEADLINE_HOOK) || \
     !(BM_CONFIG_HRT_EXTERNAL_DEADLINE_HOOK)
+/* IAR/ARMCC/MSVC 不识别 weak：须设 BM_CONFIG_HRT_EXTERNAL_DEADLINE_HOOK=1 由应用提供钩子 */
 #if defined(__GNUC__) || defined(__clang__)
 __attribute__((weak))
 #endif
@@ -237,6 +238,7 @@ int bm_hrt_start(void) {
 
     BM_CRITICAL_EXIT(irq_state);
 
+    bm_hal_timer_set_callback(NULL);
     rc = bm_hal_timer_init(hrt_tick_hz());
     if (rc != BM_OK) {
         BM_LOGE("hrt", "hal timer init failed rc=%d", rc);

@@ -112,8 +112,8 @@ static int validate_owner_reader_pairs(const flat_claim_t *flat,
 
         if (reader_count > 0u) {
             if (owner_count != 1u) {
-                BM_LOGE("resource", "owner/reader mismatch kind=%u key=%u",
-                        (unsigned)flat[i].kind, (unsigned)flat[i].key);
+                BM_LOGE("resource", "owner/reader mismatch kind=%u key=%p",
+                        (unsigned)flat[i].kind, (void *)flat[i].key);
                 return BM_ERR_INVALID;
             }
             for (j = 0u; j < flat_count; ++j) {
@@ -148,15 +148,18 @@ static int validate_no_duplicate_claims(const flat_claim_t *flat,
             if (flat[i].instance_index == flat[j].instance_index &&
                 flat[i].kind == flat[j].kind &&
                 flat[i].key == flat[j].key) {
-                BM_LOGW("resource", "duplicate claim inst=%u kind=%u key=%u",
+                BM_LOGW("resource", "duplicate claim inst=%u kind=%u key=%p",
                         (unsigned)flat[i].instance_index,
-                        (unsigned)flat[i].kind, (unsigned)flat[i].key);
+                        (unsigned)flat[i].kind, (void *)flat[i].key);
                 return BM_ERR_INVALID;
             }
         }
     }
     return BM_OK;
 }
+
+/** 展平缓冲：非可重入，仅限主上下文调用 */
+static flat_claim_t s_flat_claims[BM_CONFIG_MAX_RESOURCE_CLAIMS];
 
 /**
  * @brief 检查多实例资源声明是否存在冲突
@@ -166,7 +169,6 @@ static int validate_no_duplicate_claims(const flat_claim_t *flat,
  * @param instance_count 实例数量
  * @return BM_OK 无冲突；BM_ERR_INVALID 参数无效；BM_ERR_OVERFLOW 声明表溢出；BM_ERR_BUSY 存在冲突
  */
-static flat_claim_t s_flat_claims[BM_CONFIG_MAX_RESOURCE_CLAIMS];
 
 int bm_resource_check_conflicts(const bm_resource_claim_t *const *claims,
                                 const uint32_t *claim_counts,
@@ -224,10 +226,10 @@ int bm_resource_check_conflicts(const bm_resource_claim_t *const *claims,
     for (i = 0u; i < flat_count; ++i) {
         for (j = i + 1u; j < flat_count; ++j) {
             if (!claims_compatible(&flat[i], &flat[j])) {
-                BM_LOGW("resource", "conflict inst %u vs %u kind=%u key=%u",
+                BM_LOGW("resource", "conflict inst %u vs %u kind=%u key=%p",
                         (unsigned)flat[i].instance_index,
                         (unsigned)flat[j].instance_index,
-                        (unsigned)flat[i].kind, (unsigned)flat[i].key);
+                        (unsigned)flat[i].kind, (void *)flat[i].key);
                 return BM_ERR_BUSY;
             }
         }

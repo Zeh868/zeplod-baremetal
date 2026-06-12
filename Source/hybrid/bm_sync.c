@@ -38,6 +38,22 @@ static void sync_set_state(const bm_sync_domain_t *domain,
 }
 
 /**
+ * @brief 临界区内一次性快照活动域与状态，避免 TOCTOU
+ */
+static void sync_snapshot(const bm_sync_domain_t **domain_out,
+                          bm_sync_state_t *state_out) {
+    bm_irq_state_t irq_state = BM_CRITICAL_ENTER();
+
+    if (domain_out) {
+        *domain_out = g_active_domain;
+    }
+    if (state_out) {
+        *state_out = g_state;
+    }
+    BM_CRITICAL_EXIT(irq_state);
+}
+
+/**
  * @brief 校验同步域描述符字段完整性
  *
  * @param domain 同步域描述符指针
@@ -92,7 +108,7 @@ int bm_sync_configure(const bm_sync_domain_t *domain) {
         return rc;
     }
 
-    previous_domain = g_active_domain;
+    sync_snapshot(&previous_domain, NULL);
     sync_set_state(previous_domain, BM_SYNC_STATE_TRANSITION);
     if (previous_domain != NULL && previous_domain != domain) {
         bm_sync_hal_safe_stop(previous_domain);
@@ -118,11 +134,16 @@ int bm_sync_configure(const bm_sync_domain_t *domain) {
  * @return BM_OK 成功；BM_ERR_INVALID 参数无效；BM_ERR_NOT_INIT 未先配置；其他为 HAL 错误码
  */
 int bm_sync_arm(const bm_sync_domain_t *domain) {
+    const bm_sync_domain_t *active;
+    bm_sync_state_t state;
     int rc = validate_domain(domain);
+
     if (rc != BM_OK) {
         return rc;
     }
-    if (g_active_domain != domain || g_state != BM_SYNC_STATE_CONFIGURED) {
+
+    sync_snapshot(&active, &state);
+    if (active != domain || state != BM_SYNC_STATE_CONFIGURED) {
         BM_LOGW("sync", "arm before configure");
         return BM_ERR_NOT_INIT;
     }
@@ -147,15 +168,20 @@ int bm_sync_arm(const bm_sync_domain_t *domain) {
  * @return BM_OK 成功；BM_ERR_INVALID 参数无效；BM_ERR_NOT_INIT 未先配置或未武装；其他为 HAL 错误码
  */
 int bm_sync_trigger(const bm_sync_domain_t *domain) {
+    const bm_sync_domain_t *active;
+    bm_sync_state_t state;
     int rc = validate_domain(domain);
+
     if (rc != BM_OK) {
         return rc;
     }
-    if (g_active_domain != domain) {
+
+    sync_snapshot(&active, &state);
+    if (active != domain) {
         BM_LOGW("sync", "trigger before configure");
         return BM_ERR_NOT_INIT;
     }
-    if (g_state != BM_SYNC_STATE_ARMED) {
+    if (state != BM_SYNC_STATE_ARMED) {
         BM_LOGW("sync", "trigger before arm");
         return BM_ERR_NOT_INIT;
     }
@@ -179,7 +205,9 @@ int bm_sync_trigger(const bm_sync_domain_t *domain) {
  * @param domain 同步域描述符指针（可为 NULL，仅清除活动域）
  */
 void bm_sync_safe_stop(const bm_sync_domain_t *domain) {
-    const bm_sync_domain_t *target = g_active_domain;
+    const bm_sync_domain_t *target;
+
+    sync_snapshot(&target, NULL);
 
     if (!target) {
         target = domain;

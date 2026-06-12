@@ -56,6 +56,7 @@ static void bm_ctrl_run_binding(void *context) {
     if (!binding || !binding->slot || !binding->slot->step || !binding->instance) {
         return;
     }
+    /* volatile 单字枚举读，Cortex-M 上原子；ISR 内勿改用 bm_ctrl_get_session() */
     if (g_session != BM_CTRL_SESSION_STARTED) {
         return;
     }
@@ -293,12 +294,12 @@ int bm_ctrl_init_all(const bm_ctrl_inst_t *const *instances, uint32_t count) {
     uint32_t s;
     int rc;
 
-    ctrl_teardown_session();
-
     if (!instances || count == 0u || count > BM_CONFIG_MAX_CTRL_INSTANCES) {
         BM_LOGE("ctrl", "init_all invalid count=%u", (unsigned)count);
         return BM_ERR_INVALID;
     }
+
+    ctrl_teardown_session();
 
     rc = validate_unique_ids(instances, count);
     if (rc != BM_OK) {
@@ -359,7 +360,7 @@ int bm_ctrl_init_all(const bm_ctrl_inst_t *const *instances, uint32_t count) {
         for (s = 0u; s < inst->slot_count; ++s) {
             const bm_ctrl_slot_t *slot = &inst->slots[s];
             bm_hal_hrt_binding_t hal_binding;
-            const bm_ctrl_binding_t *binding = NULL;
+            bm_ctrl_binding_t *binding = NULL;
             uint32_t b;
 
             if (slot->kind != BM_CTRL_SLOT_HARDWARE) {
@@ -377,7 +378,7 @@ int bm_ctrl_init_all(const bm_ctrl_inst_t *const *instances, uint32_t count) {
             if (!binding) {
                 rc = BM_ERR_INVALID;
             } else {
-                hal_binding.context = (void *)binding;
+                hal_binding.context = binding;
                 rc = slot->bind_hardware(inst, &hal_binding);
             }
             if (rc != BM_OK) {
@@ -420,6 +421,7 @@ int bm_ctrl_start_all(const bm_ctrl_inst_t *const *instances, uint32_t count) {
     if (!instances || count == 0u || count != g_instance_count) {
         return BM_ERR_INVALID;
     }
+    /* volatile 单字枚举读，Cortex-M 上原子；主上下文快速路径，勿改用 bm_ctrl_get_session() */
     if (g_session == BM_CTRL_SESSION_STARTED) {
         return BM_ERR_ALREADY;
     }

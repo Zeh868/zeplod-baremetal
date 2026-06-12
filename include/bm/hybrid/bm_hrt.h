@@ -48,7 +48,8 @@ int bm_hrt_init(const bm_hrt_slot_t *slots, uint32_t slot_count);
 /**
  * @brief 启动 HRT 调度
  *
- * `bm_hrt_init(NULL, 0)` 是合法的零槽初始化，随后 start 返回 BM_OK。
+ * `bm_hrt_init(NULL, 0)` 是合法的零槽初始化；零槽时 start 返回 BM_OK，
+ * 但 `bm_hrt_is_started()` 仍为 0（调度器视为未运行）。
  *
  * @return BM_OK 成功；BM_ERR_NOT_INIT 未初始化；其他为平台错误码
  */
@@ -101,7 +102,9 @@ uint32_t bm_hrt_get_deadline_missed_total(void);
 /**
  * @brief 查询 HRT 调度器是否已启动（只读）
  *
- * @return 1 已启动；0 未启动或未 init
+ * 零槽 start 成功时仍返回 0。
+ *
+ * @return 1 已启动；0 未启动、未 init 或零槽
  */
 int bm_hrt_is_started(void);
 
