@@ -48,6 +48,8 @@ int bm_hrt_init(const bm_hrt_slot_t *slots, uint32_t slot_count);
 /**
  * @brief 启动 HRT 调度
  *
+ * `bm_hrt_init(NULL, 0)` 是合法的零槽初始化，随后 start 返回 BM_OK。
+ *
  * @return BM_OK 成功；BM_ERR_NOT_INIT 未初始化；其他为平台错误码
  */
 int bm_hrt_start(void);
@@ -66,6 +68,8 @@ void bm_hrt_reset(void);
  * @brief 错过 deadline 时的弱符号钩子（可覆盖）
  *
  * 默认实现为空。钩子在定时器 ISR 中执行，覆盖实现必须有界且不得记录日志。
+ * 不支持弱符号的平台可定义 `BM_CONFIG_HRT_EXTERNAL_DEADLINE_HOOK=1`
+ * 并由应用提供该函数。
  *
  * @param slot 触发 miss 的 slot 描述指针
  */

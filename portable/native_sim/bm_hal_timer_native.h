@@ -22,5 +22,7 @@ void bm_hal_timer_native_jump_ticks(uint32_t delta);
 void bm_hal_timer_native_reset_ticks(void);
 /** 测试辅助：复位定时器为未初始化状态（freq=0） */
 void bm_hal_timer_native_deinit(void);
+/** 测试辅助：设置后续 init 的返回值，BM_OK 恢复成功路径 */
+void bm_hal_timer_native_set_init_result(int result);
 
 #endif /* BM_HAL_TIMER_NATIVE_H */

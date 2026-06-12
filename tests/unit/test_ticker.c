@@ -144,6 +144,23 @@ void test_ticker_wraparound(void) {
     bm_event_unsubscribe(TICKER_EVT, id);
 }
 
+void test_ticker_catches_up_multiple_periods_without_drift(void) {
+    static const bm_ticker_slot_t slots[] = {
+        { 10u, TICKER_EVT, 1u, "10ms" },
+    };
+
+    bm_event_register_type(TICKER_EVT, "TICK");
+    TEST_ASSERT_EQUAL(BM_OK, bm_ticker_init(slots, 1u));
+
+    bm_hal_timer_native_advance_ticks(35u);
+    TEST_ASSERT_EQUAL(3, bm_ticker_poll());
+    TEST_ASSERT_EQUAL(0, bm_ticker_poll());
+    TEST_ASSERT_EQUAL(3, bm_event_process(4));
+
+    bm_hal_timer_native_advance_ticks(5u);
+    TEST_ASSERT_EQUAL(1, bm_ticker_poll());
+}
+
 void test_ticker_propagates_non_overflow_publish_error(void) {
     static const bm_ticker_slot_t slots[] = {
         { 10u, TICKER_EVT, 1u, "10ms" },
@@ -165,6 +182,7 @@ int main(void) {
     RUN_TEST(test_ticker_rejects_invalid_event_type);
     RUN_TEST(test_ticker_rejects_timer_not_configured);
     RUN_TEST(test_ticker_wraparound);
+    RUN_TEST(test_ticker_catches_up_multiple_periods_without_drift);
     RUN_TEST(test_ticker_propagates_non_overflow_publish_error);
     return UNITY_END();
 }

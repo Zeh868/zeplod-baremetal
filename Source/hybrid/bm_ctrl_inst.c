@@ -194,6 +194,10 @@ static int validate_instance(const bm_ctrl_inst_t *inst) {
             if (!slot->bind_hardware) {
                 return BM_ERR_INVALID;
             }
+            if (slot->trigger != BM_HRT_TRIGGER_PWM_UPDATE &&
+                slot->trigger != BM_HRT_TRIGGER_ADC_COMPLETE) {
+                return BM_ERR_INVALID;
+            }
         } else {
             return BM_ERR_INVALID;
         }
@@ -436,13 +440,13 @@ int bm_ctrl_start_all(const bm_ctrl_inst_t *const *instances, uint32_t count) {
         }
     }
 
-    ctrl_set_session(BM_CTRL_SESSION_STARTED);
     rc = ctrl_ensure_hrt_started();
     if (rc != BM_OK) {
         BM_LOGE("ctrl", "hrt start failed rc=%d", rc);
         ctrl_abort_session();
         return rc;
     }
+    ctrl_set_session(BM_CTRL_SESSION_STARTED);
 
     BM_LOGI("ctrl", "start_all ok count=%u", (unsigned)count);
     return BM_OK;

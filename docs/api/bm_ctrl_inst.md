@@ -27,7 +27,7 @@
 ### `bm_ctrl_start_all(instances, count)`
 
 实例初始化阶段已完成资源冲突检查和 HRT slot 注册；本 API 依次调用
-`ops->start`，**全部成功后再** `bm_hrt_start`（若存在 Scheduled 槽）并开放会话门（`STARTED`）。在此之前 Hardware / Scheduled `step` 均被忽略。失败时 `ctrl_abort_session`：关闭会话门、解绑 Hardware、逆序 `safe_stop`。
+`ops->start`，**全部成功后再** `bm_hrt_start`（若存在 Scheduled 槽），HRT 成功后才开放会话门（`STARTED`）。在此之前 Hardware / Scheduled `step` 均被忽略。失败时 `ctrl_abort_session`：关闭会话门、解绑 Hardware、逆序 `safe_stop`。
 
 `instances` 数组元素不得为 NULL，且须与 `init_all` 时指针一致；`slot_count` 不得超过 `BM_CONFIG_MAX_CTRL_SLOTS`。
 
@@ -68,5 +68,5 @@ bm_ctrl_start_all(g_all, 1);
 
 ## 与资源 / 同步的关系
 
-- 启动前必须通过 `bm_resource_check_conflicts`（在 `start_all` 内自动调用）。
+- 启动前必须通过 `bm_resource_check_conflicts`（在 `init_all` 内自动调用）。
 - 多轴相位对齐使用 `bm_sync` 配置同步域，成员指向 `bm_ctrl_inst_t`。

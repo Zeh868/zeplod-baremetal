@@ -169,11 +169,10 @@ int bm_ticker_poll(void) {
                 catchup++;
                 slot->next_tick = ticker_deadline_from(
                     slot->next_tick, slot->period_ticks);
-                if ((uint32_t)(now - slot->next_tick) >= slot->period_ticks) {
-                    slot->next_tick =
-                        ticker_deadline_from(now, slot->period_ticks);
-                    break;
-                }
+            }
+            if (bm_time_reached_u32(now, slot->next_tick)) {
+                slot->next_tick =
+                    ticker_deadline_from(now, slot->period_ticks);
             }
         }
     }
