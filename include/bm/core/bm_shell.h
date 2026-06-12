@@ -65,9 +65,6 @@ typedef struct {
 /** Shell 实例状态 */
 typedef struct {
     char          buf[BM_CONFIG_SHELL_BUF_SIZE];
-    uint8_t       write_idx;
-    uint8_t       read_idx;
-    uint8_t       line_len;
     uint8_t       cursor;
     bm_shell_cmd_t cmds[BM_CONFIG_SHELL_MAX_CMDS];
     char           cmd_names[BM_CONFIG_SHELL_MAX_CMDS]
@@ -79,7 +76,7 @@ typedef struct {
 /** 静态定义 Shell 实例 */
 #define BM_SHELL_DEFINE(name) \
     static bm_shell_t name = { \
-        .write_idx = 0, .read_idx = 0, .line_len = 0, .cursor = 0, \
+        .cursor = 0, \
         .cmd_count = 0, .swallow_lf = 0 \
     }
 

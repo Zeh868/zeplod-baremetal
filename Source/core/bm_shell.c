@@ -48,9 +48,6 @@ static void _puts(const char *s) {
 void bm_shell_init(bm_shell_t *shell) {
     if (!shell) return;
     memset(shell->buf, 0, sizeof(shell->buf));
-    shell->write_idx = 0;
-    shell->read_idx = 0;
-    shell->line_len = 0;
     shell->cursor = 0;
     shell->cmd_count = 0;
     shell->swallow_lf = 0;
