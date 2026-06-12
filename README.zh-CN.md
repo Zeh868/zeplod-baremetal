@@ -161,15 +161,24 @@ zeplod-baremetal/
 
 构建与运行说明见 [`examples/README.md`](examples/README.md)。
 
-### 集成到已有工程（CubeMX / Keil / IAR / MCUXpresso）
+### 集成到已有工程（类 FreeRTOS）
 
-```cmake
-include(ThirdParty/zeplod-baremetal/cmake/zeplod.cmake)
-zeplod_configure(ROOT .../zeplod-baremetal PROFILE event BACKEND external CONFIG Core/Inc/bm_config.h)
-zeplod_link(${CMAKE_PROJECT_NAME})
+**① 移植** `integration/port/bm_port.c` → 接 Cube/SDK HAL  
+**② 库集成** 源码加入 IDE，或链接 `libbm_*.a`（见 `integration/static-lib/`）
+
+```bash
+# 源码集成：库文件列表（不含 Port）
+python tools/list_sources.py --profile event --format keil
 ```
 
-非 CMake 工程用 `python tools/list_sources.py --profile event --backend register_stm32g4 --format keil` 生成文件列表。详见 [`integration/README.md`](integration/README.md) 与 [`docs/13-集成到现有工程.md`](docs/13-集成到现有工程.md)。
+```cmake
+# CMake 源码集成
+zeplod_configure(ROOT ... PROFILE event BACKEND external CONFIG bm_config.h)
+target_sources(app PRIVATE Core/Src/bm_port.c)
+zeplod_link(app)
+```
+
+详见 [`integration/README.md`](integration/README.md)。
 
 ### 快速开始（本地模拟）
 

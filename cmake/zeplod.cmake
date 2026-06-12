@@ -1,13 +1,14 @@
-# Zeplod Baremetal — 单入口集成（CMake 子工程 / CubeMX / NXP MCUXpresso 等）
+# Zeplod Baremetal — CMake 便捷入口（库源码集成，方式 A′）
 #
-#   include(path/to/zeplod-baremetal/cmake/zeplod.cmake)
-#   zeplod_configure(
-#       ROOT    ${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/zeplod-baremetal
-#       PROFILE event                    # minimal | event | servo | full
-#       BACKEND register_stm32g4         # 见 platform/README.md；external = 自研胶水
-#       CONFIG  ${CMAKE_CURRENT_SOURCE_DIR}/bm_config.h
-#   )
-#   zeplod_link(${CMAKE_PROJECT_NAME})
+# 集成模型（见 integration/README.md）：
+#   ① 移植：应用工程里的 bm_port.c（BACKEND external）
+#   ② 库：zeplod_configure + zeplod_link 拉入 src/ 源码目标
+#
+#   zeplod_configure(ROOT ... PROFILE event BACKEND external CONFIG bm_config.h)
+#   target_sources(app PRIVATE Core/Src/bm_port.c)
+#   zeplod_link(app)
+#
+# 静态库集成（方式 B）见 integration/static-lib/
 
 include_guard(GLOBAL)
 
@@ -37,11 +38,10 @@ function(zeplod_configure)
     _zeplod_apply_profile(${ZP_PROFILE})
 
     if(NOT ZP_BACKEND)
-        message(FATAL_ERROR "zeplod_configure: BACKEND is required "
-            "(e.g. register_stm32g4, native_sim, external)")
+        set(ZP_BACKEND "external")
     endif()
 
-  set(BM_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+    set(BM_BUILD_TESTS OFF CACHE BOOL "" FORCE)
     set(BM_BACKEND "${ZP_BACKEND}" CACHE STRING "" FORCE)
 
     if(ZP_CONFIG)
@@ -70,7 +70,7 @@ function(zeplod_configure)
                 endif()
             else()
                 message(FATAL_ERROR "Unknown BACKEND '${ZP_BACKEND}'. "
-                    "Use external or a name from platform/backends/")
+                    "Use external + bm_port.c, or a name from platform/backends/")
             endif()
         endif()
 
@@ -98,10 +98,8 @@ function(zeplod_include_dirs OUT_VAR)
     set(${OUT_VAR} ${BM_INCLUDE_APP_DIRS} PARENT_SCOPE)
 endfunction()
 
-function(zeplod_backend_include_dirs OUT_VAR BACKEND)
-    zeplod_include_dirs(_app_dirs)
-    if(BACKEND AND NOT BACKEND STREQUAL "external")
-        list(APPEND _app_dirs "${ZEPLOD_ROOT}/platform/backends/${BACKEND}")
-    endif()
-    set(${OUT_VAR} ${_app_dirs} PARENT_SCOPE)
+function(zeplod_port_include_dirs OUT_VAR)
+    zeplod_include_dirs(_dirs)
+    list(APPEND _dirs "${ZEPLOD_ROOT}/include/drv")
+    set(${OUT_VAR} ${_dirs} PARENT_SCOPE)
 endfunction()

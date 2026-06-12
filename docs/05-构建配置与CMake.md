@@ -36,25 +36,21 @@ BM_ENABLE_SYNC → BM_ENABLE_CTRL_INST → BM_ENABLE_HRT
 
 应用应**只链接用到的目标**；需要全开时用 `bm_framework`。
 
-## 应用工程集成（推荐）
+## 应用工程集成
 
-使用单入口 `cmake/zeplod.cmake`（见 [13-集成到现有工程](13-集成到现有工程.md)）：
+Zeplod 是库：**先移植 Port，再集成**（源码或静态库）。见 [13-集成到现有工程](13-集成到现有工程.md)。
+
+| 方式 | 入口 |
+|------|------|
+| 源码（CMake） | `cmake/zeplod.cmake` |
+| 源码（Keil/IAR） | `tools/list_sources.py` + `integration/port/bm_port.c` |
+| 静态库 | `integration/static-lib/` |
 
 ```cmake
-include(${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/zeplod-baremetal/cmake/zeplod.cmake)
-
-zeplod_configure(
-    ROOT    ${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/zeplod-baremetal
-    PROFILE event
-    BACKEND register_stm32g4
-    CONFIG  ${CMAKE_CURRENT_SOURCE_DIR}/bm_config.h
-)
-
-add_executable(my_app main.c)   # 或与 CubeMX 目标合并
+zeplod_configure(ROOT ... PROFILE event BACKEND external CONFIG bm_config.h)
+target_sources(my_app PRIVATE bm_port.c)
 zeplod_link(my_app)
 ```
-
-`PROFILE` 预设裁剪组件；`BACKEND external` 表示胶水层在应用工程内对接厂商 HAL。
 
 ## 底层 add_subdirectory（高级）
 

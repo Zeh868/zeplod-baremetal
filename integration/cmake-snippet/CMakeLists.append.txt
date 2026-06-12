@@ -6,8 +6,11 @@ include(${ZEPLOD_ROOT}/cmake/zeplod.cmake)
 zeplod_configure(
     ROOT    ${ZEPLOD_ROOT}
     PROFILE event
-    BACKEND register_stm32g4
+    BACKEND external
     CONFIG  ${CMAKE_CURRENT_SOURCE_DIR}/Core/Inc/bm_config.h
 )
 
+target_sources(${CMAKE_PROJECT_NAME} PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/Core/Src/bm_port.c
+)
 zeplod_link(${CMAKE_PROJECT_NAME})

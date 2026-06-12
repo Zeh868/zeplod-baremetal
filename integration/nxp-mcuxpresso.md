@@ -1,39 +1,27 @@
-# NXP MCUXpresso 集成
+# NXP MCUXpresso
 
-与 STM32 思路相同：保留 SDK 的 `board/`、`drivers/`、`startup/`，Zeplod 作为额外源码组。
+## 顺序
 
-## CMake（mcuxpresso-sdk 风格）
+1. **移植**：`source/bm_port.c` → 接 `LPUART_WriteBlocking`、`GPT_*` 等 SDK API。
+2. **集成**：源码或 `integration/static-lib` 编出的 `.a`。
+
+## 源码集成
+
+```bash
+python tools/list_sources.py --profile event --format absolute --root /path/to/zeplod
+```
+
+将库源 + `bm_port.c` 加入 MCUXpresso 的 **Zeplod** 源组；Include 用 `--list-includes`。
+
+## CMake（SDK 风格）
 
 ```cmake
-set(ZEPLOD_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../zeplod-baremetal")
-include(${ZEPLOD_ROOT}/cmake/zeplod.cmake)
-
-zeplod_configure(
-    ROOT    ${ZEPLOD_ROOT}
-    PROFILE event
-    BACKEND external
-    CONFIG  ${CMAKE_CURRENT_SOURCE_DIR}/source/bm_config.h
-)
-
-target_sources(${MCUX_SDK_PROJECT_NAME} PRIVATE
-    source/bm_drv_mcux_glue.c
-)
+include(../zeplod-baremetal/cmake/zeplod.cmake)
+zeplod_configure(ROOT ... PROFILE event BACKEND external CONFIG source/bm_config.h)
+target_sources(${MCUX_SDK_PROJECT_NAME} PRIVATE source/bm_port.c)
 zeplod_link(${MCUX_SDK_PROJECT_NAME})
 ```
 
-`bm_drv_mcux_glue.c` 内调用 `GPIO_PinWrite`、`LPUART_WriteBlocking`、`GPT_*` 等 SDK API，导出 `bm_drv_*_api` 符号表。
+## 静态库
 
-## MCUXpresso IDE（无 CMake）
-
-```bash
-python tools/list_sources.py --profile event --with-hal --format absolute \
-    --root /path/to/zeplod-baremetal > zeplod_files.txt
-```
-
-将输出文件拖入 IDE 的 **Zeplod** 源组；Include 路径用 `--list-includes --format absolute`。
-
-后端选 `external` 时，**不要**加入 `platform/backends/register_*`，只保留胶水 + HAL 分发层。
-
-## 与 FlexPWM / ADC 混合域
-
-参考 `platform/backends/register_stm32g4/bm_drv_adc_stm32g4.c` 的 `bind_complete` 模式：在 ADC 完成中断里调用绑定的 `bm_hal_hrt_binding_t.callback`。
+用 `toolchain-arm-none-eabi.cmake` 或 NXP 工具链编 `integration/static-lib`，把 `libbm_*.a` 与 `include/` 拷入 SDK 工程，**Port 仍编译在应用侧**。

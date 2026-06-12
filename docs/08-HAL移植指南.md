@@ -58,9 +58,15 @@ PWM/ADC/COMP/Encoder 契约头文件：`bm_hal_pwm.h`、`bm_hal_adc.h` 等。
 
 移植检查：实现本应用用到的 API → `native_sim` 单测 → 真机时序。
 
-## 集成到现有工程
+## 移植（Port）与集成的关系
 
-挂库步骤（CubeMX / MCUXpresso / Keil / IAR）见 [13-集成到现有工程](13-集成到现有工程.md) 与 [integration/](../integration/README.md)。HAL 实现细节仍参考本文与 `platform/backends/`。
+| 概念 | 内容 | 位置 |
+|------|------|------|
+| **库** | 事件、HAL 分发层、混合域（可源码或静态库） | `src/`、`include/` |
+| **Port** | `bm_drv_*_api` 实现，接厂商 HAL | 应用工程内 `bm_port.c`，模板见 [integration/port/](../integration/port/) |
+| **集成** | 库怎么进 Keil/IAR/CMake | [13-集成到现有工程](13-集成到现有工程.md) |
+
+本文描述 **Port 要实现什么**；挂库步骤见 [integration/](../integration/README.md)。
 
 ## IDE 附录
 

@@ -229,7 +229,8 @@ def main() -> None:
     parser.add_argument("--enable-sync", choices=["ON", "OFF"], default="OFF")
     parser.add_argument(
         "--backend",
-        help="Platform backend id (see platform/backends/). Use external for glue in app.",
+        help="Optional: also list reference port sources under platform/backends/ "
+        "(for porting study). Production port: integration/port/bm_port.c",
     )
     parser.add_argument(
         "--with-hal",
@@ -262,7 +263,7 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    if args.backend and not args.with_hal:
+    if args.backend or args.with_hal:
         args.with_hal = True
 
     root = Path(args.root).resolve()

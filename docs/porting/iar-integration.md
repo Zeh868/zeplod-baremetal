@@ -1,7 +1,7 @@
 # IAR EWARM Integration
 
-Zeplod Baremetal can be added to an EWARM project as C99 source code. A modern
-EWARM release with C99 support is recommended.
+Zeplod integrates like FreeRTOS: **port** (`bm_port.c`) in the app project, then
+**library** as source or `.a`. See [integration/README.md](../../integration/README.md).
 
 ## 1. Add Include Paths
 
@@ -34,16 +34,12 @@ src/core/bm_shell.c
 src/core/bm_wdg.c
 ```
 
-Generate lists with:
-
 ```bash
-python tools/list_sources.py --profile event --backend register_stm32g4 \
-  --format iar --root-macro ZEPLOD_ROOT
-python tools/list_sources.py --profile event --backend register_stm32g4 \
-  --list-includes --format iar --root-macro ZEPLOD_ROOT
+python tools/list_sources.py --profile event --format iar --root-macro ZEPLOD_ROOT
+python tools/list_sources.py --profile event --list-includes --format iar --root-macro ZEPLOD_ROOT
 ```
 
-See [integration/README.md](../../integration/README.md).
+Add `integration/port/bm_port.c` separately.
 
 `bm_ultra.h` is header-only.
 

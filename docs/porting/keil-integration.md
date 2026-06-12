@@ -1,7 +1,12 @@
 # Keil MDK-ARM Integration
 
-Zeplod Baremetal is distributed as C99 source code. Add the required source
-files directly to an existing MDK project; no prebuilt library is required.
+Zeplod is a C99 **library** (like FreeRTOS): integrate as **source** or **prebuilt
+`.lib`**, after implementing the **port** layer in your project.
+
+See [integration/README.md](../../integration/README.md) for the full model.
+
+1. **Port** — copy `integration/port/bm_port.c`, wire to vendor HAL.
+2. **Library** — add Zeplod `.c` files (source mode) or link `libbm_*.a` (static lib mode).
 
 Arm Compiler 6 is recommended. Arm Compiler 5 has only partial C99 support and
 is not part of the verified toolchain set.
@@ -42,17 +47,18 @@ src/core/bm_shell.c
 src/core/bm_wdg.c
 ```
 
-Generate source and include lists (recommended):
+Library sources (port **not** included):
 
 ```bash
-python tools/list_sources.py --profile event --backend register_stm32g4 \
-  --format keil --root-macro ZEPLOD_ROOT > zeplod_sources.txt
-python tools/list_sources.py --profile event --backend register_stm32g4 \
-  --list-includes --format keil --root-macro ZEPLOD_ROOT > zeplod_includes.txt
+python tools/list_sources.py --profile event --format keil --root-macro ZEPLOD_ROOT
+python tools/list_sources.py --profile event --list-includes --format keil --root-macro ZEPLOD_ROOT
 ```
 
-Define `ZEPLOD_ROOT` in the project to the framework checkout path.
-See [integration/README.md](../../integration/README.md) for CubeMX workflow.
+Also add `integration/port/bm_port.c` to the project. Define `ZEPLOD_ROOT` to the
+framework checkout path.
+
+Static library mode: build with `integration/static-lib/`, link `libbm_*.a`, still
+compile `bm_port.c` in the application project.
 
 `bm_ultra.h` is header-only and does not require framework `.c` files.
 
