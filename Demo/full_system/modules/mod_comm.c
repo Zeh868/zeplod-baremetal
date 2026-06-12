@@ -32,5 +32,4 @@ static int comm_deinit(void) {
     return BM_OK;
 }
 
-BM_MODULE_DEFINE_EX(comm, 2, BM_MODULE_FLAG_WDG,
-    comm_init, comm_start, comm_stop, comm_deinit);
+BM_MODULE_DEFINE(comm, 2, comm_init, comm_start, comm_stop, comm_deinit);

@@ -21,6 +21,6 @@
 #define BM_CONFIG_EVENT_INLINE_DATA_SIZE    16
 #define BM_CONFIG_MAX_MODULES               8
 #define BM_CONFIG_MEMPOOL_MAX_POOLS         4
-#define BM_CONFIG_MAX_WDG_MODULES           4
+#define BM_CONFIG_MAX_WDG_MODULES           1
 
 #endif

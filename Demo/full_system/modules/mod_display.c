@@ -40,5 +40,4 @@ static int display_stop(void) {
     return bm_event_unsubscribe(EVENT_TEMP, s_sub_id);
 }
 
-BM_MODULE_DEFINE_EX(display, 4, BM_MODULE_FLAG_WDG,
-    display_init, display_start, display_stop, NULL);
+BM_MODULE_DEFINE(display, 4, display_init, display_start, display_stop, NULL);

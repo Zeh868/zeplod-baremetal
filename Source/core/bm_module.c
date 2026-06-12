@@ -19,10 +19,6 @@
 #include "bm_event.h"
 #include "bm_log.h"
 
-#ifdef BM_MODULE_HAS_WDG
-#include "bm_wdg.h"
-#endif
-
 #include <string.h>
 
 extern const bm_module_t *_bm_module_table[];
@@ -31,13 +27,6 @@ extern const uint32_t     _bm_module_count;
 static bm_module_t _modules[BM_CONFIG_MAX_MODULES];
 static uint32_t    _module_count = 0;
 static int         _modules_initialized = 0;
-
-#ifdef BM_MODULE_HAS_WDG
-static void _module_wdg_register_failed(uint32_t through_index) {
-    (void)through_index;
-    bm_wdg_reset();
-}
-#endif
 
 /**
  * @brief 应用启动：复位事件总线并执行模块 init/start
@@ -166,20 +155,6 @@ int bm_module_start_all(void) {
         if (_modules[i].state == BM_MODULE_STATE_INITED && _modules[i].start) {
             int r = _modules[i].start();
             if (r == BM_OK) {
-#ifdef BM_MODULE_HAS_WDG
-                if ((_modules[i].flags & BM_MODULE_FLAG_WDG) != 0u &&
-                    _modules[i].name != NULL) {
-                    int wr = bm_wdg_register(_modules[i].name);
-                    if (wr != BM_OK) {
-                        BM_LOGE("module", "'%s' wdg register failed rc=%d",
-                                _modules[i].name, wr);
-                        _modules[i].state = BM_MODULE_STATE_INITED;
-                        _rollback_starts(i);
-                        _module_wdg_register_failed(i);
-                        return wr;
-                    }
-                }
-#endif
                 _modules[i].state = BM_MODULE_STATE_STARTED;
                 BM_LOGD("module", "'%s' started",
                         _modules[i].name ? _modules[i].name : "(null)");
@@ -241,18 +216,4 @@ int bm_module_deinit_all(void) {
     BM_CRITICAL_EXIT(s);
     BM_LOGI("module", "deinit_all done");
     return rc;
-}
-
-void bm_module_feed_wdg_all(void) {
-#ifdef BM_MODULE_HAS_WDG
-    for (uint32_t i = 0u; i < _module_count; i++) {
-        if ((_modules[i].flags & BM_MODULE_FLAG_WDG) != 0u &&
-            _modules[i].name != NULL) {
-            bm_wdg_feed_module(_modules[i].name);
-        }
-    }
-    bm_wdg_feed();
-#else
-    (void)_module_count;
-#endif
 }

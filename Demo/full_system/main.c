@@ -1,6 +1,6 @@
 /**
  * @file main.c
- * @brief 全系统集成示例：模块、事件风暴优先级、看门狗与故障处理
+ * @brief 全系统集成示例：模块、事件风暴优先级、主循环喂狗与故障处理
  */
 #include "app_events.h"
 #include "bm_core.h"
@@ -8,6 +8,7 @@
 #include "bm_log.h"
 #include "bm_module.h"
 #include "bm_mempool.h"
+#include "bm_wdg.h"
 #include "example_support.h"
 
 #define TAG "full_system"
@@ -73,8 +74,8 @@ int main(void) {
         return 1;
     }
 
-    example_print("[wdg] sensor, comm, display registered\n");
-    BM_LOGI(TAG, "watchdog modules registered");
+    example_print("[wdg] main-loop hardware watchdog\n");
+    BM_LOGI(TAG, "hardware watchdog via main loop");
 
     while (1) {
         example_delay_cycles(1000000U);
@@ -104,7 +105,7 @@ int main(void) {
             storm_published = 0;
         }
 
-        bm_module_feed_wdg_all();
+        bm_wdg_feed();
 
         if (app_storm_count_get() == EVENT_STORM_COUNT &&
             app_storm_order_is_valid() &&
