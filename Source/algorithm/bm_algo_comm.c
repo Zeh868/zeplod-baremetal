@@ -28,24 +28,24 @@ static const char s_dtmf_map[BM_ALGO_DTMF_ROW_COUNT][BM_ALGO_DTMF_COL_COUNT] = {
 
 uint16_t bm_algo_crc16_ccitt(const uint8_t *data, uint32_t len, uint16_t init) {
     uint32_t i;
-    uint16_t crc = init;
+    uint32_t crc = init;
 
     if (data == NULL) {
-        return crc;
+        return (uint16_t)crc;
     }
 
     for (i = 0u; i < len; ++i) {
         uint32_t b;
-        crc ^= (uint16_t)data[i] << 8;
+        crc ^= (uint32_t)data[i] << 8;
         for (b = 0u; b < 8u; ++b) {
             if (crc & 0x8000u) {
-                crc = (uint16_t)((crc << 1) ^ 0x1021u);
+                crc = ((crc << 1) ^ 0x1021u) & 0xffffu;
             } else {
-                crc <<= 1;
+                crc = (crc << 1) & 0xffffu;
             }
         }
     }
-    return crc;
+    return (uint16_t)crc;
 }
 
 uint32_t bm_algo_crc32(const uint8_t *data, uint32_t len, uint32_t init) {

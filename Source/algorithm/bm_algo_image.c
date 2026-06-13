@@ -199,7 +199,7 @@ void bm_algo_image_frame_diff_u8(const uint8_t *prev,
 
     n = width * height;
     for (i = 0u; i < n; ++i) {
-        int16_t d = (int16_t)curr[i] - (int16_t)prev[i];
+        int d = (int)curr[i] - (int)prev[i];
         if (d < 0) {
             d = -d;
         }

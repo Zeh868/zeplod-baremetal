@@ -84,6 +84,10 @@ void bm_algo_mahony_step(bm_algo_mahony_state_t *state,
     float ex;
     float ey;
     float ez;
+    float q_dot0;
+    float q_dot1;
+    float q_dot2;
+    float q_dot3;
 
     if (state == NULL || config == NULL || dt_s <= 0.0f) {
         return;
@@ -117,10 +121,15 @@ void bm_algo_mahony_step(bm_algo_mahony_state_t *state,
         gz += config->kp * ez + state->integral_z;
     }
 
-    q0 += (-q1 * gx - q2 * gy - q3 * gz) * 0.5f * dt_s;
-    q1 += ( q0 * gx + q2 * gz - q3 * gy) * 0.5f * dt_s;
-    q2 += ( q0 * gy - q1 * gz + q3 * gx) * 0.5f * dt_s;
-    q3 += ( q0 * gz + q1 * gy - q2 * gx) * 0.5f * dt_s;
+    q_dot0 = 0.5f * (-q1 * gx - q2 * gy - q3 * gz);
+    q_dot1 = 0.5f * ( q0 * gx + q2 * gz - q3 * gy);
+    q_dot2 = 0.5f * ( q0 * gy - q1 * gz + q3 * gx);
+    q_dot3 = 0.5f * ( q0 * gz + q1 * gy - q2 * gx);
+
+    q0 += q_dot0 * dt_s;
+    q1 += q_dot1 * dt_s;
+    q2 += q_dot2 * dt_s;
+    q3 += q_dot3 * dt_s;
 
     recip_norm = inv_sqrt(q0 * q0 + q1 * q1 + q2 * q2 + q3 * q3);
     state->q.w = q0 * recip_norm;
@@ -216,7 +225,6 @@ void bm_algo_quat_to_euler(const bm_algo_quat_t *q, bm_algo_euler_t *euler) {
     float sinr;
     float cosr;
     float sinp;
-    float cosp;
     float siny;
     float cosy;
 

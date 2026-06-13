@@ -36,10 +36,11 @@ void bm_algo_sogi_pll_step(bm_algo_sogi_pll_state_t *state,
                            const bm_algo_sogi_pll_config_t *config,
                            float v_input,
                            float dt_s) {
-    float err;
     float vq;
     float k;
     float omega;
+    float d_alpha;
+    float d_beta;
 
     if (state == NULL || config == NULL || dt_s <= 0.0f) {
         return;
@@ -48,21 +49,24 @@ void bm_algo_sogi_pll_step(bm_algo_sogi_pll_state_t *state,
     k = config->k_sogi;
     omega = state->omega_rad_s;
 
-    /* 简易 SOGI：二阶带通产生 v_beta */
-    state->v_alpha += k * (v_input - state->v_alpha) * dt_s;
-    state->v_beta += omega * state->v_alpha * dt_s;
+    /* Continuous SOGI state equations, integrated with forward Euler. */
+    d_alpha = omega * (k * (v_input - state->v_alpha) - state->v_beta);
+    d_beta = omega * state->v_alpha;
+    state->v_alpha += d_alpha * dt_s;
+    state->v_beta += d_beta * dt_s;
 
     /* Park 到 dq，PLL 用 q 轴误差 */
     vq = -sinf(state->theta_rad) * state->v_alpha
          + cosf(state->theta_rad) * state->v_beta;
-    err = vq;
-
-    state->integrator += config->k_pll * err * dt_s;
+    state->integrator += config->k_pll * vq * dt_s;
     state->omega_rad_s = config->nominal_omega_rad_s + state->integrator;
     state->theta_rad += state->omega_rad_s * dt_s;
 
-    if (state->theta_rad > 2.0f * BM_ALGO_PI_F) {
+    while (state->theta_rad >= 2.0f * BM_ALGO_PI_F) {
         state->theta_rad -= 2.0f * BM_ALGO_PI_F;
+    }
+    while (state->theta_rad < 0.0f) {
+        state->theta_rad += 2.0f * BM_ALGO_PI_F;
     }
 }
 

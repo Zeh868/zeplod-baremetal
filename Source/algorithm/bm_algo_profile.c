@@ -142,31 +142,50 @@ float bm_algo_scurve_step(bm_algo_scurve_state_t *state,
                           const bm_algo_scurve_config_t *config,
                           float dt_s) {
     float dist;
-    float jerk;
-    float v_des;
+    float direction;
+    float stopping_distance;
+    float target_acceleration;
+    float acceleration_delta;
+    float previous_dist;
 
-    if (state == NULL || config == NULL || dt_s <= 0.0f) {
+    if (state == NULL || config == NULL || dt_s <= 0.0f ||
+        config->max_vel <= 0.0f || config->max_accel <= 0.0f ||
+        config->max_jerk <= 0.0f) {
         return 0.0f;
     }
 
     dist = state->target - state->position;
-    v_des = (dist > 0.0f) ? config->max_vel : -config->max_vel;
-
     if (fabsf(dist) < 1e-5f && fabsf(state->velocity) < 1e-5f) {
+        state->position = state->target;
         state->velocity = 0.0f;
         state->acceleration = 0.0f;
         state->done = 1;
         return state->position;
     }
 
-    /* 简化 S 曲线：按速度误差施加 jerk 限幅加速度 */
-    if (state->velocity < v_des) {
-        jerk = config->max_jerk;
+    /* Brake-distance controller with jerk-limited acceleration changes. */
+    direction = (dist >= 0.0f) ? 1.0f : -1.0f;
+    stopping_distance =
+        (state->velocity * state->velocity) / (2.0f * config->max_accel);
+    stopping_distance +=
+        fabsf(state->velocity * state->acceleration) / config->max_jerk;
+
+    if (state->velocity * direction < 0.0f ||
+        fabsf(dist) > stopping_distance) {
+        target_acceleration =
+            (fabsf(state->velocity) < config->max_vel)
+                ? direction * config->max_accel
+                : 0.0f;
     } else {
-        jerk = -config->max_jerk;
+        target_acceleration = -direction * config->max_accel;
     }
 
-    state->acceleration += jerk * dt_s;
+    acceleration_delta = target_acceleration - state->acceleration;
+    acceleration_delta = bm_algo_clamp_f(
+        acceleration_delta,
+        -config->max_jerk * dt_s,
+        config->max_jerk * dt_s);
+    state->acceleration += acceleration_delta;
     state->acceleration = bm_algo_clamp_f(state->acceleration,
                                           -config->max_accel,
                                           config->max_accel);
@@ -176,7 +195,18 @@ float bm_algo_scurve_step(bm_algo_scurve_state_t *state,
                                       -config->max_vel,
                                       config->max_vel);
 
+    previous_dist = dist;
     state->position += state->velocity * dt_s;
+    dist = state->target - state->position;
+    if ((previous_dist > 0.0f && dist <= 0.0f) ||
+        (previous_dist < 0.0f && dist >= 0.0f)) {
+        state->position = state->target;
+        state->velocity = 0.0f;
+        state->acceleration = 0.0f;
+        state->done = 1;
+        return state->position;
+    }
+
     state->done = 0;
     return state->position;
 }

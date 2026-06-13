@@ -174,6 +174,10 @@ void bm_algo_window_hann(float *window, uint32_t n) {
     if (window == NULL || n == 0u) {
         return;
     }
+    if (n == 1u) {
+        window[0] = 1.0f;
+        return;
+    }
     for (i = 0u; i < n; ++i) {
         window[i] = 0.5f * (1.0f - cosf(2.0f * BM_ALGO_PI_F * (float)i / (float)(n - 1u)));
     }
@@ -182,6 +186,10 @@ void bm_algo_window_hann(float *window, uint32_t n) {
 void bm_algo_window_hamming(float *window, uint32_t n) {
     uint32_t i;
     if (window == NULL || n == 0u) {
+        return;
+    }
+    if (n == 1u) {
+        window[0] = 1.0f;
         return;
     }
     for (i = 0u; i < n; ++i) {
@@ -196,6 +204,10 @@ void bm_algo_window_blackman(float *window, uint32_t n) {
     float a2 = 0.08f;
 
     if (window == NULL || n == 0u) {
+        return;
+    }
+    if (n == 1u) {
+        window[0] = 1.0f;
         return;
     }
     for (i = 0u; i < n; ++i) {

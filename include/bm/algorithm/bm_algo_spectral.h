@@ -29,6 +29,7 @@ typedef struct {
 typedef struct {
     float s_prev;
     float s_prev2;
+    float coeff;
     uint32_t count;
 } bm_algo_goertzel_state_t;
 

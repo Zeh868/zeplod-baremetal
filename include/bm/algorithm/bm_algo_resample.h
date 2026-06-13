@@ -40,6 +40,7 @@ typedef struct {
 void bm_algo_linear_resampler_reset(bm_algo_linear_resampler_state_t *state,
                                     float ratio,
                                     float initial);
+/** Returns -1 without consuming input when max_outputs is too small. */
 int bm_algo_linear_resampler_step(bm_algo_linear_resampler_state_t *state,
                                   float input,
                                   float *outputs,

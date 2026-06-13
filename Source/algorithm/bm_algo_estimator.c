@@ -86,21 +86,34 @@ void bm_algo_ekf_cv_update(bm_algo_ekf_cv_state_t *state,
     float k0;
     float k1;
     float y;
+    float p00;
+    float p01;
+    float p10;
+    float p11;
 
     if (state == NULL || config == NULL) {
         return;
     }
 
     s = state->p00 + config->r_pos;
+    if (s <= 0.0f) {
+        return;
+    }
     k0 = state->p00 / s;
     k1 = state->p10 / s;
     y = pos_meas - state->pos;
+    p00 = state->p00;
+    p01 = state->p01;
+    p10 = state->p10;
+    p11 = state->p11;
 
     state->pos += k0 * y;
     state->vel += k1 * y;
 
-    state->p00 -= k0 * state->p00;
-    state->p01 -= k0 * state->p01;
-    state->p10 -= k1 * state->p00;
-    state->p11 -= k1 * state->p01;
+    state->p00 = p00 - k0 * p00;
+    state->p01 = p01 - k0 * p01;
+    state->p10 = p10 - k1 * p00;
+    state->p11 = p11 - k1 * p01;
+    state->p01 = 0.5f * (state->p01 + state->p10);
+    state->p10 = state->p01;
 }

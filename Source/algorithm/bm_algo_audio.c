@@ -81,7 +81,8 @@ void bm_algo_agc_process(bm_algo_agc_state_t *state,
     float err;
     float coeff;
 
-    if (state == NULL || config == NULL || in == NULL || out == NULL) {
+    if (state == NULL || config == NULL || in == NULL || out == NULL ||
+        n == 0u) {
         return;
     }
 
@@ -117,7 +118,7 @@ void bm_algo_vad_process(bm_algo_vad_state_t *state,
     uint32_t i;
     float e = 0.0f;
 
-    if (state == NULL || config == NULL || in == NULL) {
+    if (state == NULL || config == NULL || in == NULL || n == 0u) {
         return;
     }
 

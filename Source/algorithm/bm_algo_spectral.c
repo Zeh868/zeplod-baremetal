@@ -26,8 +26,8 @@ int bm_algo_goertzel_init(bm_algo_goertzel_state_t *state,
     }
 
     omega = 2.0f * BM_ALGO_PI_F * config->target_freq_hz / config->sample_hz;
-    ((bm_algo_goertzel_config_t *)config)->coeff = 2.0f * cosf(omega);
     bm_algo_goertzel_reset(state);
+    state->coeff = 2.0f * cosf(omega);
     return 0;
 }
 
@@ -48,7 +48,7 @@ int bm_algo_goertzel_feed(bm_algo_goertzel_state_t *state,
         return -1;
     }
 
-    s = sample + config->coeff * state->s_prev - state->s_prev2;
+    s = sample + state->coeff * state->s_prev - state->s_prev2;
     state->s_prev2 = state->s_prev;
     state->s_prev = s;
     state->count++;
