@@ -19,6 +19,7 @@
 | `BM_ENABLE_EXEC` | OFF | `bm_exec`、`bm_resource`（依赖 HRT） |
 | `BM_ENABLE_SYNC` | OFF | `bm_sync`（依赖 EXEC） |
 | `BM_ENABLE_STREAM` | OFF | `bm_stream`（可独立于 EXEC 启用） |
+| `BM_ENABLE_PIPELINE` | OFF | `bm_pipeline` 静态线性链（依赖 STREAM 或 EXEC） |
 | `BM_ENABLE_ALGORITHM` | OFF | `bm_algorithm` 纯数学核（仅 `bm_config` + libm） |
 | `BM_SYNC_HAL_NATIVE` | — | 测试用 native 同步 HAL |
 
@@ -36,6 +37,7 @@ BM_ENABLE_SYNC → BM_ENABLE_EXEC → BM_ENABLE_HRT
 | `bm_module` / `bm_channel` / `bm_shell` / `bm_wdg` | 可选组件 |
 | `bm_hrt` / `bm_ticker` / `bm_exec` / `bm_resource` / `bm_sync` | 混合域 |
 | `bm_stream` | 静态零拷贝块流（可选，测试默认 ON） |
+| `bm_pipeline` | 编译期线性处理链（可选，测试默认 ON） |
 | `bm_algorithm` | 纯算法库（可选，测试默认 ON） |
 | `bm_hal` | 弱符号默认桩 |
 | `bm_hal_native` / `bm_hal_stm32g4` / `bm_hal_esp32wroom32e` / … | 平台强符号覆盖 |

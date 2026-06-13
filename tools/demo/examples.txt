@@ -9,5 +9,6 @@ foc_current_loop
 motor_foc_sensored
 stream_block_rms
 stream_fft
+stream_bms_pipeline
 multi_axis_sync
 multi_channel_bms

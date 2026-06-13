@@ -29,4 +29,8 @@
 #include "bm/hybrid/bm_stream.h"
 #include "hal/bm_hal_dma_stream.h"
 
+#if BM_CONFIG_ENABLE_PIPELINE
+#include "bm/hybrid/bm_pipeline.h"
+#endif
+
 #endif /* BM_DSP_H */

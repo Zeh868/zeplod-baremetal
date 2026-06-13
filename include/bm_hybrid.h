@@ -44,4 +44,8 @@
 #include "bm/hybrid/bm_stream.h"
 #endif
 
+#if BM_CONFIG_ENABLE_PIPELINE
+#include "bm/hybrid/bm_pipeline.h"
+#endif
+
 #endif /* BM_HYBRID_H */

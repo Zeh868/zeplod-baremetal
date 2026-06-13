@@ -75,6 +75,10 @@ if(BM_ENABLE_ALGORITHM)
     endif()
 endif()
 
+if(TARGET bm_pipeline)
+    bm_add_test(test_pipeline test_pipeline.c bm_pipeline)
+endif()
+
 if(TARGET bm_component_motor)
     bm_add_test(test_motor_foc_sensored
         test_motor_foc_sensored.c

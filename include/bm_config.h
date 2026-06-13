@@ -52,6 +52,9 @@
 #ifndef BM_CONFIG_ENABLE_STREAM
 #define BM_CONFIG_ENABLE_STREAM              0
 #endif
+#ifndef BM_CONFIG_ENABLE_PIPELINE
+#define BM_CONFIG_ENABLE_PIPELINE            0
+#endif
 #ifndef BM_CONFIG_ENABLE_ALGORITHM
 #define BM_CONFIG_ENABLE_ALGORITHM           0
 #endif
