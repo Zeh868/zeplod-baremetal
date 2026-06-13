@@ -71,6 +71,15 @@ if(BM_ENABLE_ALGORITHM)
     endif()
 endif()
 
+if(TARGET bm_component_motor)
+    bm_add_test(test_motor_foc_sensored
+        test_motor_foc_sensored.c
+        bm_component_motor)
+    target_link_libraries(test_motor_foc_sensored PRIVATE bm_core)
+    target_include_directories(test_motor_foc_sensored PRIVATE
+        ${CMAKE_SOURCE_DIR}/portable/native_sim)
+endif()
+
 if(BM_ENABLE_SYNC)
     add_executable(test_sync test_sync.c)
     target_link_libraries(test_sync PRIVATE unity bm_exec bm_hal_native)

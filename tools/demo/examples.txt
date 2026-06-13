@@ -6,5 +6,6 @@ hrt_servo_stub
 hrt_bms_coulomb
 closed_loop_servo
 foc_current_loop
+motor_foc_sensored
 multi_axis_sync
 multi_channel_bms
