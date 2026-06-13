@@ -74,6 +74,18 @@ void bm_algo_svpwm(float v_alpha,
 /** 限制 dq 电压矢量幅值（圆限幅） */
 void bm_algo_voltage_limit(float *vd, float *vq, float v_max);
 
+/** 双电阻采样重构三相电流（ic = -ia - ib） */
+void bm_algo_current_from_2shunt(float ia, float ib, bm_algo_abc_t *abc);
+
+/**
+ * 死区压降补偿：按相电流方向补偿测量电压（V）
+ * @param deadtime_s  死区时间（s）
+ */
+float bm_algo_deadtime_comp_v(float phase_v,
+                              float phase_current_a,
+                              float deadtime_s,
+                              float vbus_v);
+
 #ifdef __cplusplus
 }
 #endif

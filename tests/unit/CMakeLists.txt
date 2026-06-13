@@ -88,6 +88,14 @@ if(TARGET bm_component_motor)
         ${CMAKE_SOURCE_DIR}/portable/native_sim)
 endif()
 
+if(TARGET bm_component_bms)
+    bm_add_test(test_bms_estimation test_bms_estimation.c bm_component_bms)
+endif()
+
+if(TARGET bm_component_power)
+    bm_add_test(test_power_control test_power_control.c bm_component_power)
+endif()
+
 if(BM_ENABLE_SYNC)
     add_executable(test_sync test_sync.c)
     target_link_libraries(test_sync PRIVATE unity bm_exec bm_hal_native)

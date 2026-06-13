@@ -72,6 +72,23 @@ float bm_algo_soh_update(bm_algo_soh_state_t *state,
                          const bm_algo_soh_config_t *config,
                          float discharged_ah);
 
+/* ---------- 温度补偿（容量/SOC 一阶修正） ---------- */
+typedef struct {
+    float ref_temp_c;
+    float capacity_coeff_per_c;  /**< 有效容量温度系数（1/°C） */
+    float ocv_shift_v_per_c;     /**< OCV 电压温度漂移（V/°C） */
+} bm_algo_battery_temp_config_t;
+
+/** 按温度修正标称容量（Ah） */
+float bm_algo_battery_temp_capacity_ah(float nominal_capacity_ah,
+                                       float temp_c,
+                                       const bm_algo_battery_temp_config_t *config);
+
+/** 按温度修正 OCV 查表输入电压（V） */
+float bm_algo_battery_temp_compensate_ocv(float ocv_v,
+                                          float temp_c,
+                                          const bm_algo_battery_temp_config_t *config);
+
 #ifdef __cplusplus
 }
 #endif

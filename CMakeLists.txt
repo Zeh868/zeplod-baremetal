@@ -17,6 +17,8 @@ option(BM_ENABLE_STREAM "Enable block/frame stream (bm_stream)" OFF)
 option(BM_ENABLE_PIPELINE "Enable static linear bm_pipeline" OFF)
 option(BM_ENABLE_ALGORITHM "Enable deterministic algorithm library (bm_algorithm)" OFF)
 option(BM_ENABLE_COMPONENT_MOTOR "Enable motor domain components" OFF)
+option(BM_ENABLE_COMPONENT_BMS "Enable BMS domain components" OFF)
+option(BM_ENABLE_COMPONENT_POWER "Enable power domain components" OFF)
 option(BM_ENABLE_SYNC "Enable sync domain" OFF)
 option(BM_SYNC_HAL_NATIVE "Link native_sim sync HAL into bm_exec" OFF)
 option(BM_SYNC_HAL_QEMU "Link QEMU sync HAL into bm_exec" OFF)
@@ -45,6 +47,8 @@ if(BM_BUILD_TESTS)
     set(BM_ENABLE_PIPELINE ON CACHE BOOL "" FORCE)
     set(BM_ENABLE_ALGORITHM ON CACHE BOOL "" FORCE)
     set(BM_ENABLE_COMPONENT_MOTOR ON CACHE BOOL "" FORCE)
+    set(BM_ENABLE_COMPONENT_BMS ON CACHE BOOL "" FORCE)
+    set(BM_ENABLE_COMPONENT_POWER ON CACHE BOOL "" FORCE)
     if(NOT BM_BACKEND)
         set(BM_BACKEND "native_sim")
     endif()
@@ -225,6 +229,7 @@ if(BM_ENABLE_ALGORITHM)
         Source/algorithm/bm_algo_comm.c
         Source/algorithm/bm_algo_signal_quality.c
         Source/algorithm/bm_algo_estimator.c
+        Source/algorithm/bm_algo_fixed.c
     )
     target_link_libraries(bm_algorithm PUBLIC bm_config)
     if(NOT MSVC)
@@ -244,6 +249,30 @@ if(BM_ENABLE_COMPONENT_MOTOR)
     target_link_libraries(bm_component_motor PUBLIC bm_algorithm bm_hal bm_config)
     bm_target_internal_includes(bm_component_motor)
     target_link_libraries(bm_framework INTERFACE bm_component_motor)
+endif()
+
+if(BM_ENABLE_COMPONENT_BMS)
+    if(NOT BM_ENABLE_ALGORITHM)
+        message(FATAL_ERROR "BM_ENABLE_COMPONENT_BMS requires BM_ENABLE_ALGORITHM")
+    endif()
+    add_library(bm_component_bms STATIC
+        Source/component/bms_estimation.c
+    )
+    target_link_libraries(bm_component_bms PUBLIC bm_algorithm bm_config)
+    bm_target_internal_includes(bm_component_bms)
+    target_link_libraries(bm_framework INTERFACE bm_component_bms)
+endif()
+
+if(BM_ENABLE_COMPONENT_POWER)
+    if(NOT BM_ENABLE_ALGORITHM)
+        message(FATAL_ERROR "BM_ENABLE_COMPONENT_POWER requires BM_ENABLE_ALGORITHM")
+    endif()
+    add_library(bm_component_power STATIC
+        Source/component/power_control.c
+    )
+    target_link_libraries(bm_component_power PUBLIC bm_algorithm bm_config)
+    bm_target_internal_includes(bm_component_power)
+    target_link_libraries(bm_framework INTERFACE bm_component_power)
 endif()
 
 if(BM_BUILD_TESTS)

@@ -71,6 +71,8 @@ jobs:
           - stream_block_rms
           - stream_fft
           - stream_bms_pipeline
+          - power_buck_loop
+          - bms_estimation_loop
           - multi_axis_sync
           - multi_channel_bms
     steps:

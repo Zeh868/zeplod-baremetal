@@ -286,6 +286,65 @@ static void test_sogi_states_decay_after_input_stops(void) {
     TEST_ASSERT_TRUE(fabsf(st.v_beta) < 0.001f);
 }
 
+static void test_fixed_pi_q31_saturates(void) {
+    bm_algo_pi_q31_config_t cfg = {
+        .kp = bm_algo_float_to_q31(0.8f),
+        .ki = bm_algo_float_to_q31(0.5f),
+        .out_min = bm_algo_float_to_q31(-1.0f),
+        .out_max = bm_algo_float_to_q31(1.0f),
+        .integrator_min = bm_algo_float_to_q31(-1.0f),
+        .integrator_max = bm_algo_float_to_q31(1.0f)
+    };
+    bm_algo_pi_q31_state_t st;
+    bm_algo_q31_t out;
+    int i;
+
+    bm_algo_pi_q31_reset(&st, 0);
+    for (i = 0; i < 300; ++i) {
+        out = bm_algo_pi_q31_step(&st, &cfg,
+                                  bm_algo_float_to_q31(1.0f),
+                                  bm_algo_float_to_q31(0.01f));
+    }
+    TEST_ASSERT_FLOAT_WITHIN(0.08f, 1.0f, bm_algo_q31_to_float(out));
+}
+
+static void test_fixed_lpf1_q15_tracks_input(void) {
+    bm_algo_lpf1_q15_config_t cfg = {
+        .alpha_q15 = bm_algo_float_to_q15(0.1f)
+    };
+    bm_algo_lpf1_q15_state_t st;
+    bm_algo_q15_t v = 0;
+    int i;
+
+    bm_algo_lpf1_q15_reset(&st, 0);
+    for (i = 0; i < 500; ++i) {
+        v = bm_algo_lpf1_q15_step(&st, &cfg, BM_ALGO_Q15_ONE);
+    }
+    TEST_ASSERT_FLOAT_WITHIN(0.05f, 1.0f, bm_algo_q15_to_float(v));
+}
+
+static void test_battery_temp_and_motor_extras(void) {
+    bm_algo_battery_temp_config_t temp_cfg = {
+        .ref_temp_c = 25.0f,
+        .capacity_coeff_per_c = 0.01f,
+        .ocv_shift_v_per_c = 0.002f
+    };
+    bm_algo_abc_t abc;
+    bm_algo_rate_est_state_t rate;
+
+    TEST_ASSERT_FLOAT_WITHIN(0.01f, 1.1f,
+        bm_algo_battery_temp_capacity_ah(1.0f, 35.0f, &temp_cfg));
+    TEST_ASSERT_FLOAT_WITHIN(0.001f, 3.68f,
+        bm_algo_battery_temp_compensate_ocv(3.7f, 35.0f, &temp_cfg));
+
+    bm_algo_current_from_2shunt(1.0f, -0.5f, &abc);
+    TEST_ASSERT_FLOAT_WITHIN(0.001f, -0.5f, abc.ic);
+
+    bm_algo_rate_est_reset(&rate, 0.0f);
+    TEST_ASSERT_FLOAT_WITHIN(0.01f, 10.0f,
+        bm_algo_rate_est_step(&rate, 1.0f, 0.1f));
+}
+
 static void test_zero_length_audio_is_ignored(void) {
     bm_algo_agc_config_t agc_cfg = {
         .target_level = 1.0f,
@@ -327,6 +386,9 @@ void test_algorithm(void) {
     RUN_TEST(test_ekf_covariance_stays_symmetric);
     RUN_TEST(test_mahony_uses_simultaneous_quaternion_update);
     RUN_TEST(test_sogi_states_decay_after_input_stops);
+    RUN_TEST(test_fixed_pi_q31_saturates);
+    RUN_TEST(test_fixed_lpf1_q15_tracks_input);
+    RUN_TEST(test_battery_temp_and_motor_extras);
     RUN_TEST(test_zero_length_audio_is_ignored);
 }
 

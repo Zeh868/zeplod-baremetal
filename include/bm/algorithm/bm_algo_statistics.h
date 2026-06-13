@@ -38,6 +38,17 @@ float bm_algo_array_mean(const float *data, uint32_t n);
 float bm_algo_array_rms(const float *data, uint32_t n);
 float bm_algo_array_peak(const float *data, uint32_t n);
 
+/** 一阶变化率估算（输出单位/秒） */
+typedef struct {
+    float prev_input;
+    float rate_per_s;
+} bm_algo_rate_est_state_t;
+
+void bm_algo_rate_est_reset(bm_algo_rate_est_state_t *state, float input);
+float bm_algo_rate_est_step(bm_algo_rate_est_state_t *state,
+                            float input,
+                            float dt_s);
+
 #ifdef __cplusplus
 }
 #endif

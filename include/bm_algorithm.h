@@ -38,5 +38,6 @@
 #include "bm/algorithm/bm_algo_comm.h"
 #include "bm/algorithm/bm_algo_signal_quality.h"
 #include "bm/algorithm/bm_algo_estimator.h"
+#include "bm/algorithm/bm_algo_fixed.h"
 
 #endif /* BM_ALGORITHM_H */

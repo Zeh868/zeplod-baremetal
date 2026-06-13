@@ -116,3 +116,28 @@ float bm_algo_soh_update(bm_algo_soh_state_t *state,
     soh = state->learned_capacity_ah / config->initial_capacity_ah;
     return bm_algo_clamp_f(soh, 0.0f, 1.0f);
 }
+
+float bm_algo_battery_temp_capacity_ah(float nominal_capacity_ah,
+                                       float temp_c,
+                                       const bm_algo_battery_temp_config_t *config) {
+    float factor;
+
+    if (config == NULL || nominal_capacity_ah <= 0.0f) {
+        return nominal_capacity_ah;
+    }
+
+    factor = 1.0f + config->capacity_coeff_per_c * (temp_c - config->ref_temp_c);
+    if (factor < 0.1f) {
+        factor = 0.1f;
+    }
+    return nominal_capacity_ah * factor;
+}
+
+float bm_algo_battery_temp_compensate_ocv(float ocv_v,
+                                          float temp_c,
+                                          const bm_algo_battery_temp_config_t *config) {
+    if (config == NULL) {
+        return ocv_v;
+    }
+    return ocv_v - config->ocv_shift_v_per_c * (temp_c - config->ref_temp_c);
+}

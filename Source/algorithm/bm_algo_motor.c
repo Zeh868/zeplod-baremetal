@@ -143,3 +143,35 @@ void bm_algo_svpwm(float v_alpha,
     out->duty_b = bm_algo_clamp_f(0.5f + 0.5f * vb * inv_vbus, 0.0f, 1.0f);
     out->duty_c = bm_algo_clamp_f(0.5f + 0.5f * vc * inv_vbus, 0.0f, 1.0f);
 }
+
+void bm_algo_current_from_2shunt(float ia, float ib, bm_algo_abc_t *abc) {
+    if (abc == NULL) {
+        return;
+    }
+    abc->ia = ia;
+    abc->ib = ib;
+    abc->ic = -ia - ib;
+}
+
+float bm_algo_deadtime_comp_v(float phase_v,
+                              float phase_current_a,
+                              float deadtime_s,
+                              float vbus_v) {
+    float sign_i;
+    float comp;
+
+    if (deadtime_s <= 0.0f || vbus_v <= 0.0f) {
+        return phase_v;
+    }
+
+    if (phase_current_a > 0.0f) {
+        sign_i = 1.0f;
+    } else if (phase_current_a < 0.0f) {
+        sign_i = -1.0f;
+    } else {
+        return phase_v;
+    }
+
+    comp = sign_i * deadtime_s * vbus_v;
+    return phase_v + comp;
+}

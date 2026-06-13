@@ -130,3 +130,23 @@ float bm_algo_array_peak(const float *data, uint32_t n) {
     }
     return peak;
 }
+
+void bm_algo_rate_est_reset(bm_algo_rate_est_state_t *state, float input) {
+    if (state == NULL) {
+        return;
+    }
+    state->prev_input = input;
+    state->rate_per_s = 0.0f;
+}
+
+float bm_algo_rate_est_step(bm_algo_rate_est_state_t *state,
+                            float input,
+                            float dt_s) {
+    if (state == NULL || dt_s <= 0.0f) {
+        return state != NULL ? state->rate_per_s : 0.0f;
+    }
+
+    state->rate_per_s = (input - state->prev_input) / dt_s;
+    state->prev_input = input;
+    return state->rate_per_s;
+}

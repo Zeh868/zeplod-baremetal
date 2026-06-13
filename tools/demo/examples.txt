@@ -7,6 +7,8 @@ hrt_bms_coulomb
 closed_loop_servo
 foc_current_loop
 motor_foc_sensored
+power_buck_loop
+bms_estimation_loop
 stream_block_rms
 stream_fft
 stream_bms_pipeline
