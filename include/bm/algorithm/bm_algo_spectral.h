@@ -13,6 +13,7 @@
 #define BM_ALGO_SPECTRAL_H
 
 #include <stdint.h>
+#include <stddef.h>
 
 #ifdef __cplusplus
 extern "C" {

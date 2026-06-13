@@ -16,6 +16,7 @@
  * 2026-06-10       1.0            zeh            正式发布
  * 2026-06-12       2.0            zeh            领域中性 bm_exec
  * 2026-06-12       2.1            zeh            Block/Frame 槽与 bm_stream
+ * 2026-06-13       2.2            zeh            Block 槽 deadline 错过钩子
  *
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
@@ -88,5 +89,19 @@ const bm_exec_t *bm_exec_find(const bm_exec_t *const *instances,
                               uint32_t id);
 
 bm_exec_session_t bm_exec_get_session(void);
+
+/**
+ * @brief Block/Frame 槽处理前已超过 deadline_us 时调用（弱符号，可覆盖）
+ *
+ * 默认实现为空。不支持弱符号的平台可定义 `BM_CONFIG_EXEC_EXTERNAL_DEADLINE_HOOK=1`
+ * 并由应用提供该函数。
+ *
+ * @param slot 触发 deadline 错过的槽描述指针
+ * @param block 待处理的块
+ * @param elapsed_us 自块时间戳起已过的微秒数
+ */
+void bm_exec_block_deadline_missed_hook(const bm_exec_slot_t *slot,
+                                        bm_block_t *block,
+                                        uint32_t elapsed_us);
 
 #endif /* BM_EXEC_H */

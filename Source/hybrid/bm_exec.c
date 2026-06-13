@@ -16,14 +16,17 @@
  * 2026-06-11       1.3            zeh            Periodic 槽会话守卫与 slot_count 上界
  * 2026-06-12       2.0            zeh            直接迁移为领域中性 bm_exec
  * 2026-06-12       2.1            zeh            Block/Frame 槽与 bm_stream 绑定
+ * 2026-06-13       2.2            zeh            Block 槽 deadline 检查与 late 统计
  *
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 #include "bm_exec.h"
 #include "bm_stream.h"
+#include "bm/hybrid/bm_timestamp.h"
 #include "bm_critical_wrap.h"
 #include "bm_hrt.h"
 #include "bm_log.h"
+#include "hal/bm_hal_timer.h"
 
 #include <string.h>
 
@@ -41,6 +44,71 @@ static bm_hrt_slot_t g_hrt_slots[BM_CONFIG_HRT_MAX_SLOTS];
 static uint32_t g_hrt_slot_count;
 static uint32_t g_init_done_count;
 static volatile bm_exec_session_t g_session;
+
+/**
+ * @brief Block/Frame 槽错过 deadline 时的弱钩子（默认空实现）
+ *
+ * 不支持弱符号的平台可定义 `BM_CONFIG_EXEC_EXTERNAL_DEADLINE_HOOK=1`
+ * 并由应用提供钩子实现。
+ */
+#if !defined(BM_CONFIG_EXEC_EXTERNAL_DEADLINE_HOOK) || \
+    !(BM_CONFIG_EXEC_EXTERNAL_DEADLINE_HOOK)
+#if defined(__GNUC__) || defined(__clang__)
+__attribute__((weak))
+#endif
+void bm_exec_block_deadline_missed_hook(const bm_exec_slot_t *slot,
+                                        bm_block_t *block,
+                                        uint32_t elapsed_us) {
+    (void)slot;
+    (void)block;
+    (void)elapsed_us;
+}
+#endif
+
+static void exec_check_block_deadline(const bm_exec_slot_t *slot,
+                                      bm_block_t *block) {
+    uint32_t now;
+    uint32_t elapsed_us;
+    uint32_t timer_freq;
+
+    if (slot == NULL || block == NULL || slot->deadline_us == 0u) {
+        return;
+    }
+    if (block->timestamp.rate_hz == 0u) {
+        return;
+    }
+    timer_freq = bm_hal_timer_get_freq();
+    if (timer_freq == 0u) {
+        return;
+    }
+    if (block->timestamp.clock_id != BM_TIMESTAMP_CLOCK_HRT ||
+        block->timestamp.rate_hz != timer_freq) {
+        return;
+    }
+    now = bm_hal_timer_get_ticks();
+    if (bm_timestamp_before(now, block->timestamp.ticks)) {
+        return;
+    }
+    elapsed_us = (uint32_t)(((uint64_t)(now - block->timestamp.ticks) *
+                             1000000ull) / (uint64_t)timer_freq);
+    if (elapsed_us > slot->deadline_us) {
+        if (slot->stream != NULL) {
+            bm_stream_mark_late(slot->stream);
+        }
+        bm_exec_block_deadline_missed_hook(slot, block, elapsed_us);
+    }
+}
+
+static void exec_run_block_slot(const bm_exec_t *instance,
+                                const bm_exec_slot_t *slot,
+                                bm_block_t *block) {
+    if (instance == NULL || slot == NULL || block == NULL ||
+        slot->run_block == NULL) {
+        return;
+    }
+    exec_check_block_deadline(slot, block);
+    slot->run_block(instance, block);
+}
 
 static void exec_set_session(bm_exec_session_t session) {
     bm_irq_state_t irq_state = BM_CRITICAL_ENTER();
@@ -105,7 +173,7 @@ static void bm_stream_exec_ready(bm_stream_t *stream,
     if (bm_stream_consumer_acquire(stream, &ready_block) != BM_OK) {
         return;
     }
-    binding->slot->run_block(binding->instance, ready_block);
+    exec_run_block_slot(binding->instance, binding->slot, ready_block);
 }
 
 static void exec_drain_stream_slots(void) {
@@ -131,7 +199,7 @@ static void exec_drain_stream_slots(void) {
                 if (bm_stream_consumer_acquire(slot->stream, &block) != BM_OK) {
                     break;
                 }
-                slot->run_block(inst, block);
+                exec_run_block_slot(inst, slot, block);
             }
         }
     }

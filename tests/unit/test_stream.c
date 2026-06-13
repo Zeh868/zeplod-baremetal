@@ -146,6 +146,21 @@ void test_stream_init_rejects_missing_or_insufficient_descriptors(void) {
                                      sizeof(test_payload_t)));
 }
 
+void test_stream_mark_late_increments_stats(void) {
+    bm_stream_mark_late(&s_stream);
+    TEST_ASSERT_EQUAL(1u, bm_stream_stats(&s_stream)->late);
+}
+
+void test_stream_producer_abort_returns_block(void) {
+    bm_block_t *block;
+
+    TEST_ASSERT_EQUAL(BM_OK, bm_stream_producer_acquire(&s_stream, &block));
+    TEST_ASSERT_EQUAL(BM_OK, bm_stream_producer_abort(&s_stream, block));
+    TEST_ASSERT_EQUAL(BM_OK, bm_stream_producer_acquire(&s_stream, &block));
+    TEST_ASSERT_EQUAL(BM_OK,
+                      bm_stream_producer_commit(&s_stream, block, 8u, NULL));
+}
+
 int main(void) {
     UNITY_BEGIN();
     RUN_TEST(test_stream_producer_consumer_roundtrip);
@@ -153,5 +168,7 @@ int main(void) {
     RUN_TEST(test_stream_drop_newest_on_overrun);
     RUN_TEST(test_stream_consumes_oldest_sequence_after_slot_reuse);
     RUN_TEST(test_stream_init_rejects_missing_or_insufficient_descriptors);
+    RUN_TEST(test_stream_mark_late_increments_stats);
+    RUN_TEST(test_stream_producer_abort_returns_block);
     return UNITY_END();
 }

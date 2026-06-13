@@ -2,36 +2,55 @@
  * @file bm_hal_dma_stream.c
  * @brief DMA 流 HAL 分发层
  *
- * 将 bm_hal_dma_stream 契约分发至平台 driver API；未链接后端时返回
- * BM_ERR_NOT_INIT。量产后由 portable 后端或 bm_port 对接厂商 DMA。
- *
  * @author zeh (china_qzh@163.com)
- * @version 1.0
- * @date 2026-06-12
+ * @version 1.1
+ * @date 2026-06-13
  *
  * @par 修改日志:
  *
  *    Date         Version        Author          Description
  * 2026-06-12       1.0            zeh            正式发布
+ * 2026-06-13       1.1            zeh            分发至 driver API
  *
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
-#include "bm_hal_dma_stream.h"
+#include "hal/bm_hal_dma_stream.h"
+
+#include <stddef.h>
+
+static const struct bm_dma_stream_driver_api *dma_api(
+    const bm_hal_dma_stream_t *stream) {
+    if (stream == NULL || stream->api == NULL) {
+        return NULL;
+    }
+    return stream->api;
+}
 
 int bm_hal_dma_stream_bind_rx(const bm_hal_dma_stream_t *stream,
                               const bm_hal_dma_stream_binding_t *binding) {
-    (void)stream;
-    (void)binding;
-    return BM_ERR_NOT_INIT;
+    const struct bm_dma_stream_driver_api *api = dma_api(stream);
+
+    if (api == NULL || api->bind_rx == NULL) {
+        return BM_ERR_NOT_INIT;
+    }
+    return api->bind_rx(stream, binding);
 }
 
 int bm_hal_dma_stream_submit_rx(const bm_hal_dma_stream_t *stream,
-                                  bm_block_t *block) {
-    (void)stream;
-    (void)block;
-    return BM_ERR_NOT_INIT;
+                                bm_block_t *block) {
+    const struct bm_dma_stream_driver_api *api = dma_api(stream);
+
+    if (api == NULL || api->submit_rx == NULL) {
+        return BM_ERR_NOT_INIT;
+    }
+    return api->submit_rx(stream, block);
 }
 
-void bm_hal_dma_stream_stop(const bm_hal_dma_stream_t *stream) {
-    (void)stream;
+bm_block_t *bm_hal_dma_stream_detach_rx(const bm_hal_dma_stream_t *stream) {
+    const struct bm_dma_stream_driver_api *api = dma_api(stream);
+
+    if (api == NULL || api->detach_rx == NULL) {
+        return NULL;
+    }
+    return api->detach_rx(stream);
 }

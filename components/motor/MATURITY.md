@@ -6,6 +6,8 @@ Validated: float32 / native_sim / 双环 FOC + 编码器速度反馈
 
 Not validated: 实机 HAL、电流采样极性校准、WCET、多轴、弱磁
 
+板级包络模板见 `Demo/motor_foc_sensored/board/bm_board_envelope_stm32g4.h`。
+
 ## 范围
 
 - 电流环 10 kHz + 速度环 1 kHz（Scheduled HRT）

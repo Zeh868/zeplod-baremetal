@@ -6,6 +6,7 @@ add_library(bm_backend_qemu_cortex_m0 STATIC
     ${_BM_NATIVE_SIM_DIR}/bm_drv_adc_native.c
     ${_BM_NATIVE_SIM_DIR}/bm_drv_comp_native.c
     ${_BM_NATIVE_SIM_DIR}/bm_drv_encoder_native.c
+    ${_BM_NATIVE_SIM_DIR}/bm_drv_dma_stream_native.c
 )
 get_filename_component(BM_FRAMEWORK_ROOT
     "${CMAKE_CURRENT_LIST_DIR}/../.." ABSOLUTE)

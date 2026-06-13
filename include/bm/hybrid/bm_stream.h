@@ -74,6 +74,8 @@ struct bm_stream {
         .policy = BM_STREAM_POLICY_DROP_NEWEST \
     }
 
+void bm_stream_mark_late(bm_stream_t *stream);
+
 int bm_stream_init(bm_stream_t *stream,
                    void *payloads,
                    uint32_t block_count,
@@ -97,6 +99,9 @@ int bm_stream_producer_commit(bm_stream_t *stream,
                              bm_block_t *block,
                              uint32_t valid_bytes,
                              const bm_timestamp_t *timestamp);
+
+/** 取消已 acquire 但未 commit 的生产（DMA_OWNED → FREE） */
+int bm_stream_producer_abort(bm_stream_t *stream, bm_block_t *block);
 
 int bm_stream_consumer_acquire(bm_stream_t *stream, bm_block_t **block);
 

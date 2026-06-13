@@ -4,6 +4,7 @@ add_library(bm_backend_native_sim STATIC
     bm_drv_adc_native.c
     bm_drv_comp_native.c
     bm_drv_encoder_native.c
+    bm_drv_dma_stream_native.c
 )
 get_filename_component(BM_FRAMEWORK_ROOT
     "${CMAKE_CURRENT_LIST_DIR}/../.." ABSOLUTE)

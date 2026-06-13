@@ -12,6 +12,7 @@
 #include "unity.h"
 #include "bm_exec.h"
 #include "bm_hrt.h"
+#include "bm/hybrid/bm_timestamp.h"
 #include "bm_hal_adc_sim.h"
 #include "bm_hal_pwm_sim.h"
 #include "bm_hal_timer_native.h"
@@ -134,6 +135,54 @@ static int stream_start_with_ready_block(const bm_exec_t *instance) {
                                      sizeof(exec_test_payload_t), NULL);
 }
 
+static int stream_start_with_late_block(const bm_exec_t *instance) {
+    bm_block_t *block;
+    bm_timestamp_t ts;
+
+    (void)instance;
+    if (bm_stream_producer_acquire(&g_stream, &block) != BM_OK) {
+        return BM_ERR_INVALID;
+    }
+    ts.clock_id = BM_TIMESTAMP_CLOCK_HRT;
+    ts.quality = 1u;
+    ts.rate_hz = bm_hal_timer_get_freq();
+    ts.ticks = bm_hal_timer_get_ticks() - 200u;
+    return bm_stream_producer_commit(&g_stream, block,
+                                     sizeof(exec_test_payload_t), &ts);
+}
+
+static int stream_start_with_foreign_clock_block(const bm_exec_t *instance) {
+    bm_block_t *block;
+    bm_timestamp_t ts;
+
+    (void)instance;
+    if (bm_stream_producer_acquire(&g_stream, &block) != BM_OK) {
+        return BM_ERR_INVALID;
+    }
+    ts.clock_id = 1u;
+    ts.quality = 1u;
+    ts.rate_hz = bm_hal_timer_get_freq();
+    ts.ticks = bm_hal_timer_get_ticks() - 200u;
+    return bm_stream_producer_commit(&g_stream, block,
+                                     sizeof(exec_test_payload_t), &ts);
+}
+
+static int stream_start_with_wrapped_late_block(const bm_exec_t *instance) {
+    bm_block_t *block;
+    bm_timestamp_t ts;
+
+    (void)instance;
+    if (bm_stream_producer_acquire(&g_stream, &block) != BM_OK) {
+        return BM_ERR_INVALID;
+    }
+    ts.clock_id = BM_TIMESTAMP_CLOCK_HRT;
+    ts.quality = 1u;
+    ts.rate_hz = bm_hal_timer_get_freq();
+    ts.ticks = 0xFFFFFFF0u;
+    return bm_stream_producer_commit(&g_stream, block,
+                                     sizeof(exec_test_payload_t), &ts);
+}
+
 static void stream_block_step(const bm_exec_t *instance, bm_block_t *block) {
     (void)instance;
     g_block_run_count++;
@@ -244,6 +293,18 @@ static const bm_exec_ops_t stream_ops = {
     stream_init, stream_start_with_ready_block, mock_safe_stop
 };
 
+static const bm_exec_ops_t stream_late_ops = {
+    stream_init, stream_start_with_late_block, mock_safe_stop
+};
+
+static const bm_exec_ops_t stream_foreign_clock_ops = {
+    stream_init, stream_start_with_foreign_clock_block, mock_safe_stop
+};
+
+static const bm_exec_ops_t stream_wrapped_late_ops = {
+    stream_init, stream_start_with_wrapped_late_block, mock_safe_stop
+};
+
 static const bm_exec_slot_t bind_fail_slots[] = {
     {
         .kind = BM_EXEC_SLOT_HARDWARE,
@@ -331,6 +392,27 @@ static const bm_exec_t stream_inst = {
     NULL, 0u, &stream_ops
 };
 
+static const bm_exec_t stream_late_inst = {
+    7u, "stream_late", NULL, NULL, NULL,
+    stream_slots,
+    (uint32_t)(sizeof(stream_slots) / sizeof(stream_slots[0])),
+    NULL, 0u, &stream_late_ops
+};
+
+static const bm_exec_t stream_foreign_clock_inst = {
+    8u, "stream_foreign", NULL, NULL, NULL,
+    stream_slots,
+    (uint32_t)(sizeof(stream_slots) / sizeof(stream_slots[0])),
+    NULL, 0u, &stream_foreign_clock_ops
+};
+
+static const bm_exec_t stream_wrapped_late_inst = {
+    9u, "stream_wrap", NULL, NULL, NULL,
+    stream_slots,
+    (uint32_t)(sizeof(stream_slots) / sizeof(stream_slots[0])),
+    NULL, 0u, &stream_wrapped_late_ops
+};
+
 static const bm_exec_t duplicate_stream_inst = {
     6u, "duplicate_stream", NULL, NULL, NULL,
     duplicate_stream_slots,
@@ -349,6 +431,7 @@ void setUp(void) {
     g_fire_hardware_during_stop = 0u;
     g_wrong_safe_stop_count = 0u;
     g_block_run_count = 0u;
+    (void)bm_hal_timer_init(1000000u / BM_CONFIG_HRT_TICK_US);
     bm_hal_timer_native_reset_ticks();
     bm_hal_timer_native_set_init_result(BM_OK);
     bm_hrt_reset();
@@ -545,6 +628,39 @@ void test_exec_rejects_multiple_slots_for_same_stream(void) {
     TEST_ASSERT_EQUAL(BM_ERR_INVALID, bm_exec_init_all(instances, 1u));
 }
 
+void test_exec_block_deadline_marks_late(void) {
+    const bm_exec_t *const instances[] = { &stream_late_inst };
+
+    bm_hal_timer_native_advance_ticks(200u);
+    TEST_ASSERT_EQUAL(BM_OK, bm_exec_init_all(instances, 1u));
+    TEST_ASSERT_EQUAL(BM_OK, bm_exec_start_all(instances, 1u));
+    TEST_ASSERT_EQUAL(1u, g_block_run_count);
+    TEST_ASSERT_EQUAL(1u, bm_stream_stats(&g_stream)->late);
+    bm_exec_safe_stop_all(instances, 1u);
+}
+
+void test_exec_block_deadline_skips_foreign_clock(void) {
+    const bm_exec_t *const instances[] = { &stream_foreign_clock_inst };
+
+    bm_hal_timer_native_advance_ticks(200u);
+    TEST_ASSERT_EQUAL(BM_OK, bm_exec_init_all(instances, 1u));
+    TEST_ASSERT_EQUAL(BM_OK, bm_exec_start_all(instances, 1u));
+    TEST_ASSERT_EQUAL(1u, g_block_run_count);
+    TEST_ASSERT_EQUAL(0u, bm_stream_stats(&g_stream)->late);
+    bm_exec_safe_stop_all(instances, 1u);
+}
+
+void test_exec_block_deadline_handles_tick_wraparound(void) {
+    const bm_exec_t *const instances[] = { &stream_wrapped_late_inst };
+
+    bm_hal_timer_native_advance_ticks(32u);
+    TEST_ASSERT_EQUAL(BM_OK, bm_exec_init_all(instances, 1u));
+    TEST_ASSERT_EQUAL(BM_OK, bm_exec_start_all(instances, 1u));
+    TEST_ASSERT_EQUAL(1u, g_block_run_count);
+    TEST_ASSERT_EQUAL(1u, bm_stream_stats(&g_stream)->late);
+    bm_exec_safe_stop_all(instances, 1u);
+}
+
 int main(void) {
     UNITY_BEGIN();
     RUN_TEST(test_exec_init_and_scheduled_slot);
@@ -566,5 +682,8 @@ int main(void) {
     RUN_TEST(test_exec_safe_stop_uses_registered_instances_on_mismatch);
     RUN_TEST(test_exec_drains_block_committed_during_start);
     RUN_TEST(test_exec_rejects_multiple_slots_for_same_stream);
+    RUN_TEST(test_exec_block_deadline_marks_late);
+    RUN_TEST(test_exec_block_deadline_skips_foreign_clock);
+    RUN_TEST(test_exec_block_deadline_handles_tick_wraparound);
     return UNITY_END();
 }

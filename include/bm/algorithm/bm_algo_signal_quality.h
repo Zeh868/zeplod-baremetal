@@ -13,6 +13,7 @@
 #define BM_ALGO_SIGNAL_QUALITY_H
 
 #include <stdint.h>
+#include <stddef.h>
 
 #ifdef __cplusplus
 extern "C" {

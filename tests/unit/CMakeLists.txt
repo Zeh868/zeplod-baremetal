@@ -64,6 +64,10 @@ elseif(BM_ENABLE_EXEC)
     bm_add_test(test_stream test_stream.c bm_exec)
 endif()
 
+bm_add_test(test_hal_dma_stream test_hal_dma_stream.c bm_core)
+target_include_directories(test_hal_dma_stream PRIVATE
+    ${CMAKE_SOURCE_DIR}/portable/native_sim)
+
 if(BM_ENABLE_ALGORITHM)
     bm_add_test(test_algorithm test_algorithm.c bm_algorithm)
     if(NOT MSVC)

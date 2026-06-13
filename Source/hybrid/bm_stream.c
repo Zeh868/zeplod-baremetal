@@ -13,6 +13,7 @@
  *
  *    Date         Version        Author          Description
  * 2026-06-12       1.0            zeh            正式发布
+ * 2026-06-13       1.1            zeh            增加 bm_stream_mark_late
  *
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
@@ -190,6 +191,17 @@ uint32_t bm_stream_ready_count(const bm_stream_t *stream) {
     return count;
 }
 
+void bm_stream_mark_late(bm_stream_t *stream) {
+    bm_irq_state_t irq;
+
+    if (!stream_valid(stream)) {
+        return;
+    }
+    irq = BM_CRITICAL_ENTER();
+    stream->stats.late++;
+    BM_CRITICAL_EXIT(irq);
+}
+
 int bm_stream_producer_acquire(bm_stream_t *stream, bm_block_t **block) {
     bm_irq_state_t irq;
     bm_block_t *slot;
@@ -259,6 +271,28 @@ int bm_stream_producer_commit(bm_stream_t *stream,
     if (handler != NULL) {
         handler(stream, slot, handler_context);
     }
+    return BM_OK;
+}
+
+int bm_stream_producer_abort(bm_stream_t *stream, bm_block_t *block) {
+    bm_irq_state_t irq;
+    bm_block_t *slot;
+
+    if (!stream_valid(stream) || !block) {
+        return BM_ERR_INVALID;
+    }
+
+    irq = BM_CRITICAL_ENTER();
+    slot = find_block(stream, block);
+    if (!slot || slot->state != BM_BLOCK_STATE_DMA_OWNED) {
+        stream->stats.corrupt++;
+        BM_CRITICAL_EXIT(irq);
+        return BM_ERR_INVALID;
+    }
+
+    slot->valid_bytes = 0u;
+    slot->state = BM_BLOCK_STATE_FREE;
+    BM_CRITICAL_EXIT(irq);
     return BM_OK;
 }
 

@@ -60,7 +60,6 @@ typedef struct {
 
 typedef struct {
     float    phase_rad;
-    uint32_t tick_counter;
     uint32_t blocks_produced;
     uint32_t blocks_processed;
     float    last_rms;
@@ -134,8 +133,7 @@ static void stream_producer_step(const bm_exec_t *instance) {
     timestamp.clock_id = 0u;
     timestamp.quality = 1u;
     timestamp.rate_hz = 1000000u / BM_CONFIG_HRT_TICK_US;
-    timestamp.ticks = state->tick_counter;
-    state->tick_counter += STREAM_BLOCK_PERIOD_US / BM_CONFIG_HRT_TICK_US;
+    timestamp.ticks = bm_hal_timer_get_ticks();
 
     if (bm_stream_producer_commit(&g_pcm_stream, block, STREAM_BLOCK_BYTES,
                                   &timestamp) != BM_OK) {

@@ -21,6 +21,9 @@
 
 #include <stdint.h>
 
+/** HRT 定时器时钟域（与 bm_hal_timer 对齐） */
+#define BM_TIMESTAMP_CLOCK_HRT  0u
+
 typedef struct {
     uint16_t clock_id;
     uint16_t quality;
