@@ -43,8 +43,11 @@ void setUp(void) {
     memset(&s_stream, 0, sizeof(s_stream));
     s_stream.blocks = s_blocks;
     s_stream.block_count = 2u;
+    s_stream.block_capacity = 2u;
     s_stream.policy = BM_STREAM_POLICY_DROP_NEWEST;
-    bm_stream_init(&s_stream, s_payloads, 2u, sizeof(test_payload_t));
+    TEST_ASSERT_EQUAL(BM_OK,
+                      bm_stream_init(&s_stream, s_payloads, 2u,
+                                     sizeof(test_payload_t)));
     bm_stream_reset(&s_stream);
 }
 
@@ -96,10 +99,59 @@ void test_stream_drop_newest_on_overrun(void) {
     TEST_ASSERT_EQUAL(1u, bm_stream_stats(&s_stream)->overrun);
 }
 
+void test_stream_consumes_oldest_sequence_after_slot_reuse(void) {
+    bm_block_t *first;
+    bm_block_t *second;
+    bm_block_t *reused;
+    bm_block_t *consumed;
+
+    TEST_ASSERT_EQUAL(BM_OK, bm_stream_producer_acquire(&s_stream, &first));
+    TEST_ASSERT_EQUAL(BM_OK,
+                      bm_stream_producer_commit(&s_stream, first, 8u, NULL));
+    TEST_ASSERT_EQUAL(BM_OK, bm_stream_producer_acquire(&s_stream, &second));
+    TEST_ASSERT_EQUAL(BM_OK,
+                      bm_stream_producer_commit(&s_stream, second, 8u, NULL));
+
+    TEST_ASSERT_EQUAL(BM_OK,
+                      bm_stream_consumer_acquire(&s_stream, &consumed));
+    TEST_ASSERT_EQUAL_PTR(first, consumed);
+    TEST_ASSERT_EQUAL(BM_OK,
+                      bm_stream_consumer_release(&s_stream, consumed));
+
+    TEST_ASSERT_EQUAL(BM_OK, bm_stream_producer_acquire(&s_stream, &reused));
+    TEST_ASSERT_EQUAL_PTR(first, reused);
+    TEST_ASSERT_EQUAL(BM_OK,
+                      bm_stream_producer_commit(&s_stream, reused, 8u, NULL));
+
+    TEST_ASSERT_EQUAL(BM_OK,
+                      bm_stream_consumer_acquire(&s_stream, &consumed));
+    TEST_ASSERT_EQUAL_PTR(second, consumed);
+    TEST_ASSERT_EQUAL(2u, consumed->sequence);
+}
+
+void test_stream_init_rejects_missing_or_insufficient_descriptors(void) {
+    bm_stream_t invalid_stream;
+    bm_block_t one_block[1];
+
+    memset(&invalid_stream, 0, sizeof(invalid_stream));
+    TEST_ASSERT_EQUAL(BM_ERR_INVALID,
+                      bm_stream_init(&invalid_stream, s_payloads, 2u,
+                                     sizeof(test_payload_t)));
+
+    invalid_stream.blocks = one_block;
+    invalid_stream.block_count = 1u;
+    invalid_stream.block_capacity = 1u;
+    TEST_ASSERT_EQUAL(BM_ERR_INVALID,
+                      bm_stream_init(&invalid_stream, s_payloads, 2u,
+                                     sizeof(test_payload_t)));
+}
+
 int main(void) {
     UNITY_BEGIN();
     RUN_TEST(test_stream_producer_consumer_roundtrip);
     RUN_TEST(test_stream_ready_handler_fires);
     RUN_TEST(test_stream_drop_newest_on_overrun);
+    RUN_TEST(test_stream_consumes_oldest_sequence_after_slot_reuse);
+    RUN_TEST(test_stream_init_rejects_missing_or_insufficient_descriptors);
     return UNITY_END();
 }

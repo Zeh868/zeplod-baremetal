@@ -64,6 +64,13 @@ elseif(BM_ENABLE_EXEC)
     bm_add_test(test_stream test_stream.c bm_exec)
 endif()
 
+if(BM_ENABLE_ALGORITHM)
+    bm_add_test(test_algorithm test_algorithm.c bm_algorithm)
+    if(NOT MSVC)
+        target_link_libraries(test_algorithm PRIVATE m)
+    endif()
+endif()
+
 if(BM_ENABLE_SYNC)
     add_executable(test_sync test_sync.c)
     target_link_libraries(test_sync PRIVATE unity bm_exec bm_hal_native)

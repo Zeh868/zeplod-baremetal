@@ -27,7 +27,8 @@ jobs:
           -DBM_ENABLE_CHANNEL=ON
           -DBM_ENABLE_HRT=ON
           -DBM_ENABLE_TICKER=ON
-          -DBM_ENABLE_CTRL_INST=ON
+          -DBM_ENABLE_EXEC=ON
+          -DBM_ENABLE_STREAM=ON
           -DBM_ENABLE_SYNC=ON
       - name: Build
         run: cmake --build build-hybrid --config Debug
@@ -42,7 +43,7 @@ jobs:
         include:
           - args: "-DBM_ENABLE_HRT=ON"
           - args: "-DBM_ENABLE_TICKER=ON"
-          - args: "-DBM_ENABLE_HRT=ON -DBM_ENABLE_TICKER=ON -DBM_ENABLE_CTRL_INST=ON"
+          - args: "-DBM_ENABLE_HRT=ON -DBM_ENABLE_TICKER=ON -DBM_ENABLE_EXEC=ON -DBM_ENABLE_STREAM=ON"
     steps:
       - uses: actions/checkout@v4
       - name: Configure
@@ -57,7 +58,7 @@ jobs:
       - name: Expect configure failure
         shell: pwsh
         run: |
-          cmake -B build-bad -DBM_ENABLE_CTRL_INST=ON -DBM_ENABLE_HRT=OFF
+          cmake -B build-bad -DBM_ENABLE_EXEC=ON -DBM_ENABLE_HRT=OFF
           if ($LASTEXITCODE -eq 0) { exit 1 }
 
   native-examples:

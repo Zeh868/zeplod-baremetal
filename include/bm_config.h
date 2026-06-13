@@ -52,6 +52,9 @@
 #ifndef BM_CONFIG_ENABLE_STREAM
 #define BM_CONFIG_ENABLE_STREAM              0
 #endif
+#ifndef BM_CONFIG_ENABLE_ALGORITHM
+#define BM_CONFIG_ENABLE_ALGORITHM           0
+#endif
 
 /* 流式域（Block/Frame RT） */
 #define BM_CONFIG_STREAM_MAX_BLOCKS          4u

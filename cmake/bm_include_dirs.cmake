@@ -8,6 +8,7 @@ set(BM_INCLUDE_INTERNAL_DIRS
     ${BM_INCLUDE_ROOT}/bm/common
     ${BM_INCLUDE_ROOT}/bm/core
     ${BM_INCLUDE_ROOT}/bm/hybrid
+    ${BM_INCLUDE_ROOT}/bm/algorithm
     ${BM_INCLUDE_ROOT}/hal
     ${BM_INCLUDE_ROOT}/drv
 )

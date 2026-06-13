@@ -2,7 +2,7 @@
 
 A resource-scalable deterministic event, control, and streaming-compute framework for MCUs.
 
-The stable implementation is a deterministic execution foundation aimed at motor drives, digital power, BMS, and robotic end-nodes, not a set of industrially mature domain algorithms. Its roadmap extends the same static-resource and deterministic-execution model to audio DSP, condition monitoring, instrumentation, sensor fusion, ultrasonic/radar front ends, and low-resolution vision. It provides a unified programming model from 8-bit microcontrollers to mid-range ARM Cortex-M, with a migration path to [Zeplod on Zephyr](https://github.com/zeplod/zeplod).
+The stable implementation is a deterministic execution foundation aimed at motor drives, digital power, BMS, and robotic end-nodes. The **public pure-algorithm library `bm_algorithm` (K0, `E1`) is now available**; domain components (sensored FOC, power/BMS orchestration, etc.) remain on the roadmap. Its architecture extends the same static-resource and deterministic-execution model to audio DSP, condition monitoring, instrumentation, sensor fusion, ultrasonic/radar front ends, and low-resolution vision. It provides a unified programming model from 8-bit microcontrollers to mid-range ARM Cortex-M, with a migration path to [Zeplod on Zephyr](https://github.com/zeplod/zeplod).
 
 > Multi-domain capabilities are planned in the
 > [deterministic streaming architecture](docs/23-多领域确定性流式架构.md);
@@ -21,7 +21,8 @@ The stable implementation is a deterministic execution foundation aimed at motor
 - **Synchronization domains**: Phase-lock multiple PWM/ADC instances for interleaved power stages or synchronized robotic joints.
 - **Cross-domain data exchange**: Lock-free triple-buffer snapshots (`bm_snapshot`) for safe HRT-to-SRT data hand-off.
 - **Failure-safe startup**: `bm_exec_init_all()` validates all instances, resources, and bindings before execution; any failure triggers orderly rollback and safe-stop.
-- **Multi-domain roadmap**: Static zero-copy block streams and DMA block/frame deadlines are planned; `bm_exec` is the common execution model for control, acquisition, audio, vision, and edge DSP.
+- **Pure algorithm library**: `bm_algorithm` ships K0 APIs (PI, filters, FOC math, FFT, fusion, etc.) at `E1` / float32, independent of `bm_core`.
+- **Multi-domain roadmap**: `bm_stream` zero-copy block flow is in-tree; full DMA block/frame deadlines and pipelines follow [23](docs/23-多领域确定性流式架构.md).
 
 ---
 
@@ -80,8 +81,8 @@ audio, FFT, acquisition, or vision work before the next block/frame arrives.
 | **Nano** | 8–32 KB | 1–4 KB | CH32V003, STM32F030 | `zeplod.h` or `bm_lite.h` |
 | **Lite** | 32–128 KB | 4–16 KB | STM32F103, nRF51822, ESP32-WROOM-32E | + channel / shell via `BM_CONFIG_ENABLE_*` |
 | **Control** | 32–128 KB+ | 4–16 KB+ | STM32G4, STM32F3 | + HRT / `bm_exec` / sync (`bm_hybrid.h`) |
-| **DSP (planned)** | 64–256 KB | 16–128 KB | Cortex-M4F/M7, ESP32-S3 | + algorithm / stream / pipeline |
-| **Media Edge (planned)** | 128 KB+ | 64 KB+ / external RAM | Cortex-M7, PSRAM MCUs | + audio / frame / camera HAL |
+| **DSP** | 64–256 KB | 16–128 KB | Cortex-M4F/M7, ESP32-S3 | + `bm_algorithm`, `bm_stream` |
+| **Media Edge (planned)** | 128 KB+ | 64 KB+ / external RAM | Cortex-M7, PSRAM MCUs | + full pipeline, camera/audio HAL |
 
 ---
 
@@ -113,7 +114,7 @@ stack, SLAM system, medical diagnosis, safety certification, or media platform.
 | **Automotive (QM)** | BCM, thermal management, lighting, sensor nodes | Needs CAN/LIN/UDS stack integration |
 | **UAV / drone** | ESC, gimbal motors, servo drives | Needs sensorless FOC and DShot/OneShot protocols |
 | **Consumer / white goods** | Inverter AC, washing machine, vacuum | Needs display/touch and wireless stacks |
-| **Energy / PV / ESS** | Solar inverter, PCS, EV charger module | Needs MPPT/PLL and OCPP/IEC 61850 protocols |
+| **Energy / PV / ESS** | Solar inverter, PCS, EV charger module | MPPT/PLL **math cores available**; OCPP/IEC 61850 and domain components still external |
 | **IoT / sensor nodes** | Environmental monitoring, smart metering, agriculture | Needs LoRa/BLE/Zigbee and aggressive power-management policy |
 | **Embedded audio** | Intercom front ends, prompts, EQ, AGC, VAD | Needs stream/pipeline and I2S/SAI/PDM/DAC HAL |
 | **Low-resolution vision** | Thresholding, morphology, marker/line detection | Needs frame streams, camera HAL, cache/external RAM |
@@ -146,7 +147,8 @@ zeplod-baremetal/
 ├── Source/               # Library kernel (like FreeRTOS/Source/)
 │   ├── core/             # Events, mempool, module, shell, wdg…
 │   ├── hal/              # HAL dispatch layer
-│   └── hybrid/           # HRT, bm_exec, sync…
+│   ├── hybrid/           # HRT, bm_exec, sync, stream…
+│   └── algorithm/        # bm_algorithm pure math kernels
 ├── portable/             # Platform ports (template + reference backends)
 ├── Demo/                 # Progressive examples (like FreeRTOS/Demo/)
 ├── tests/
@@ -268,6 +270,7 @@ Application entry:
 
 ```c
 #include "zeplod.h"         /* exposes APIs per BM_CONFIG_ENABLE_* */
+#include "bm_algorithm.h"   /* optional: control/DSP math */
 #include "bm_hal_uart.h"    /* board HAL as needed */
 ```
 
@@ -304,8 +307,10 @@ Start at [`docs/README.md`](docs/README.md) (numbered guides 00–23 in Chinese)
 - [`docs/08-HAL移植指南.md`](docs/08-HAL移植指南.md) — HAL contracts and porting
 - [`docs/api/`](docs/api/) — Hybrid-domain API reference
 - [`docs/06-示例与上手路径.md`](docs/06-示例与上手路径.md) — Examples and hardware porting
-- [`docs/22-领域算法与模块化路线图.md`](docs/22-领域算法与模块化路线图.md) — Domain algorithms and maturity
+- [`docs/22-领域算法与模块化路线图.md`](docs/22-领域算法与模块化路线图.md) — Domain algorithms, **§0 progress**, maturity
 - [`docs/23-多领域确定性流式架构.md`](docs/23-多领域确定性流式架构.md) — Multi-domain deterministic streaming architecture
+- [`docs/24-物理世界领域与算法深度矩阵.md`](docs/24-物理世界领域与算法深度矩阵.md) — Industry depth matrix
+- [`docs/api/bm_algorithm.md`](docs/api/bm_algorithm.md) — Algorithm library API
 
 ---
 

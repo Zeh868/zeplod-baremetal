@@ -90,8 +90,9 @@ static void bm_stream_exec_ready(bm_stream_t *stream,
                                bm_block_t *block,
                                void *context) {
     const bm_exec_binding_t *binding = (const bm_exec_binding_t *)context;
+    bm_block_t *ready_block;
 
-    (void)stream;
+    (void)block;
     if (!binding || !binding->slot || !binding->instance) {
         return;
     }
@@ -101,8 +102,39 @@ static void bm_stream_exec_ready(bm_stream_t *stream,
     if (!binding->slot->run_block) {
         return;
     }
-    block->state = BM_BLOCK_STATE_PROCESSING;
-    binding->slot->run_block(binding->instance, block);
+    if (bm_stream_consumer_acquire(stream, &ready_block) != BM_OK) {
+        return;
+    }
+    binding->slot->run_block(binding->instance, ready_block);
+}
+
+static void exec_drain_stream_slots(void) {
+    uint32_t i;
+    uint32_t s;
+
+    for (i = 0u; i < g_instance_count; ++i) {
+        const bm_exec_t *inst = g_instances[i];
+        for (s = 0u; s < inst->slot_count; ++s) {
+            const bm_exec_slot_t *slot = &inst->slots[s];
+            uint32_t ready_count;
+            uint32_t n;
+
+            if ((slot->kind != BM_EXEC_SLOT_BLOCK &&
+                 slot->kind != BM_EXEC_SLOT_FRAME) ||
+                !slot->stream || !slot->run_block) {
+                continue;
+            }
+
+            ready_count = bm_stream_ready_count(slot->stream);
+            for (n = 0u; n < ready_count; ++n) {
+                bm_block_t *block;
+                if (bm_stream_consumer_acquire(slot->stream, &block) != BM_OK) {
+                    break;
+                }
+                slot->run_block(inst, block);
+            }
+        }
+    }
 }
 
 static void exec_bind_stream_slots(void) {
@@ -340,6 +372,18 @@ static int assemble_tables(const bm_exec_t *const *instances,
             if (g_binding_count >= BM_CONFIG_MAX_EXEC_SLOTS) {
                 return BM_ERR_OVERFLOW;
             }
+            if (slot->kind == BM_EXEC_SLOT_BLOCK ||
+                slot->kind == BM_EXEC_SLOT_FRAME) {
+                uint32_t b;
+                for (b = 0u; b < g_binding_count; ++b) {
+                    const bm_exec_slot_t *bound_slot = g_bindings[b].slot;
+                    if ((bound_slot->kind == BM_EXEC_SLOT_BLOCK ||
+                         bound_slot->kind == BM_EXEC_SLOT_FRAME) &&
+                        bound_slot->stream == slot->stream) {
+                        return BM_ERR_INVALID;
+                    }
+                }
+            }
             g_bindings[g_binding_count].instance = inst;
             g_bindings[g_binding_count].slot = slot;
             g_binding_count++;
@@ -533,6 +577,7 @@ int bm_exec_start_all(const bm_exec_t *const *instances, uint32_t count) {
         return rc;
     }
     exec_set_session(BM_EXEC_SESSION_STARTED);
+    exec_drain_stream_slots();
 
     BM_LOGI("exec", "start_all ok count=%u", (unsigned)count);
     return BM_OK;

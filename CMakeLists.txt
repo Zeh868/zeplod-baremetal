@@ -14,6 +14,7 @@ option(BM_ENABLE_HRT "Enable bm-hrt" OFF)
 option(BM_ENABLE_TICKER "Enable bm-ticker" OFF)
 option(BM_ENABLE_EXEC "Enable deterministic execution instances" OFF)
 option(BM_ENABLE_STREAM "Enable block/frame stream (bm_stream)" OFF)
+option(BM_ENABLE_ALGORITHM "Enable deterministic algorithm library (bm_algorithm)" OFF)
 option(BM_ENABLE_SYNC "Enable sync domain" OFF)
 option(BM_SYNC_HAL_NATIVE "Link native_sim sync HAL into bm_exec" OFF)
 option(BM_SYNC_HAL_QEMU "Link QEMU sync HAL into bm_exec" OFF)
@@ -67,9 +68,12 @@ add_library(bm_hal STATIC
 target_link_libraries(bm_hal PUBLIC bm_config)
 bm_target_internal_includes(bm_hal)
 
-if(BM_BUILD_TESTS AND NOT BM_BACKEND)
-    set(BM_BACKEND "native_sim")
+if(BM_BUILD_TESTS)
     set(BM_ENABLE_STREAM ON CACHE BOOL "" FORCE)
+    set(BM_ENABLE_ALGORITHM ON CACHE BOOL "" FORCE)
+    if(NOT BM_BACKEND)
+        set(BM_BACKEND "native_sim")
+    endif()
 endif()
 if(BM_BACKEND STREQUAL "external")
     target_compile_definitions(bm_hal PRIVATE BM_DRV_HAS_BACKEND)
@@ -176,6 +180,37 @@ elseif(BM_ENABLE_STREAM)
     target_link_libraries(bm_stream PUBLIC bm_core bm_config)
     bm_target_internal_includes(bm_stream)
     target_link_libraries(bm_framework INTERFACE bm_stream)
+endif()
+
+if(BM_ENABLE_ALGORITHM)
+    add_library(bm_algorithm STATIC
+        Source/algorithm/bm_algo_common.c
+        Source/algorithm/bm_algo_control.c
+        Source/algorithm/bm_algo_filter.c
+        Source/algorithm/bm_algo_profile.c
+        Source/algorithm/bm_algo_motion.c
+        Source/algorithm/bm_algo_motor.c
+        Source/algorithm/bm_algo_power.c
+        Source/algorithm/bm_algo_battery.c
+        Source/algorithm/bm_algo_fft.c
+        Source/algorithm/bm_algo_spectral.c
+        Source/algorithm/bm_algo_resample.c
+        Source/algorithm/bm_algo_fusion.c
+        Source/algorithm/bm_algo_audio.c
+        Source/algorithm/bm_algo_image.c
+        Source/algorithm/bm_algo_features.c
+        Source/algorithm/bm_algo_calibration.c
+        Source/algorithm/bm_algo_statistics.c
+        Source/algorithm/bm_algo_comm.c
+        Source/algorithm/bm_algo_signal_quality.c
+        Source/algorithm/bm_algo_estimator.c
+    )
+    target_link_libraries(bm_algorithm PUBLIC bm_config)
+    if(NOT MSVC)
+        target_link_libraries(bm_algorithm PUBLIC m)
+    endif()
+    bm_target_internal_includes(bm_algorithm)
+    target_link_libraries(bm_framework INTERFACE bm_algorithm)
 endif()
 
 if(BM_BUILD_TESTS)

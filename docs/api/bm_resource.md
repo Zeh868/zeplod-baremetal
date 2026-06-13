@@ -51,9 +51,9 @@
 
 ```c
 static const bm_resource_claim_t g_claims[] = {
-    { BM_RESOURCE_PWM, (uintptr_t)&BM_HAL_PWM_TIM1,
+    { BM_RESOURCE_CLASS_PWM, (uintptr_t)&BM_HAL_PWM_TIM1,
       BM_RESOURCE_EXCLUSIVE, 0, "tim1_pwm" },
-    { BM_RESOURCE_ADC_GROUP, (uintptr_t)&BM_HAL_ADC1,
+    { BM_RESOURCE_CLASS_ADC_GROUP, (uintptr_t)&BM_HAL_ADC1,
       BM_RESOURCE_OWNER, 1, "adc1_owner" },
 };
 ```

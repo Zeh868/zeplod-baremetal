@@ -17,6 +17,8 @@
 #include "bm_hal_timer_native.h"
 #include "bm_log.h"
 
+#include <string.h>
+
 /* 各 mock 回调的调用计数 */
 static uint32_t g_step_count;
 static uint32_t g_hw_step_count;
@@ -25,6 +27,15 @@ static uint32_t g_inst2_started;
 static uint32_t g_inst2_premature_steps;
 static uint32_t g_fire_hardware_during_stop;
 static uint32_t g_wrong_safe_stop_count;
+static uint32_t g_block_run_count;
+
+typedef struct {
+    uint32_t samples[4];
+} exec_test_payload_t;
+
+static exec_test_payload_t g_stream_payloads[2];
+static bm_block_t g_stream_blocks[2];
+static bm_stream_t g_stream;
 
 static int mock_init(const bm_exec_t *instance) {
     (void)instance;
@@ -99,6 +110,34 @@ static int inst2_start_mark(const bm_exec_t *instance) {
 static void hardware_step(const bm_exec_t *instance) {
     (void)instance;
     g_hw_step_count++;
+}
+
+static int stream_init(const bm_exec_t *instance) {
+    (void)instance;
+    memset(&g_stream, 0, sizeof(g_stream));
+    g_stream.blocks = g_stream_blocks;
+    g_stream.block_count = 2u;
+    g_stream.block_capacity = 2u;
+    g_stream.policy = BM_STREAM_POLICY_DROP_NEWEST;
+    return bm_stream_init(&g_stream, g_stream_payloads, 2u,
+                          sizeof(exec_test_payload_t));
+}
+
+static int stream_start_with_ready_block(const bm_exec_t *instance) {
+    bm_block_t *block;
+
+    (void)instance;
+    if (bm_stream_producer_acquire(&g_stream, &block) != BM_OK) {
+        return BM_ERR_INVALID;
+    }
+    return bm_stream_producer_commit(&g_stream, block,
+                                     sizeof(exec_test_payload_t), NULL);
+}
+
+static void stream_block_step(const bm_exec_t *instance, bm_block_t *block) {
+    (void)instance;
+    g_block_run_count++;
+    TEST_ASSERT_EQUAL(BM_OK, bm_stream_consumer_release(&g_stream, block));
 }
 
 static int bind_adc(const bm_exec_t *instance,
@@ -201,6 +240,10 @@ static const bm_exec_ops_t wrong_ops = {
     mock_init, mock_start, wrong_safe_stop
 };
 
+static const bm_exec_ops_t stream_ops = {
+    stream_init, stream_start_with_ready_block, mock_safe_stop
+};
+
 static const bm_exec_slot_t bind_fail_slots[] = {
     {
         .kind = BM_EXEC_SLOT_HARDWARE,
@@ -217,6 +260,33 @@ static const bm_exec_slot_t invalid_hardware_period_slots[] = {
         .run = hardware_step,
         .bind = bind_adc,
         .name = "bad_hw_period"
+    },
+};
+
+static const bm_exec_slot_t stream_slots[] = {
+    {
+        .kind = BM_EXEC_SLOT_BLOCK,
+        .deadline_us = 1000u,
+        .run_block = stream_block_step,
+        .stream = &g_stream,
+        .name = "stream"
+    },
+};
+
+static const bm_exec_slot_t duplicate_stream_slots[] = {
+    {
+        .kind = BM_EXEC_SLOT_BLOCK,
+        .deadline_us = 1000u,
+        .run_block = stream_block_step,
+        .stream = &g_stream,
+        .name = "stream_a"
+    },
+    {
+        .kind = BM_EXEC_SLOT_FRAME,
+        .deadline_us = 1000u,
+        .run_block = stream_block_step,
+        .stream = &g_stream,
+        .name = "stream_b"
     },
 };
 
@@ -254,6 +324,21 @@ static const bm_exec_t wrong_inst = {
     NULL, 0u, NULL, 0u, &wrong_ops
 };
 
+static const bm_exec_t stream_inst = {
+    5u, "stream", NULL, NULL, NULL,
+    stream_slots,
+    (uint32_t)(sizeof(stream_slots) / sizeof(stream_slots[0])),
+    NULL, 0u, &stream_ops
+};
+
+static const bm_exec_t duplicate_stream_inst = {
+    6u, "duplicate_stream", NULL, NULL, NULL,
+    duplicate_stream_slots,
+    (uint32_t)(sizeof(duplicate_stream_slots) /
+               sizeof(duplicate_stream_slots[0])),
+    NULL, 0u, &stream_ops
+};
+
 void setUp(void) {
     BM_LOGI("test_ctrl", "setUp: reset counters and HRT");
     g_step_count = 0u;
@@ -263,6 +348,7 @@ void setUp(void) {
     g_inst2_premature_steps = 0u;
     g_fire_hardware_during_stop = 0u;
     g_wrong_safe_stop_count = 0u;
+    g_block_run_count = 0u;
     bm_hal_timer_native_reset_ticks();
     bm_hal_timer_native_set_init_result(BM_OK);
     bm_hrt_reset();
@@ -444,6 +530,21 @@ void test_exec_safe_stop_uses_registered_instances_on_mismatch(void) {
     TEST_ASSERT_EQUAL(0u, g_wrong_safe_stop_count);
 }
 
+void test_exec_drains_block_committed_during_start(void) {
+    const bm_exec_t *const instances[] = { &stream_inst };
+
+    TEST_ASSERT_EQUAL(BM_OK, bm_exec_init_all(instances, 1u));
+    TEST_ASSERT_EQUAL(BM_OK, bm_exec_start_all(instances, 1u));
+    TEST_ASSERT_EQUAL(1u, g_block_run_count);
+    TEST_ASSERT_EQUAL(0u, bm_stream_ready_count(&g_stream));
+}
+
+void test_exec_rejects_multiple_slots_for_same_stream(void) {
+    const bm_exec_t *const instances[] = { &duplicate_stream_inst };
+
+    TEST_ASSERT_EQUAL(BM_ERR_INVALID, bm_exec_init_all(instances, 1u));
+}
+
 int main(void) {
     UNITY_BEGIN();
     RUN_TEST(test_exec_init_and_scheduled_slot);
@@ -463,5 +564,7 @@ int main(void) {
     RUN_TEST(test_exec_rejects_double_start);
     RUN_TEST(test_exec_stop_blocks_hardware_callback_before_safe_stop);
     RUN_TEST(test_exec_safe_stop_uses_registered_instances_on_mismatch);
+    RUN_TEST(test_exec_drains_block_committed_during_start);
+    RUN_TEST(test_exec_rejects_multiple_slots_for_same_stream);
     return UNITY_END();
 }

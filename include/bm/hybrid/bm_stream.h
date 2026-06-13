@@ -51,6 +51,7 @@ typedef void (*bm_stream_ready_fn_t)(bm_stream_t *stream,
 struct bm_stream {
     bm_block_t          *blocks;
     uint32_t             block_count;
+    uint32_t             block_capacity;
     bm_stream_policy_t   policy;
     bm_stream_stats_t    stats;
     bm_stream_ready_fn_t on_ready;
@@ -69,6 +70,7 @@ struct bm_stream {
     static bm_stream_t name = { \
         .blocks = _bm_stream_blocks_##name, \
         .block_count = (depth), \
+        .block_capacity = (depth), \
         .policy = BM_STREAM_POLICY_DROP_NEWEST \
     }
 
@@ -86,6 +88,8 @@ void bm_stream_set_ready_handler(bm_stream_t *stream,
                                  void *context);
 
 const bm_stream_stats_t *bm_stream_stats(const bm_stream_t *stream);
+
+uint32_t bm_stream_ready_count(const bm_stream_t *stream);
 
 int bm_stream_producer_acquire(bm_stream_t *stream, bm_block_t **block);
 

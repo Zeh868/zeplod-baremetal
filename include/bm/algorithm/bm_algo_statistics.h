@@ -1,0 +1,44 @@
+/**
+ * @file bm_algo_statistics.h
+ * @brief 统计量：均值、方差、RMS、峰值与波峰因数
+ *
+ * @maturity E1
+ * @author zeh (china_qzh@163.com)
+ * @version 1.0
+ * @date 2026-06-13
+ *
+ * SPDX-License-Identifier: LGPL-3.0-or-later
+ */
+#ifndef BM_ALGO_STATISTICS_H
+#define BM_ALGO_STATISTICS_H
+
+#include <stdint.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+typedef struct {
+    float sum;
+    float sum_sq;
+    float min_v;
+    float max_v;
+    uint32_t count;
+} bm_algo_stats_state_t;
+
+void bm_algo_stats_reset(bm_algo_stats_state_t *state);
+void bm_algo_stats_push(bm_algo_stats_state_t *state, float value);
+float bm_algo_stats_mean(const bm_algo_stats_state_t *state);
+float bm_algo_stats_variance(const bm_algo_stats_state_t *state);
+float bm_algo_stats_rms(const bm_algo_stats_state_t *state);
+float bm_algo_stats_crest_factor(const bm_algo_stats_state_t *state);
+
+float bm_algo_array_mean(const float *data, uint32_t n);
+float bm_algo_array_rms(const float *data, uint32_t n);
+float bm_algo_array_peak(const float *data, uint32_t n);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif /* BM_ALGO_STATISTICS_H */

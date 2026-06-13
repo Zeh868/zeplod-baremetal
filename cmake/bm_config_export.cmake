@@ -11,5 +11,6 @@ function(bm_export_config_enable target)
         BM_CONFIG_ENABLE_EXEC=$<BOOL:${BM_ENABLE_EXEC}>
         BM_CONFIG_ENABLE_SYNC=$<BOOL:${BM_ENABLE_SYNC}>
         BM_CONFIG_ENABLE_STREAM=$<BOOL:${BM_ENABLE_STREAM}>
+        BM_CONFIG_ENABLE_ALGORITHM=$<BOOL:${BM_ENABLE_ALGORITHM}>
     )
 endfunction()
