@@ -4,5 +4,6 @@ full_system
 interrupt_demo
 hrt_servo_stub
 hrt_bms_coulomb
+closed_loop_servo
 multi_axis_sync
 multi_channel_bms
