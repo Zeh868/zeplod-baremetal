@@ -58,6 +58,12 @@ if(BM_ENABLE_EXEC)
         ${CMAKE_SOURCE_DIR}/portable/native_sim)
 endif()
 
+if(TARGET bm_stream)
+    bm_add_test(test_stream test_stream.c bm_stream)
+elseif(BM_ENABLE_EXEC)
+    bm_add_test(test_stream test_stream.c bm_exec)
+endif()
+
 if(BM_ENABLE_SYNC)
     add_executable(test_sync test_sync.c)
     target_link_libraries(test_sync PRIVATE unity bm_exec bm_hal_native)

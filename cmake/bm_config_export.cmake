@@ -10,5 +10,6 @@ function(bm_export_config_enable target)
         BM_CONFIG_ENABLE_TICKER=$<BOOL:${BM_ENABLE_TICKER}>
         BM_CONFIG_ENABLE_EXEC=$<BOOL:${BM_ENABLE_EXEC}>
         BM_CONFIG_ENABLE_SYNC=$<BOOL:${BM_ENABLE_SYNC}>
+        BM_CONFIG_ENABLE_STREAM=$<BOOL:${BM_ENABLE_STREAM}>
     )
 endfunction()

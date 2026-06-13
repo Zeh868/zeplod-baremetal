@@ -38,4 +38,10 @@
 #include "bm/hybrid/bm_sync.h"
 #endif
 
+#if BM_CONFIG_ENABLE_STREAM
+#include "bm/hybrid/bm_timestamp.h"
+#include "bm/hybrid/bm_block.h"
+#include "bm/hybrid/bm_stream.h"
+#endif
+
 #endif /* BM_HYBRID_H */

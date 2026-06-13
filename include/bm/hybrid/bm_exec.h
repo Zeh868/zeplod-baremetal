@@ -1,11 +1,23 @@
 /**
  * @file bm_exec.h
- * @brief Deterministic execution instances and batch lifecycle management.
+ * @brief 确定性执行实例：IRQ-Step、Periodic、Block/Frame RT
  *
- * An execution instance owns state, configuration, resource claims, lifecycle
- * operations, and one or more deterministic execution slots. The core only
- * distinguishes hardware-event and periodic slots; device-specific trigger
- * semantics remain in the HAL binding adapter.
+ * 执行实例承载状态、配置、资源声明、生命周期与多槽位调度契约。核心仅区分
+ * Hardware/Periodic/Block/Frame 槽语义；具体外设或 DMA 块源由 HAL bind 或
+ * bm_stream 适配器连接。详见 docs/23-多领域确定性流式架构.md。
+ *
+ * @author zeh (china_qzh@163.com)
+ * @version 2.1
+ * @date 2026-06-12
+ *
+ * @par 修改日志:
+ *
+ *    Date         Version        Author          Description
+ * 2026-06-10       1.0            zeh            正式发布
+ * 2026-06-12       2.0            zeh            领域中性 bm_exec
+ * 2026-06-12       2.1            zeh            Block/Frame 槽与 bm_stream
+ *
+ * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 #ifndef BM_EXEC_H
 #define BM_EXEC_H
@@ -13,6 +25,9 @@
 #include "hal/bm_hal_hrt.h"
 #include "bm/hybrid/bm_resource.h"
 #include "bm/common/bm_types.h"
+
+#include "bm/hybrid/bm_block.h"
+#include "bm/hybrid/bm_stream.h"
 
 typedef struct bm_exec bm_exec_t;
 
@@ -24,18 +39,24 @@ typedef enum {
 } bm_exec_session_t;
 
 typedef void (*bm_exec_run_fn_t)(const bm_exec_t *instance);
+typedef void (*bm_exec_block_fn_t)(const bm_exec_t *instance, bm_block_t *block);
 
 typedef enum {
     BM_EXEC_SLOT_HARDWARE,
-    BM_EXEC_SLOT_PERIODIC
+    BM_EXEC_SLOT_PERIODIC,
+    BM_EXEC_SLOT_BLOCK,
+    BM_EXEC_SLOT_FRAME
 } bm_exec_slot_kind_t;
 
 typedef struct {
     bm_exec_slot_kind_t kind;
     uint32_t period_us;
+    uint32_t deadline_us;
     bm_exec_run_fn_t run;
+    bm_exec_block_fn_t run_block;
     int (*bind)(const bm_exec_t *instance,
                 const bm_hal_hrt_binding_t *binding);
+    bm_stream_t *stream;
     const char *name;
 } bm_exec_slot_t;
 

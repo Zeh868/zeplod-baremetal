@@ -103,18 +103,16 @@ static const bm_exec_ops_t g_servo_ops = {
 
 static const bm_exec_slot_t g_servo_slots[] = {
     {
-        BM_EXEC_SLOT_HARDWARE,
-        0u,
-        current_step,
-        bind_adc,
-        "current"
+        .kind = BM_EXEC_SLOT_HARDWARE,
+        .run = current_step,
+        .bind = bind_adc,
+        .name = "current"
     },
     {
-        BM_EXEC_SLOT_PERIODIC,
-        1000u,
-        speed_step,
-        NULL,
-        "speed"
+        .kind = BM_EXEC_SLOT_PERIODIC,
+        .period_us = 1000u,
+        .run = speed_step,
+        .name = "speed"
     }
 };
 

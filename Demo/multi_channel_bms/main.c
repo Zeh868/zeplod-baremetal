@@ -98,16 +98,15 @@ static const bm_exec_ops_t g_pack_ops = {
 
 static const bm_exec_slot_t g_pack_slots[] = {
     {
-        BM_EXEC_SLOT_HARDWARE,
-        0u,
-        pack_sample_step,
-        bind_pack_adc,
-        "pack"
+        .kind = BM_EXEC_SLOT_HARDWARE,
+        .run = pack_sample_step,
+        .bind = bind_pack_adc,
+        .name = "pack"
     }
 };
 
 static const bm_resource_claim_t g_pack_claim_table[] = {
-    { BM_RESOURCE_ADC_GROUP, PACK_ADC_KEY, BM_RESOURCE_OWNER, 1u, "adc_pack" }
+    { BM_RESOURCE_CLASS_ADC_GROUP, PACK_ADC_KEY, BM_RESOURCE_OWNER, 1u, "adc_pack" }
 };
 
 static const bm_exec_t g_pack_sampler = {
@@ -172,7 +171,7 @@ static void setup_cells(void) {
     uint32_t i;
 
     for (i = 0u; i < CELL_COUNT; ++i) {
-        g_cell_claims[i].kind = BM_RESOURCE_GPIO;
+        g_cell_claims[i].resource_class = BM_RESOURCE_CLASS_GPIO;
         g_cell_claims[i].key = CELL_GPIO_BASE + i;
         g_cell_claims[i].access = BM_RESOURCE_EXCLUSIVE;
         g_cell_claims[i].share_group = 0u;

@@ -130,21 +130,19 @@ static const bm_exec_ops_t inst2_mark_ops = {
 
 static const bm_exec_slot_t scheduled_slots[] = {
     {
-        BM_EXEC_SLOT_PERIODIC,
-        1000u,
-        scheduled_step,
-        NULL,
-        "sched"
+        .kind = BM_EXEC_SLOT_PERIODIC,
+        .period_us = 1000u,
+        .run = scheduled_step,
+        .name = "sched"
     },
 };
 
 static const bm_exec_slot_t hardware_slots[] = {
     {
-        BM_EXEC_SLOT_HARDWARE,
-        0u,
-        hardware_step,
-        bind_adc,
-        "hw"
+        .kind = BM_EXEC_SLOT_HARDWARE,
+        .run = hardware_step,
+        .bind = bind_adc,
+        .name = "hw"
     },
 };
 
@@ -158,11 +156,10 @@ static const bm_exec_t sched_inst = {
 
 static const bm_exec_slot_t inst2_scheduled_slots[] = {
     {
-        BM_EXEC_SLOT_PERIODIC,
-        1000u,
-        inst2_scheduled_step,
-        NULL,
-        "sched2"
+        .kind = BM_EXEC_SLOT_PERIODIC,
+        .period_us = 1000u,
+        .run = inst2_scheduled_step,
+        .name = "sched2"
     },
 };
 
@@ -206,21 +203,20 @@ static const bm_exec_ops_t wrong_ops = {
 
 static const bm_exec_slot_t bind_fail_slots[] = {
     {
-        BM_EXEC_SLOT_HARDWARE,
-        0u,
-        hardware_step,
-        bind_fail,
-        "bind_fail"
+        .kind = BM_EXEC_SLOT_HARDWARE,
+        .run = hardware_step,
+        .bind = bind_fail,
+        .name = "bind_fail"
     },
 };
 
 static const bm_exec_slot_t invalid_hardware_period_slots[] = {
     {
-        BM_EXEC_SLOT_HARDWARE,
-        1u,
-        hardware_step,
-        bind_adc,
-        "bad_hw_period"
+        .kind = BM_EXEC_SLOT_HARDWARE,
+        .period_us = 1u,
+        .run = hardware_step,
+        .bind = bind_adc,
+        .name = "bad_hw_period"
     },
 };
 

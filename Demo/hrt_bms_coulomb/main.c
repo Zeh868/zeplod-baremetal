@@ -99,11 +99,10 @@ static const bm_exec_ops_t g_pack_ops = {
 
 static const bm_exec_slot_t g_pack_slots[] = {
     {
-        BM_EXEC_SLOT_HARDWARE,
-        0u,
-        pack_sample_step,
-        bind_pack_adc,
-        "pack_sample"
+        .kind = BM_EXEC_SLOT_HARDWARE,
+        .run = pack_sample_step,
+        .bind = bind_pack_adc,
+        .name = "pack_sample"
     }
 };
 

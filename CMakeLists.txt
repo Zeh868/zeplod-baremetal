@@ -13,6 +13,7 @@ option(BM_ENABLE_WDG "Enable bm-wdg" ON)
 option(BM_ENABLE_HRT "Enable bm-hrt" OFF)
 option(BM_ENABLE_TICKER "Enable bm-ticker" OFF)
 option(BM_ENABLE_EXEC "Enable deterministic execution instances" OFF)
+option(BM_ENABLE_STREAM "Enable block/frame stream (bm_stream)" OFF)
 option(BM_ENABLE_SYNC "Enable sync domain" OFF)
 option(BM_SYNC_HAL_NATIVE "Link native_sim sync HAL into bm_exec" OFF)
 option(BM_SYNC_HAL_QEMU "Link QEMU sync HAL into bm_exec" OFF)
@@ -61,12 +62,14 @@ add_library(bm_hal STATIC
     Source/hal/bm_hal_adc.c
     Source/hal/bm_hal_comp.c
     Source/hal/bm_hal_encoder.c
+    Source/hal/bm_hal_dma_stream.c
 )
 target_link_libraries(bm_hal PUBLIC bm_config)
 bm_target_internal_includes(bm_hal)
 
 if(BM_BUILD_TESTS AND NOT BM_BACKEND)
     set(BM_BACKEND "native_sim")
+    set(BM_ENABLE_STREAM ON CACHE BOOL "" FORCE)
 endif()
 if(BM_BACKEND STREQUAL "external")
     target_compile_definitions(bm_hal PRIVATE BM_DRV_HAS_BACKEND)
@@ -146,7 +149,10 @@ if(BM_BUILD_TESTS OR BM_ENABLE_EXEC)
 endif()
 
 if(BM_ENABLE_EXEC)
-    add_library(bm_exec STATIC Source/hybrid/bm_exec.c)
+    add_library(bm_exec STATIC
+        Source/hybrid/bm_exec.c
+        Source/hybrid/bm_stream.c
+    )
     target_link_libraries(bm_exec PUBLIC bm_hrt bm_core bm_resource)
     bm_target_internal_includes(bm_exec)
     if(BM_ENABLE_SYNC)
@@ -165,6 +171,11 @@ if(BM_ENABLE_EXEC)
         endif()
     endif()
     target_link_libraries(bm_framework INTERFACE bm_exec)
+elseif(BM_ENABLE_STREAM)
+    add_library(bm_stream STATIC Source/hybrid/bm_stream.c)
+    target_link_libraries(bm_stream PUBLIC bm_core bm_config)
+    bm_target_internal_includes(bm_stream)
+    target_link_libraries(bm_framework INTERFACE bm_stream)
 endif()
 
 if(BM_BUILD_TESTS)

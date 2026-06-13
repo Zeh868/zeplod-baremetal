@@ -79,11 +79,10 @@ static const bm_exec_ops_t g_axis_ops = {
 
 static const bm_exec_slot_t g_axis_slot[] = {
     {
-        BM_EXEC_SLOT_PERIODIC,
-        1000u,
-        axis_step,
-        NULL,
-        "axis"
+        .kind = BM_EXEC_SLOT_PERIODIC,
+        .period_us = 1000u,
+        .run = axis_step,
+        .name = "axis"
     }
 };
 

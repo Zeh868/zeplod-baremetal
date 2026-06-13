@@ -49,8 +49,12 @@
 #ifndef BM_CONFIG_ENABLE_SYNC
 #define BM_CONFIG_ENABLE_SYNC                0
 #endif
+#ifndef BM_CONFIG_ENABLE_STREAM
+#define BM_CONFIG_ENABLE_STREAM              0
+#endif
 
-/* 日志子系统 */
+/* 流式域（Block/Frame RT） */
+#define BM_CONFIG_STREAM_MAX_BLOCKS          4u
 #define BM_CONFIG_ENABLE_LOG                 1
 #define BM_CONFIG_LOG_LEVEL                  3   /* BM_LOG_INFO */
 #define BM_CONFIG_LOG_BUF_SIZE               128

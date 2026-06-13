@@ -4,8 +4,8 @@
  *
  * 校验实例与资源声明，组装 HRT 调度表，协调 init/start/stop 与硬件绑定。
  * @author zeh (china_qzh@163.com)
- * @version 1.3
- * @date 2026-06-11
+ * @version 2.1
+ * @date 2026-06-12
  *
  * @par 修改日志:
  *
@@ -15,9 +15,12 @@
  * 2026-06-11       1.2            zeh            start_all 先启实例后启 HRT；NULL 前置校验
  * 2026-06-11       1.3            zeh            Periodic 槽会话守卫与 slot_count 上界
  * 2026-06-12       2.0            zeh            直接迁移为领域中性 bm_exec
+ * 2026-06-12       2.1            zeh            Block/Frame 槽与 bm_stream 绑定
  *
+ * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 #include "bm_exec.h"
+#include "bm_stream.h"
 #include "bm_critical_wrap.h"
 #include "bm_hrt.h"
 #include "bm_log.h"
@@ -83,6 +86,77 @@ static void exec_clear_runtime(void) {
     exec_set_session(BM_EXEC_SESSION_NONE);
 }
 
+static void bm_stream_exec_ready(bm_stream_t *stream,
+                               bm_block_t *block,
+                               void *context) {
+    const bm_exec_binding_t *binding = (const bm_exec_binding_t *)context;
+
+    (void)stream;
+    if (!binding || !binding->slot || !binding->instance) {
+        return;
+    }
+    if (g_session != BM_EXEC_SESSION_STARTED) {
+        return;
+    }
+    if (!binding->slot->run_block) {
+        return;
+    }
+    block->state = BM_BLOCK_STATE_PROCESSING;
+    binding->slot->run_block(binding->instance, block);
+}
+
+static void exec_bind_stream_slots(void) {
+    uint32_t i;
+    uint32_t s;
+    uint32_t b;
+
+    for (i = 0u; i < g_instance_count; ++i) {
+        const bm_exec_t *inst = g_instances[i];
+        for (s = 0u; s < inst->slot_count; ++s) {
+            const bm_exec_slot_t *slot = &inst->slots[s];
+            bm_exec_binding_t *binding = NULL;
+
+            if (slot->kind != BM_EXEC_SLOT_BLOCK &&
+                slot->kind != BM_EXEC_SLOT_FRAME) {
+                continue;
+            }
+            if (!slot->stream || !slot->run_block) {
+                continue;
+            }
+            for (b = 0u; b < g_binding_count; ++b) {
+                if (g_bindings[b].instance == inst &&
+                    g_bindings[b].slot == slot) {
+                    binding = &g_bindings[b];
+                    break;
+                }
+            }
+            if (binding) {
+                bm_stream_set_ready_handler(slot->stream,
+                                            bm_stream_exec_ready,
+                                            binding);
+            }
+        }
+    }
+}
+
+static void exec_unbind_stream_slots(void) {
+    uint32_t i;
+    uint32_t s;
+
+    for (i = 0u; i < g_instance_count; ++i) {
+        const bm_exec_t *inst = g_instances[i];
+        for (s = 0u; s < inst->slot_count; ++s) {
+            const bm_exec_slot_t *slot = &inst->slots[s];
+            if (slot->kind == BM_EXEC_SLOT_BLOCK ||
+                slot->kind == BM_EXEC_SLOT_FRAME) {
+                if (slot->stream) {
+                    bm_stream_set_ready_handler(slot->stream, NULL, NULL);
+                }
+            }
+        }
+    }
+}
+
 /**
  * @brief 解绑所有硬件槽位的外部中断/定时器
  */
@@ -90,6 +164,7 @@ static void exec_unbind_all_hardware(void) {
     uint32_t i;
     uint32_t s;
 
+    exec_unbind_stream_slots();
     for (i = 0u; i < g_instance_count; ++i) {
         const bm_exec_t *inst = g_instances[i];
         for (s = 0u; s < inst->slot_count; ++s) {
@@ -179,21 +254,32 @@ static int validate_instance(const bm_exec_t *inst) {
 
     for (s = 0u; s < inst->slot_count; ++s) {
         const bm_exec_slot_t *slot = &inst->slots[s];
-        if (!slot->run) {
-            return BM_ERR_INVALID;
-        }
         if (slot->kind == BM_EXEC_SLOT_PERIODIC) {
             if (slot->bind != NULL) {
+                return BM_ERR_INVALID;
+            }
+            if (!slot->run) {
                 return BM_ERR_INVALID;
             }
             if (bm_hrt_validate_period_us(slot->period_us) != BM_OK) {
                 return BM_ERR_INVALID;
             }
         } else if (slot->kind == BM_EXEC_SLOT_HARDWARE) {
-            if (!slot->bind) {
+            if (!slot->bind || !slot->run) {
                 return BM_ERR_INVALID;
             }
-            if (slot->period_us != 0u) {
+            if (slot->period_us != 0u || slot->deadline_us != 0u || slot->stream) {
+                return BM_ERR_INVALID;
+            }
+        } else if (slot->kind == BM_EXEC_SLOT_BLOCK ||
+                   slot->kind == BM_EXEC_SLOT_FRAME) {
+            if (!slot->run_block || !slot->stream) {
+                return BM_ERR_INVALID;
+            }
+            if (slot->deadline_us == 0u) {
+                return BM_ERR_INVALID;
+            }
+            if (slot->bind != NULL || slot->run != NULL) {
                 return BM_ERR_INVALID;
             }
         } else {
@@ -386,6 +472,7 @@ int bm_exec_init_all(const bm_exec_t *const *instances, uint32_t count) {
     }
 
     exec_set_session(BM_EXEC_SESSION_INITED);
+    exec_bind_stream_slots();
     BM_LOGI("exec", "init_all ok count=%u hrt_slots=%u",
             (unsigned)count, (unsigned)g_hrt_slot_count);
     return BM_OK;
