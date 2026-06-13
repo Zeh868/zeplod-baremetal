@@ -404,6 +404,102 @@ static void test_zero_length_audio_is_ignored(void) {
     TEST_ASSERT_FLOAT_WITHIN(0.0f, 0.0f, vad.energy);
 }
 
+static void test_vision_centroid_and_compensation(void) {
+    const uint8_t mask[9] = {
+        0u, 1u, 0u,
+        1u, 1u, 0u,
+        0u, 0u, 0u
+    };
+    float cx = 0.0f;
+    float cy = 0.0f;
+
+    TEST_ASSERT_EQUAL(0, bm_algo_vision_centroid_u8(mask, 3u, 3u, &cx, &cy));
+    TEST_ASSERT_FLOAT_WITHIN(0.01f, 0.667f, cx);
+    TEST_ASSERT_FLOAT_WITHIN(0.01f, 0.667f, cy);
+    TEST_ASSERT_FLOAT_WITHIN(0.001f, 0.0f,
+        bm_algo_deadzone_inverse(0.05f, 0.1f, 2.0f));
+    TEST_ASSERT_FLOAT_WITHIN(0.001f, 0.2f,
+        bm_algo_deadzone_inverse(0.2f, 0.1f, 2.0f));
+}
+
+static void test_soc_ekf_and_power_quality(void) {
+    bm_algo_soc_ekf_config_t ekf_cfg = {
+        .q_soc = 1e-6f,
+        .q_bias = 1e-8f,
+        .r_v = 0.01f,
+        .coulomb_efficiency = 1.0f,
+        .nominal_capacity_ah = 10.0f,
+        .ocv_slope_v_per_soc = 0.5f
+    };
+    bm_algo_soc_ekf_state_t ekf;
+    const float harmonics[3] = { 1.0f, 0.1f, 0.05f };
+    float p;
+    float q;
+    float s;
+
+    bm_algo_soc_ekf_reset(&ekf, 0.5f);
+    bm_algo_soc_ekf_predict(&ekf, &ekf_cfg, 1.0f, 1.0f);
+    bm_algo_soc_ekf_update_voltage(&ekf, &ekf_cfg, 3.7f, 3.65f);
+    TEST_ASSERT_TRUE(ekf.soc >= 0.0f && ekf.soc <= 1.0f);
+
+    TEST_ASSERT_FLOAT_WITHIN(0.5f, 11.18f,
+        bm_algo_thd_percent(harmonics, 3u));
+    bm_algo_power_quality_pq(230.0f, 10.0f, 0.0f, &p, &q, &s);
+    TEST_ASSERT_FLOAT_WITHIN(1.0f, 2300.0f, p);
+    TEST_ASSERT_FLOAT_WITHIN(1.0f, 0.0f, q);
+}
+
+static void test_detection_matched_and_ultrasonic(void) {
+    const float sig[8] = { 0.0f, 0.0f, 1.0f, 2.0f, 1.0f, 0.0f, 0.0f, 0.0f };
+    const float tmpl[3] = { 1.0f, 2.0f, 1.0f };
+    uint32_t idx = 0u;
+    float echo[32];
+    int32_t tof;
+    int i;
+
+    TEST_ASSERT_FLOAT_WITHIN(0.01f, 6.0f,
+        bm_algo_matched_filter(sig, 8u, tmpl, 3u, &idx));
+    TEST_ASSERT_EQUAL_UINT32(2u, idx);
+
+    for (i = 0; i < 32; ++i) {
+        echo[i] = 0.0f;
+    }
+    echo[10] = 1.0f;
+    echo[11] = 0.8f;
+    tof = bm_algo_ultrasonic_tof(echo, 32u, 4u, 0.3f, 0.5f);
+    TEST_ASSERT_EQUAL_INT32(10, tof);
+}
+
+static void test_w2_audio_spectral_motion(void) {
+    bm_algo_eq_peaking_config_t eq_cfg = {
+        .sample_hz = 48000.0f,
+        .freq_hz = 1000.0f,
+        .q = 1.0f,
+        .gain_db = 6.0f
+    };
+    bm_algo_eq_peaking_state_t eq;
+    float in[4] = { 1.0f, 0.0f, -1.0f, 0.0f };
+    float out[4];
+    float win[4] = { 1.0f, 1.0f, 1.0f, 1.0f };
+    float mag[4];
+    bm_algo_stepper_config_t st_cfg = { .max_velocity_steps_s = 1000.0f };
+    bm_algo_stepper_state_t st;
+    int8_t pulses[4];
+
+    TEST_ASSERT_EQUAL(0, bm_algo_eq_peaking_design(&eq, &eq_cfg));
+    bm_algo_eq_peaking_process(&eq, &eq_cfg, in, out, 4u);
+    TEST_ASSERT_TRUE(fabsf(out[0]) > 0.0f);
+
+    TEST_ASSERT_EQUAL(0, bm_algo_stft_magnitude_frame(in, win, 4u, mag));
+    TEST_ASSERT_TRUE(mag[0] >= 0.0f);
+    TEST_ASSERT_FLOAT_WITHIN(0.01f, 1.0f,
+        bm_algo_order_from_hz(50.0f, 3000.0f, 1u));
+
+    bm_algo_stepper_reset(&st, 0);
+    TEST_ASSERT_TRUE(bm_algo_stepper_process(&st, &st_cfg, 100.0f, 0.01f,
+                                             pulses, 4u) > 0u);
+}
+
 void test_algorithm(void) {
     RUN_TEST(test_common_clamp_and_deadband);
     RUN_TEST(test_pi_step_and_saturation);
@@ -426,6 +522,10 @@ void test_algorithm(void) {
     RUN_TEST(test_flux_observer_and_mtpa);
     RUN_TEST(test_battery_temp_and_motor_extras);
     RUN_TEST(test_zero_length_audio_is_ignored);
+    RUN_TEST(test_vision_centroid_and_compensation);
+    RUN_TEST(test_soc_ekf_and_power_quality);
+    RUN_TEST(test_detection_matched_and_ultrasonic);
+    RUN_TEST(test_w2_audio_spectral_motion);
 }
 
 int main(void) {

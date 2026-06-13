@@ -7,6 +7,11 @@
  * @version 1.0
  * @date 2026-06-13
  *
+ * @par 修改日志:
+ *
+ *    Date         Version        Author          Description
+ * 2026-06-13       1.0            zeh            正式发布
+ *
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 #ifndef BM_ALGO_AUDIO_H
@@ -63,6 +68,79 @@ void bm_algo_vad_process(bm_algo_vad_state_t *state,
                          const bm_algo_vad_config_t *config,
                          const float *in,
                          uint32_t n);
+
+/* ---------- Peaking EQ（Biquad 封装） ---------- */
+typedef struct {
+    float sample_hz;
+    float freq_hz;
+    float q;
+    float gain_db;
+} bm_algo_eq_peaking_config_t;
+
+typedef struct {
+    float b0;
+    float b1;
+    float b2;
+    float a1;
+    float a2;
+    float z1;
+    float z2;
+} bm_algo_eq_peaking_state_t;
+
+int bm_algo_eq_peaking_design(bm_algo_eq_peaking_state_t *state,
+                              const bm_algo_eq_peaking_config_t *config);
+void bm_algo_eq_peaking_reset(bm_algo_eq_peaking_state_t *state);
+void bm_algo_eq_peaking_process(bm_algo_eq_peaking_state_t *state,
+                                const bm_algo_eq_peaking_config_t *config,
+                                const float *in,
+                                float *out,
+                                uint32_t n);
+
+/* ---------- 动态压缩 ---------- */
+typedef struct {
+    float threshold;
+    float ratio;
+    float attack_coeff;
+    float release_coeff;
+    float makeup_gain;
+} bm_algo_compressor_config_t;
+
+typedef struct {
+    float envelope;
+} bm_algo_compressor_state_t;
+
+void bm_algo_compressor_reset(bm_algo_compressor_state_t *state);
+void bm_algo_compressor_process(bm_algo_compressor_state_t *state,
+                                const bm_algo_compressor_config_t *config,
+                                const float *in,
+                                float *out,
+                                uint32_t n);
+
+/* ---------- 噪声门 ---------- */
+typedef struct {
+    float threshold;
+    float attack_coeff;
+    float release_coeff;
+    float floor_gain;
+} bm_algo_noise_gate_config_t;
+
+typedef struct {
+    float envelope;
+    float gain;
+} bm_algo_noise_gate_state_t;
+
+void bm_algo_noise_gate_reset(bm_algo_noise_gate_state_t *state);
+void bm_algo_noise_gate_process(bm_algo_noise_gate_state_t *state,
+                                const bm_algo_noise_gate_config_t *config,
+                                const float *in,
+                                float *out,
+                                uint32_t n);
+
+/* ---------- GCC-PHAT 时延估计 ---------- */
+int32_t bm_algo_gcc_phat_delay(const float *ref,
+                               const float *sig,
+                               uint32_t n,
+                               int32_t max_lag);
 
 #ifdef __cplusplus
 }

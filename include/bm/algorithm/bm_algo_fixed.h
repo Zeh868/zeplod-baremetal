@@ -87,6 +87,50 @@ bm_algo_q15_t bm_algo_lpf1_q15_step(bm_algo_lpf1_q15_state_t *state,
                                     const bm_algo_lpf1_q15_config_t *config,
                                     bm_algo_q15_t input);
 
+typedef struct {
+    bm_algo_q31_t kp;
+    bm_algo_q31_t ki;
+    bm_algo_q31_t kd;
+    bm_algo_q31_t out_min;
+    bm_algo_q31_t out_max;
+    bm_algo_q31_t integrator_min;
+    bm_algo_q31_t integrator_max;
+    bm_algo_q31_t d_filter_alpha_q31;
+} bm_algo_pid_q31_config_t;
+
+typedef struct {
+    bm_algo_q31_t integrator;
+    bm_algo_q31_t prev_error;
+    bm_algo_q31_t d_filtered;
+    bm_algo_q31_t output;
+} bm_algo_pid_q31_state_t;
+
+void bm_algo_pid_q31_reset(bm_algo_pid_q31_state_t *state, bm_algo_q31_t output);
+
+bm_algo_q31_t bm_algo_pid_q31_step(bm_algo_pid_q31_state_t *state,
+                                   const bm_algo_pid_q31_config_t *config,
+                                   bm_algo_q31_t error,
+                                   bm_algo_q31_t dt_q31);
+
+typedef struct {
+    bm_algo_q15_t b0;
+    bm_algo_q15_t b1;
+    bm_algo_q15_t b2;
+    bm_algo_q15_t a1;
+    bm_algo_q15_t a2;
+} bm_algo_biquad_q15_config_t;
+
+typedef struct {
+    bm_algo_q15_t z1;
+    bm_algo_q15_t z2;
+} bm_algo_biquad_q15_state_t;
+
+void bm_algo_biquad_q15_reset(bm_algo_biquad_q15_state_t *state);
+
+bm_algo_q15_t bm_algo_biquad_q15_step(bm_algo_biquad_q15_state_t *state,
+                                      const bm_algo_biquad_q15_config_t *config,
+                                      bm_algo_q15_t input);
+
 #ifdef __cplusplus
 }
 #endif

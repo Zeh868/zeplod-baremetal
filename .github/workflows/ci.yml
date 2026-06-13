@@ -69,10 +69,13 @@ jobs:
           - hrt_servo_stub
           - hrt_bms_coulomb
           - stream_block_rms
+          - daq_frontend
+          - ultrasonic_frontend
           - stream_fft
           - stream_bms_pipeline
           - stream_audio_agc
           - stream_vibration_diag
+          - stream_vision_frame
           - power_buck_loop
           - bms_estimation_loop
           - multi_axis_sync

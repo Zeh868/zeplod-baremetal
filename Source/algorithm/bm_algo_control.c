@@ -6,6 +6,12 @@
  * @version 1.0
  * @date 2026-06-13
  *
+ * @par 修改日志:
+ *
+ *    Date         Version        Author          Description
+ * 2026-06-13       1.0            zeh            正式发布
+ * 2026-06-13       1.1            zeh            增加 Smith 预估器
+ *
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 #include "bm/algorithm/bm_algo_control.h"
@@ -342,4 +348,117 @@ float bm_algo_lead_lag_step(bm_algo_lead_lag_state_t *state, float input) {
 
 float bm_algo_feedforward_step(float reference, float gain, float bias) {
     return reference * gain + bias;
+}
+
+void bm_algo_pid2_reset(bm_algo_pid2_state_t *state, float output) {
+    if (state != NULL) {
+        state->integrator = 0.0f;
+        state->prev_measurement = 0.0f;
+        state->d_filtered = 0.0f;
+        state->output = output;
+    }
+}
+
+float bm_algo_pid2_step(bm_algo_pid2_state_t *state,
+                        const bm_algo_pid2_config_t *config,
+                        float reference,
+                        float measurement,
+                        float dt_s) {
+    float error_i;
+    float p_term;
+    float d_raw;
+    float d_term;
+    float u_unsat;
+    float u_sat;
+    float alpha;
+
+    if (state == NULL || config == NULL || dt_s <= 0.0f) {
+        return 0.0f;
+    }
+
+    error_i = reference - measurement;
+    p_term = config->kp * (config->b * reference - measurement);
+
+    state->integrator += error_i * dt_s;
+    state->integrator = bm_algo_clamp_f(state->integrator,
+                                        config->integrator_min,
+                                        config->integrator_max);
+
+    d_raw = -(measurement - state->prev_measurement) / dt_s;
+    state->prev_measurement = measurement;
+    alpha = bm_algo_clamp_f(config->d_filter_coeff, 0.0f, 1.0f);
+    state->d_filtered += alpha * (d_raw - state->d_filtered);
+    d_term = config->kd * state->d_filtered;
+
+    u_unsat = p_term + config->ki * state->integrator + d_term;
+    u_sat = bm_algo_clamp_f(u_unsat, config->out_min, config->out_max);
+
+    if (config->ki != 0.0f && u_sat != u_unsat) {
+        state->integrator = (u_sat - p_term - d_term) / config->ki;
+        state->integrator = bm_algo_clamp_f(state->integrator,
+                                            config->integrator_min,
+                                            config->integrator_max);
+    }
+
+    state->output = u_sat;
+    return state->output;
+}
+
+int bm_algo_smith_predictor_init(bm_algo_smith_predictor_state_t *state,
+                                 const bm_algo_smith_predictor_config_t *config,
+                                 float *delay_line,
+                                 uint32_t line_len) {
+    if (state == NULL || config == NULL || delay_line == NULL ||
+        config->delay_steps == 0u || line_len < config->delay_steps) {
+        return -1;
+    }
+
+    state->u_delay_line = delay_line;
+    state->line_len = line_len;
+    bm_algo_smith_predictor_reset(state, config);
+    return 0;
+}
+
+void bm_algo_smith_predictor_reset(bm_algo_smith_predictor_state_t *state,
+                                   const bm_algo_smith_predictor_config_t *config) {
+    uint32_t i;
+
+    if (state == NULL || state->u_delay_line == NULL || config == NULL) {
+        return;
+    }
+
+    for (i = 0u; i < config->delay_steps; ++i) {
+        state->u_delay_line[i] = 0.0f;
+    }
+    state->head = 0u;
+    state->y_model = 0.0f;
+    state->y_delayed = 0.0f;
+}
+
+float bm_algo_smith_predictor_step(bm_algo_smith_predictor_state_t *state,
+                                   const bm_algo_smith_predictor_config_t *config,
+                                   float reference,
+                                   float measurement,
+                                   float u_controller) {
+    float u_delayed;
+    float y_nd;
+    float correction;
+
+    if (state == NULL || config == NULL || state->u_delay_line == NULL ||
+        config->delay_steps == 0u) {
+        return u_controller;
+    }
+
+    u_delayed = state->u_delay_line[state->head];
+    y_nd = config->model_gain * u_controller;
+    state->y_delayed = config->model_gain * u_delayed;
+
+    correction = (y_nd - state->y_delayed) +
+                 config->model_gain * (reference - measurement);
+
+    state->u_delay_line[state->head] = u_controller;
+    state->head = (state->head + 1u) % config->delay_steps;
+    state->y_model = y_nd;
+
+    return u_controller + correction;
 }

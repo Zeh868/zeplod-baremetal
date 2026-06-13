@@ -6,6 +6,12 @@
  * @version 1.0
  * @date 2026-06-13
  *
+ * @par 修改日志:
+ *
+ *    Date         Version        Author          Description
+ * 2026-06-13       1.0            zeh            正式发布
+ * 2026-06-13       1.1            zeh            增加步进脉冲生成
+ *
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 #include "bm/algorithm/bm_algo_motion.h"
@@ -116,4 +122,57 @@ int bm_algo_dda_step(bm_algo_dda_state_t *state,
         *y_out = state->y;
     }
     return 1;
+}
+
+void bm_algo_stepper_reset(bm_algo_stepper_state_t *state, int32_t position) {
+    if (state != NULL) {
+        state->phase = 0.0f;
+        state->position_steps = position;
+    }
+}
+
+uint32_t bm_algo_stepper_process(bm_algo_stepper_state_t *state,
+                                 const bm_algo_stepper_config_t *config,
+                                 float velocity_steps_s,
+                                 float dt_s,
+                                 int8_t *pulses,
+                                 uint32_t max_pulses) {
+    float max_vel;
+    int8_t dir;
+    uint32_t count = 0u;
+
+    if (state == NULL || config == NULL || dt_s <= 0.0f) {
+        return 0u;
+    }
+
+    max_vel = config->max_velocity_steps_s;
+    if (max_vel > 0.0f) {
+        if (velocity_steps_s > max_vel) {
+            velocity_steps_s = max_vel;
+        } else if (velocity_steps_s < -max_vel) {
+            velocity_steps_s = -max_vel;
+        }
+    }
+
+    if (velocity_steps_s == 0.0f) {
+        return 0u;
+    }
+
+    dir = (velocity_steps_s > 0.0f) ? 1 : -1;
+    state->phase += fabsf(velocity_steps_s) * dt_s;
+
+    while (state->phase >= 1.0f) {
+        state->phase -= 1.0f;
+        state->position_steps += dir;
+        if (pulses != NULL) {
+            if (count >= max_pulses) {
+                break;
+            }
+            pulses[count++] = dir;
+        } else {
+            count++;
+        }
+    }
+
+    return count;
 }

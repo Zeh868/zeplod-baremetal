@@ -6,6 +6,11 @@
  * @version 1.0
  * @date 2026-06-13
  *
+ * @par 修改日志:
+ *
+ *    Date         Version        Author          Description
+ * 2026-06-13       1.0            zeh            正式发布
+ *
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 #include "bm/algorithm/bm_algo_battery.h"

@@ -6,9 +6,17 @@
  * @version 1.0
  * @date 2026-06-13
  *
+ * @par 修改日志:
+ *
+ *    Date         Version        Author          Description
+ * 2026-06-13       1.0            zeh            正式发布
+ * 2026-06-13       1.1            zeh            增加多相 FIR 抽取
+ *
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 #include "bm/algorithm/bm_algo_resample.h"
+
+#include <string.h>
 
 void bm_algo_decimator_reset(bm_algo_decimator_state_t *state) {
     if (state != NULL) {
@@ -90,4 +98,70 @@ int bm_algo_linear_resampler_step(bm_algo_linear_resampler_state_t *state,
     state->prev_sample = input;
     *out_count = n;
     return (int)n;
+}
+
+int bm_algo_polyphase_decim_init(bm_algo_polyphase_decim_state_t *state,
+                                 const bm_algo_polyphase_decim_config_t *config,
+                                 float *delay_line,
+                                 uint32_t delay_len) {
+    if (state == NULL || config == NULL || delay_line == NULL ||
+        config->coeffs == NULL || config->tap_count == 0u ||
+        config->decim == 0u || delay_len < config->tap_count) {
+        return -1;
+    }
+
+    state->delay_line = delay_line;
+    state->delay_len = delay_len;
+    bm_algo_polyphase_decim_reset(state, config);
+    return 0;
+}
+
+void bm_algo_polyphase_decim_reset(bm_algo_polyphase_decim_state_t *state,
+                                   const bm_algo_polyphase_decim_config_t *config) {
+    if (state == NULL || state->delay_line == NULL) {
+        return;
+    }
+
+    state->index = 0u;
+    state->decim_counter = 0u;
+    memset(state->delay_line, 0, state->delay_len * sizeof(float));
+    (void)config;
+}
+
+uint32_t bm_algo_polyphase_decim_process(bm_algo_polyphase_decim_state_t *state,
+                                         const bm_algo_polyphase_decim_config_t *config,
+                                         const float *in,
+                                         float *out,
+                                         uint32_t in_count) {
+    uint32_t out_count = 0u;
+    uint32_t i;
+    uint32_t k;
+    uint32_t idx;
+
+    if (state == NULL || config == NULL || in == NULL || out == NULL ||
+        state->delay_line == NULL || config->coeffs == NULL ||
+        config->tap_count == 0u || config->decim == 0u || in_count == 0u) {
+        return 0u;
+    }
+
+    for (i = 0u; i < in_count; ++i) {
+        state->delay_line[state->index] = in[i];
+        state->index = (state->index + 1u) % config->tap_count;
+
+        if (state->decim_counter == 0u) {
+            float acc = 0.0f;
+
+            for (k = 0u; k < config->tap_count; ++k) {
+                idx = (state->index + config->tap_count - 1u - k) %
+                      config->tap_count;
+                acc += config->coeffs[k] * state->delay_line[idx];
+            }
+            out[out_count++] = acc;
+            state->decim_counter = config->decim - 1u;
+        } else {
+            state->decim_counter--;
+        }
+    }
+
+    return out_count;
 }

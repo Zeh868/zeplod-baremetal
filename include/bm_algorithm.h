@@ -39,5 +39,10 @@
 #include "bm/algorithm/bm_algo_signal_quality.h"
 #include "bm/algorithm/bm_algo_estimator.h"
 #include "bm/algorithm/bm_algo_fixed.h"
+#include "bm/algorithm/bm_algo_vision.h"
+#include "bm/algorithm/bm_algo_detection.h"
+#include "bm/algorithm/bm_algo_compensation.h"
+#include "bm/algorithm/bm_algo_battery_model.h"
+#include "bm/algorithm/bm_algo_power_quality.h"
 
 #endif /* BM_ALGORITHM_H */

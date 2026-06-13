@@ -16,9 +16,14 @@ option(BM_ENABLE_EXEC "Enable deterministic execution instances" OFF)
 option(BM_ENABLE_STREAM "Enable block/frame stream (bm_stream)" OFF)
 option(BM_ENABLE_PIPELINE "Enable static linear bm_pipeline" OFF)
 option(BM_ENABLE_ALGORITHM "Enable deterministic algorithm library (bm_algorithm)" OFF)
+option(BM_ENABLE_EXTENSIONS "Enable K3 extension adapters (bm_extensions)" OFF)
 option(BM_ENABLE_COMPONENT_MOTOR "Enable motor domain components" OFF)
 option(BM_ENABLE_COMPONENT_BMS "Enable BMS domain components" OFF)
 option(BM_ENABLE_COMPONENT_POWER "Enable power domain components" OFF)
+option(BM_ENABLE_COMPONENT_DIAGNOSTICS "Enable diagnostics domain components (fault_derating, sensor_quality, spectral_diagnostics)" OFF)
+option(BM_ENABLE_COMPONENT_FUSION "Enable fusion domain components (estimation_fusion)" OFF)
+option(BM_ENABLE_COMPONENT_PROCESS "Enable process domain components (process_control, grid_control, motion_coordination, transport_qos, bms_supervision)" OFF)
+option(BM_BUILD_ALL_COMPONENTS "Enable all domain component libraries" OFF)
 option(BM_ENABLE_SYNC "Enable sync domain" OFF)
 option(BM_SYNC_HAL_NATIVE "Link native_sim sync HAL into bm_exec" OFF)
 option(BM_SYNC_HAL_QEMU "Link QEMU sync HAL into bm_exec" OFF)
@@ -42,6 +47,16 @@ endif()
 include(${CMAKE_CURRENT_LIST_DIR}/cmake/bm_include_dirs.cmake)
 include(${CMAKE_CURRENT_LIST_DIR}/cmake/bm_config_export.cmake)
 
+if(BM_BUILD_ALL_COMPONENTS)
+    set(BM_ENABLE_ALGORITHM ON CACHE BOOL "" FORCE)
+    set(BM_ENABLE_COMPONENT_MOTOR ON CACHE BOOL "" FORCE)
+    set(BM_ENABLE_COMPONENT_BMS ON CACHE BOOL "" FORCE)
+    set(BM_ENABLE_COMPONENT_POWER ON CACHE BOOL "" FORCE)
+    set(BM_ENABLE_COMPONENT_DIAGNOSTICS ON CACHE BOOL "" FORCE)
+    set(BM_ENABLE_COMPONENT_FUSION ON CACHE BOOL "" FORCE)
+    set(BM_ENABLE_COMPONENT_PROCESS ON CACHE BOOL "" FORCE)
+endif()
+
 if(BM_BUILD_TESTS)
     set(BM_ENABLE_STREAM ON CACHE BOOL "" FORCE)
     set(BM_ENABLE_PIPELINE ON CACHE BOOL "" FORCE)
@@ -49,6 +64,9 @@ if(BM_BUILD_TESTS)
     set(BM_ENABLE_COMPONENT_MOTOR ON CACHE BOOL "" FORCE)
     set(BM_ENABLE_COMPONENT_BMS ON CACHE BOOL "" FORCE)
     set(BM_ENABLE_COMPONENT_POWER ON CACHE BOOL "" FORCE)
+    set(BM_ENABLE_COMPONENT_DIAGNOSTICS ON CACHE BOOL "" FORCE)
+    set(BM_ENABLE_COMPONENT_FUSION ON CACHE BOOL "" FORCE)
+    set(BM_ENABLE_COMPONENT_PROCESS ON CACHE BOOL "" FORCE)
     if(NOT BM_BACKEND)
         set(BM_BACKEND "native_sim")
     endif()
@@ -230,6 +248,11 @@ if(BM_ENABLE_ALGORITHM)
         Source/algorithm/bm_algo_signal_quality.c
         Source/algorithm/bm_algo_estimator.c
         Source/algorithm/bm_algo_fixed.c
+        Source/algorithm/bm_algo_vision.c
+        Source/algorithm/bm_algo_detection.c
+        Source/algorithm/bm_algo_compensation.c
+        Source/algorithm/bm_algo_battery_model.c
+        Source/algorithm/bm_algo_power_quality.c
     )
     target_link_libraries(bm_algorithm PUBLIC bm_config)
     if(NOT MSVC)
@@ -239,6 +262,15 @@ if(BM_ENABLE_ALGORITHM)
     target_link_libraries(bm_framework INTERFACE bm_algorithm)
 endif()
 
+if(BM_ENABLE_EXTENSIONS)
+    add_library(bm_extensions STATIC
+        Source/extensions/bm_ext_algorithm.c
+    )
+    target_link_libraries(bm_extensions PUBLIC bm_config)
+    bm_target_internal_includes(bm_extensions)
+    target_link_libraries(bm_framework INTERFACE bm_extensions)
+endif()
+
 if(BM_ENABLE_COMPONENT_MOTOR)
     if(NOT BM_ENABLE_ALGORITHM)
         message(FATAL_ERROR "BM_ENABLE_COMPONENT_MOTOR requires BM_ENABLE_ALGORITHM")
@@ -246,6 +278,7 @@ if(BM_ENABLE_COMPONENT_MOTOR)
     add_library(bm_component_motor STATIC
         Source/component/motor_foc_sensored.c
         Source/component/motor_foc_sensorless.c
+        Source/component/motor_current_sense.c
     )
     target_link_libraries(bm_component_motor PUBLIC bm_algorithm bm_hal bm_config)
     bm_target_internal_includes(bm_component_motor)
@@ -270,10 +303,57 @@ if(BM_ENABLE_COMPONENT_POWER)
     endif()
     add_library(bm_component_power STATIC
         Source/component/power_control.c
+        Source/component/power_converter.c
     )
     target_link_libraries(bm_component_power PUBLIC bm_algorithm bm_config)
     bm_target_internal_includes(bm_component_power)
     target_link_libraries(bm_framework INTERFACE bm_component_power)
+endif()
+
+if(BM_ENABLE_COMPONENT_PROCESS AND NOT BM_ENABLE_COMPONENT_DIAGNOSTICS)
+    set(BM_ENABLE_COMPONENT_DIAGNOSTICS ON CACHE BOOL "" FORCE)
+endif()
+
+if(BM_ENABLE_COMPONENT_DIAGNOSTICS)
+    if(NOT BM_ENABLE_ALGORITHM)
+        message(FATAL_ERROR "BM_ENABLE_COMPONENT_DIAGNOSTICS requires BM_ENABLE_ALGORITHM")
+    endif()
+    add_library(bm_component_diagnostics STATIC
+        Source/component/fault_derating.c
+        Source/component/sensor_quality.c
+        Source/component/spectral_diagnostics.c
+    )
+    target_link_libraries(bm_component_diagnostics PUBLIC bm_algorithm bm_config)
+    bm_target_internal_includes(bm_component_diagnostics)
+    target_link_libraries(bm_framework INTERFACE bm_component_diagnostics)
+endif()
+
+if(BM_ENABLE_COMPONENT_FUSION)
+    if(NOT BM_ENABLE_ALGORITHM)
+        message(FATAL_ERROR "BM_ENABLE_COMPONENT_FUSION requires BM_ENABLE_ALGORITHM")
+    endif()
+    add_library(bm_component_fusion STATIC
+        Source/component/estimation_fusion.c
+    )
+    target_link_libraries(bm_component_fusion PUBLIC bm_algorithm bm_config)
+    bm_target_internal_includes(bm_component_fusion)
+    target_link_libraries(bm_framework INTERFACE bm_component_fusion)
+endif()
+
+if(BM_ENABLE_COMPONENT_PROCESS)
+    if(NOT BM_ENABLE_ALGORITHM)
+        message(FATAL_ERROR "BM_ENABLE_COMPONENT_PROCESS requires BM_ENABLE_ALGORITHM")
+    endif()
+    add_library(bm_component_process STATIC
+        Source/component/process_control.c
+        Source/component/grid_control.c
+        Source/component/motion_coordination.c
+        Source/component/transport_qos.c
+        Source/component/bms_supervision.c
+    )
+    target_link_libraries(bm_component_process PUBLIC bm_algorithm bm_component_diagnostics bm_config)
+    bm_target_internal_includes(bm_component_process)
+    target_link_libraries(bm_framework INTERFACE bm_component_process)
 endif()
 
 if(BM_BUILD_TESTS)

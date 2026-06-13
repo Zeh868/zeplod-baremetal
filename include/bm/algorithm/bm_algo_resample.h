@@ -7,6 +7,11 @@
  * @version 1.0
  * @date 2026-06-13
  *
+ * @par 修改日志:
+ *
+ *    Date         Version        Author          Description
+ * 2026-06-13       1.0            zeh            正式发布
+ *
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 #ifndef BM_ALGO_RESAMPLE_H
@@ -47,6 +52,32 @@ int bm_algo_linear_resampler_step(bm_algo_linear_resampler_state_t *state,
                                   float *outputs,
                                   uint32_t max_outputs,
                                   uint32_t *out_count);
+
+/* ---------- 多相 FIR 抽取 ---------- */
+typedef struct {
+    const float *coeffs;
+    uint32_t tap_count;
+    uint32_t decim;
+} bm_algo_polyphase_decim_config_t;
+
+typedef struct {
+    float *delay_line;
+    uint32_t delay_len;
+    uint32_t index;
+    uint32_t decim_counter;
+} bm_algo_polyphase_decim_state_t;
+
+int bm_algo_polyphase_decim_init(bm_algo_polyphase_decim_state_t *state,
+                                 const bm_algo_polyphase_decim_config_t *config,
+                                 float *delay_line,
+                                 uint32_t delay_len);
+void bm_algo_polyphase_decim_reset(bm_algo_polyphase_decim_state_t *state,
+                                   const bm_algo_polyphase_decim_config_t *config);
+uint32_t bm_algo_polyphase_decim_process(bm_algo_polyphase_decim_state_t *state,
+                                         const bm_algo_polyphase_decim_config_t *config,
+                                         const float *in,
+                                         float *out,
+                                         uint32_t in_count);
 
 #ifdef __cplusplus
 }

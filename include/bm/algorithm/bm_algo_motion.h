@@ -7,6 +7,11 @@
  * @version 1.0
  * @date 2026-06-13
  *
+ * @par 修改日志:
+ *
+ *    Date         Version        Author          Description
+ * 2026-06-13       1.0            zeh            正式发布
+ *
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 #ifndef BM_ALGO_MOTION_H
@@ -70,6 +75,24 @@ int bm_algo_dda_step(bm_algo_dda_state_t *state,
                      const bm_algo_dda_config_t *config,
                      float *x_out,
                      float *y_out);
+
+/* ---------- 步进脉冲生成（速度给定 → 步脉冲） ---------- */
+typedef struct {
+    float max_velocity_steps_s;
+} bm_algo_stepper_config_t;
+
+typedef struct {
+    float phase;
+    int32_t position_steps;
+} bm_algo_stepper_state_t;
+
+void bm_algo_stepper_reset(bm_algo_stepper_state_t *state, int32_t position);
+uint32_t bm_algo_stepper_process(bm_algo_stepper_state_t *state,
+                                 const bm_algo_stepper_config_t *config,
+                                 float velocity_steps_s,
+                                 float dt_s,
+                                 int8_t *pulses,
+                                 uint32_t max_pulses);
 
 #ifdef __cplusplus
 }

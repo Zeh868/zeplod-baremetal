@@ -164,6 +164,59 @@ float bm_algo_lead_lag_step(bm_algo_lead_lag_state_t *state, float input);
 /* ---------- 前馈 ---------- */
 float bm_algo_feedforward_step(float reference, float gain, float bias);
 
+/* ---------- 2DOF PID（设定值加权） ---------- */
+typedef struct {
+    float kp;
+    float ki;
+    float kd;
+    float b;  /**< P/D 项设定值权重 */
+    float out_min;
+    float out_max;
+    float integrator_min;
+    float integrator_max;
+    float d_filter_coeff;
+} bm_algo_pid2_config_t;
+
+typedef struct {
+    float integrator;
+    float prev_measurement;
+    float d_filtered;
+    float output;
+} bm_algo_pid2_state_t;
+
+void bm_algo_pid2_reset(bm_algo_pid2_state_t *state, float output);
+float bm_algo_pid2_step(bm_algo_pid2_state_t *state,
+                        const bm_algo_pid2_config_t *config,
+                        float reference,
+                        float measurement,
+                        float dt_s);
+
+/* ---------- Smith 预估器（死区补偿接口） ---------- */
+typedef struct {
+    float model_gain;
+    uint32_t delay_steps;
+} bm_algo_smith_predictor_config_t;
+
+typedef struct {
+    float *u_delay_line;
+    uint32_t line_len;
+    uint32_t head;
+    float y_model;
+    float y_delayed;
+} bm_algo_smith_predictor_state_t;
+
+int bm_algo_smith_predictor_init(bm_algo_smith_predictor_state_t *state,
+                                 const bm_algo_smith_predictor_config_t *config,
+                                 float *delay_line,
+                                 uint32_t line_len);
+void bm_algo_smith_predictor_reset(bm_algo_smith_predictor_state_t *state,
+                                   const bm_algo_smith_predictor_config_t *config);
+float bm_algo_smith_predictor_step(bm_algo_smith_predictor_state_t *state,
+                                   const bm_algo_smith_predictor_config_t *config,
+                                   float reference,
+                                   float measurement,
+                                   float u_controller);
+
 #ifdef __cplusplus
 }
 #endif

@@ -7,6 +7,11 @@
  * @version 1.0
  * @date 2026-06-13
  *
+ * @par 修改日志:
+ *
+ *    Date         Version        Author          Description
+ * 2026-06-13       1.0            zeh            正式发布
+ *
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 #ifndef BM_ALGO_SPECTRAL_H
@@ -70,6 +75,15 @@ int bm_algo_find_peak_bin(const float *spectrum,
                           uint32_t end_bin,
                           uint32_t *peak_bin,
                           float *peak_value);
+
+/* ---------- STFT 幅度谱（单帧） ---------- */
+int bm_algo_stft_magnitude_frame(const float *frame,
+                                 const float *window,
+                                 uint32_t n,
+                                 float *magnitude);
+
+/* ---------- 阶次换算 ---------- */
+float bm_algo_order_from_hz(float freq_hz, float rpm, float pole_pairs_or_harmonic);
 
 #ifdef __cplusplus
 }

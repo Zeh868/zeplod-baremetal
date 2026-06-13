@@ -1,10 +1,15 @@
 /**
  * @file bm_algo_fft.c
- * @brief radix-2 FFT 实现（CFFT/RFFT）与窗函数
+ * @brief radix-2 FFT（CFFT/RFFT）与窗函数实现
  *
  * @author zeh (china_qzh@163.com)
  * @version 1.0
  * @date 2026-06-13
+ *
+ * @par 修改日志:
+ *
+ *    Date         Version        Author          Description
+ * 2026-06-13       1.0            zeh            正式发布
  *
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */

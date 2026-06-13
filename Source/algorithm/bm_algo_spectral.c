@@ -6,6 +6,12 @@
  * @version 1.0
  * @date 2026-06-13
  *
+ * @par 修改日志:
+ *
+ *    Date         Version        Author          Description
+ * 2026-06-13       1.0            zeh            正式发布
+ * 2026-06-13       1.1            zeh            增加 STFT 幅度谱与阶次换算
+ *
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 #include "bm/algorithm/bm_algo_spectral.h"
@@ -148,4 +154,56 @@ int bm_algo_find_peak_bin(const float *spectrum,
     *peak_bin = max_i;
     *peak_value = max_v;
     return 0;
+}
+
+static void dft_magnitude(const float *frame,
+                          const float *window,
+                          uint32_t n,
+                          float *magnitude) {
+    uint32_t k;
+    uint32_t bin_count = n / 2u + 1u;
+
+    for (k = 0u; k < bin_count; ++k) {
+        float re = 0.0f;
+        float im = 0.0f;
+        uint32_t i;
+        float omega = 2.0f * BM_ALGO_PI_F * (float)k / (float)n;
+
+        for (i = 0u; i < n; ++i) {
+            float x = frame[i];
+            float w = (window != NULL) ? window[i] : 1.0f;
+            float sample = x * w;
+
+            re += sample * cosf(omega * (float)i);
+            im -= sample * sinf(omega * (float)i);
+        }
+
+        magnitude[k] = sqrtf(re * re + im * im) / (float)n;
+    }
+}
+
+int bm_algo_stft_magnitude_frame(const float *frame,
+                                 const float *window,
+                                 uint32_t n,
+                                 float *magnitude) {
+    if (frame == NULL || magnitude == NULL || n < 2u) {
+        return -1;
+    }
+
+    dft_magnitude(frame, window, n, magnitude);
+    return 0;
+}
+
+float bm_algo_order_from_hz(float freq_hz, float rpm, float pole_pairs_or_harmonic) {
+    float shaft_hz;
+
+    if (rpm <= 0.0f || pole_pairs_or_harmonic <= 0.0f) {
+        return 0.0f;
+    }
+
+    shaft_hz = (rpm / 60.0f) * pole_pairs_or_harmonic;
+    if (shaft_hz <= 0.0f) {
+        return 0.0f;
+    }
+    return freq_hz / shaft_hz;
 }
