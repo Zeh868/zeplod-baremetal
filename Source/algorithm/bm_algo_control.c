@@ -415,6 +415,7 @@ int bm_algo_smith_predictor_init(bm_algo_smith_predictor_state_t *state,
 
     state->u_delay_line = delay_line;
     state->line_len = line_len;
+    state->delay_steps = config->delay_steps;
     bm_algo_smith_predictor_reset(state, config);
     return 0;
 }
@@ -424,6 +425,11 @@ void bm_algo_smith_predictor_reset(bm_algo_smith_predictor_state_t *state,
     uint32_t i;
 
     if (state == NULL || state->u_delay_line == NULL || config == NULL) {
+        return;
+    }
+    if (config->delay_steps == 0u ||
+        config->delay_steps > state->line_len ||
+        config->delay_steps != state->delay_steps) {
         return;
     }
 
@@ -442,25 +448,24 @@ float bm_algo_smith_predictor_step(bm_algo_smith_predictor_state_t *state,
                                    float u_controller) {
     float u_delayed;
     float y_nd;
-    float correction;
+    float y_predicted;
 
     if (state == NULL || config == NULL || state->u_delay_line == NULL ||
-        config->delay_steps == 0u) {
-        return u_controller;
+        config->delay_steps == 0u ||
+        config->delay_steps > state->line_len ||
+        config->delay_steps != state->delay_steps ||
+        state->head >= config->delay_steps) {
+        return reference - measurement;
     }
 
     u_delayed = state->u_delay_line[state->head];
     y_nd = config->model_gain * u_controller;
     state->y_delayed = config->model_gain * u_delayed;
-
-    (void)reference;
-    (void)measurement;
-
-    correction = y_nd - state->y_delayed;
+    y_predicted = y_nd + measurement - state->y_delayed;
 
     state->u_delay_line[state->head] = u_controller;
     state->head = (state->head + 1u) % config->delay_steps;
     state->y_model = y_nd;
 
-    return u_controller + correction;
+    return reference - y_predicted;
 }

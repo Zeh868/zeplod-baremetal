@@ -15,7 +15,9 @@
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 #include "bm/algorithm/bm_algo_motion.h"
+#include "bm/algorithm/bm_algo_common.h"
 
+#include <limits.h>
 #include <math.h>
 
 #ifndef BM_ALGO_PI_F
@@ -25,21 +27,26 @@
 void bm_algo_encoder_reset(bm_algo_encoder_state_t *state,
                            const bm_algo_encoder_config_t *config,
                            int32_t raw_count) {
+    float counts_to_rad;
+
     if (state == NULL || config == NULL) {
         return;
     }
     state->prev_count = raw_count;
     state->turns = 0;
-    state->position_rad = 0.0f;
+    counts_to_rad = (config->counts_per_rev > 0u)
+                        ? (2.0f * BM_ALGO_PI_F /
+                           (float)config->counts_per_rev)
+                        : 0.0f;
+    state->position_rad = (float)raw_count * counts_to_rad;
     state->velocity_rad_s = 0.0f;
-    (void)config;
 }
 
 float bm_algo_encoder_update(bm_algo_encoder_state_t *state,
                              const bm_algo_encoder_config_t *config,
                              int32_t raw_count,
                              float dt_s) {
-    int32_t delta;
+    int64_t delta;
     float counts_to_rad;
     float pos_counts;
 
@@ -48,11 +55,15 @@ float bm_algo_encoder_update(bm_algo_encoder_state_t *state,
         return 0.0f;
     }
 
-    delta = raw_count - state->prev_count;
-    if (delta > (int32_t)(config->counts_per_rev / 2u)) {
-        state->turns--;
-    } else if (delta < -(int32_t)(config->counts_per_rev / 2u)) {
-        state->turns++;
+    delta = (int64_t)raw_count - (int64_t)state->prev_count;
+    if (delta > (int64_t)(config->counts_per_rev / 2u)) {
+        if (state->turns > INT32_MIN) {
+            state->turns--;
+        }
+    } else if (delta < -(int64_t)(config->counts_per_rev / 2u)) {
+        if (state->turns < INT32_MAX) {
+            state->turns++;
+        }
     }
 
     state->prev_count = raw_count;
@@ -68,23 +79,56 @@ float bm_algo_encoder_update(bm_algo_encoder_state_t *state,
 
 void bm_algo_dda_reset(bm_algo_dda_state_t *state,
                        const bm_algo_dda_config_t *config) {
+    double dx;
+    double dy;
+    double distance;
+    double required_steps;
+
     if (state == NULL || config == NULL) {
         return;
     }
 
     state->x = config->x0;
     state->y = config->y0;
-    state->dx = config->x1 - config->x0;
-    state->dy = config->y1 - config->y0;
-    state->steps = fabsf(state->dx);
-    if (fabsf(state->dy) > state->steps) {
-        state->steps = fabsf(state->dy);
-    }
-    state->step_count = 0.0f;
+    state->dx = 0.0f;
+    state->dy = 0.0f;
+    state->target_x = config->x1;
+    state->target_y = config->y1;
+    state->step_size = config->step_size;
+    state->steps = 0u;
+    state->step_count = 0u;
     state->err = 0.0f;
+    state->step_x = 1;
+    state->step_y = 1;
+    state->done = 1;
+
+    if (!bm_algo_is_finite_f(config->x0) ||
+        !bm_algo_is_finite_f(config->y0) ||
+        !bm_algo_is_finite_f(config->x1) ||
+        !bm_algo_is_finite_f(config->y1) ||
+        !bm_algo_is_finite_f(config->step_size) ||
+        config->step_size <= 0.0f) {
+        return;
+    }
+
+    dx = (double)config->x1 - (double)config->x0;
+    dy = (double)config->y1 - (double)config->y0;
+    distance = hypot(dx, dy);
+    if (!isfinite(distance) || distance < 1e-6) {
+        return;
+    }
+    required_steps = ceil(distance / (double)config->step_size);
+    if (!isfinite(required_steps) || required_steps < 1.0 ||
+        required_steps > (double)UINT32_MAX) {
+        return;
+    }
+
+    state->dx = (float)dx;
+    state->dy = (float)dy;
+    state->steps = (uint32_t)required_steps;
     state->step_x = (state->dx >= 0.0f) ? 1 : -1;
     state->step_y = (state->dy >= 0.0f) ? 1 : -1;
-    state->done = (state->steps < 1e-6f) ? 1 : 0;
+    state->done = 0;
 }
 
 int bm_algo_dda_step(bm_algo_dda_state_t *state,
@@ -94,24 +138,29 @@ int bm_algo_dda_step(bm_algo_dda_state_t *state,
     float inc_x;
     float inc_y;
 
-    (void)config;
-
-    if (state == NULL || state->done) {
+    if (state == NULL || config == NULL || state->done ||
+        !bm_algo_is_finite_f(config->step_size) ||
+        config->step_size <= 0.0f ||
+        config->x1 != state->target_x ||
+        config->y1 != state->target_y ||
+        config->step_size != state->step_size) {
         return 0;
     }
 
-    if (state->steps < 1e-6f) {
+    if (state->steps == 0u) {
         state->done = 1;
         return 0;
     }
 
-    inc_x = state->dx / state->steps;
-    inc_y = state->dy / state->steps;
+    inc_x = state->dx / (float)state->steps;
+    inc_y = state->dy / (float)state->steps;
     state->x += inc_x;
     state->y += inc_y;
-    state->step_count += 1.0f;
+    state->step_count++;
 
     if (state->step_count >= state->steps) {
+        state->x = state->target_x;
+        state->y = state->target_y;
         state->done = 1;
     }
 
@@ -162,12 +211,12 @@ uint32_t bm_algo_stepper_process(bm_algo_stepper_state_t *state,
     state->phase += fabsf(velocity_steps_s) * dt_s;
 
     while (state->phase >= 1.0f) {
+        if (pulses != NULL && count >= max_pulses) {
+            break;
+        }
         state->phase -= 1.0f;
         state->position_steps += dir;
         if (pulses != NULL) {
-            if (count >= max_pulses) {
-                break;
-            }
             pulses[count++] = dir;
         } else {
             count++;

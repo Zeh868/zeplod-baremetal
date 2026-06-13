@@ -14,6 +14,7 @@
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 #include "bm/algorithm/bm_algo_statistics.h"
+#include "bm/algorithm/bm_algo_common.h"
 
 #include <math.h>
 
@@ -23,13 +24,21 @@ void bm_algo_stats_reset(bm_algo_stats_state_t *state) {
     }
     state->sum = 0.0f;
     state->sum_sq = 0.0f;
+    state->mean = 0.0f;
+    state->m2 = 0.0f;
     state->min_v = 0.0f;
     state->max_v = 0.0f;
     state->count = 0u;
 }
 
 void bm_algo_stats_push(bm_algo_stats_state_t *state, float value) {
+    float delta;
+    float delta2;
+
     if (state == NULL) {
+        return;
+    }
+    if (state->count == UINT32_MAX || !bm_algo_is_finite_f(value)) {
         return;
     }
 
@@ -48,24 +57,25 @@ void bm_algo_stats_push(bm_algo_stats_state_t *state, float value) {
     state->sum += value;
     state->sum_sq += value * value;
     state->count++;
+    delta = value - state->mean;
+    state->mean += delta / (float)state->count;
+    delta2 = value - state->mean;
+    state->m2 += delta * delta2;
 }
 
 float bm_algo_stats_mean(const bm_algo_stats_state_t *state) {
     if (state == NULL || state->count == 0u) {
         return 0.0f;
     }
-    return state->sum / (float)state->count;
+    return state->mean;
 }
 
 float bm_algo_stats_variance(const bm_algo_stats_state_t *state) {
-    float mean;
-
     if (state == NULL || state->count < 2u) {
         return 0.0f;
     }
 
-    mean = bm_algo_stats_mean(state);
-    return state->sum_sq / (float)state->count - mean * mean;
+    return state->m2 / (float)state->count;
 }
 
 float bm_algo_stats_rms(const bm_algo_stats_state_t *state) {

@@ -25,6 +25,7 @@ extern "C" {
 
 #define BM_BMS_SUP_TEL_VALID    (1u << 0u)
 #define BM_BMS_SUP_TEL_DERATED  (1u << 1u)
+#define BM_BMS_SUP_TEL_STALE    (1u << 2u)
 
 typedef struct {
     uint32_t sequence;
@@ -63,6 +64,9 @@ typedef struct {
     float i_max_a;
     float temp_max_c;
     float dt_s;
+    bm_algo_ramp_config_t derate_ramp;
+    float                 recovery_time_s;
+    float                 derate_target;
 } bm_bms_supervision_config_t;
 
 typedef struct {

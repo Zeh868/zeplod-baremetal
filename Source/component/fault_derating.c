@@ -18,7 +18,9 @@
 
 int bm_fault_derating_validate_config(const bm_fault_derating_config_t *config) {
     if (config == NULL || config->dt_s <= 0.0f ||
-        config->derate_ramp.rate_per_s <= 0.0f) {
+        config->derate_ramp.rate_per_s <= 0.0f ||
+        config->recovery_time_s < 0.0f ||
+        config->derate_target < 0.0f || config->derate_target > 1.0f) {
         return BM_ERR_INVALID;
     }
     return BM_OK;

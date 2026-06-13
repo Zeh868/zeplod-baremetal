@@ -76,8 +76,11 @@ float bm_algo_trapezoid_step(bm_algo_trapezoid_state_t *state,
     float stop_dist;
     float accel;
     float decel;
+    float previous_dist;
 
-    if (state == NULL || config == NULL || dt_s <= 0.0f) {
+    if (state == NULL || config == NULL || dt_s <= 0.0f ||
+        config->max_vel <= 0.0f || config->max_accel <= 0.0f ||
+        config->max_decel <= 0.0f) {
         return 0.0f;
     }
 
@@ -119,7 +122,18 @@ float bm_algo_trapezoid_step(bm_algo_trapezoid_state_t *state,
         }
     }
 
+    previous_dist = dist;
     state->position += state->velocity * dt_s;
+    dist = state->target - state->position;
+    if ((previous_dist > 0.0f && dist <= 0.0f) ||
+        (previous_dist < 0.0f && dist >= 0.0f)) {
+        state->position = state->target;
+        state->velocity = 0.0f;
+        state->done = 1;
+        state->phase = 3;
+    } else {
+        state->done = 0;
+    }
     return state->position;
 }
 

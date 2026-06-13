@@ -17,6 +17,14 @@
 
 #include <string.h>
 
+static void publish_pwr_conv_telemetry(bm_power_converter_axis_t *axis) {
+    if (axis == NULL || axis->resources.publish_telemetry == NULL) {
+        return;
+    }
+    axis->resources.publish_telemetry(
+        axis->resources.publish_telemetry_user, &axis->state.telemetry);
+}
+
 static void latch_fault(bm_power_converter_axis_t *axis) {
     bm_power_converter_state_t *st = &axis->state;
 
@@ -64,6 +72,15 @@ void bm_power_converter_reset(bm_power_converter_axis_t *axis) {
     axis->state.fault_latched = 0;
     axis->state.current_loops = 0u;
     memset(&axis->state.telemetry, 0, sizeof(axis->state.telemetry));
+}
+
+void bm_power_converter_clear_fault(bm_power_converter_axis_t *axis) {
+    if (axis == NULL || !axis->state.fault_latched) {
+        return;
+    }
+    axis->state.fault_latched = 0;
+    bm_algo_pi_reset(&axis->state.pi_current, 0.0f);
+    axis->state.telemetry.status &= (uint32_t)~BM_PWR_CONV_TEL_FAULT;
 }
 
 void bm_power_converter_apply_command(bm_power_converter_axis_t *axis,
@@ -119,6 +136,13 @@ void bm_power_converter_current_step(bm_power_converter_axis_t *axis) {
         axis->resources.read_current(axis->resources.read_current_user,
                                      &i_out) != 0) {
         latch_fault(axis);
+        st->telemetry.sequence = st->current_loops;
+        st->telemetry.status = BM_PWR_CONV_TEL_FAULT;
+        st->telemetry.i_set_a = st->cmd.i_set_a;
+        st->telemetry.i_ref_a = st->i_ref_a;
+        st->telemetry.i_out_a = 0.0f;
+        st->telemetry.duty = st->duty;
+        publish_pwr_conv_telemetry(axis);
         return;
     }
 
@@ -134,6 +158,13 @@ void bm_power_converter_current_step(bm_power_converter_axis_t *axis) {
         if (axis->resources.write_duty(axis->resources.write_duty_user,
                                        st->duty) != 0) {
             latch_fault(axis);
+            st->telemetry.sequence = st->current_loops;
+            st->telemetry.status = BM_PWR_CONV_TEL_FAULT;
+            st->telemetry.i_set_a = st->cmd.i_set_a;
+            st->telemetry.i_ref_a = st->i_ref_a;
+            st->telemetry.i_out_a = i_out;
+            st->telemetry.duty = st->duty;
+            publish_pwr_conv_telemetry(axis);
             return;
         }
     }

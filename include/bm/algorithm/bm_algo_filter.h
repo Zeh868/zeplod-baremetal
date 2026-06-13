@@ -68,6 +68,7 @@ typedef struct {
     float sum;
     uint32_t index;
     uint32_t count;
+    uint32_t length;
 } bm_algo_moving_avg_state_t;
 
 int bm_algo_moving_avg_init(bm_algo_moving_avg_state_t *state,
@@ -105,6 +106,7 @@ typedef struct {
 
 typedef struct {
     uint32_t index;
+    uint32_t tap_count;
 } bm_algo_fir_state_t;
 
 int bm_algo_fir_init(bm_algo_fir_state_t *state,
@@ -120,7 +122,8 @@ typedef enum {
     BM_ALGO_BIQUAD_LPF = 0,
     BM_ALGO_BIQUAD_HPF,
     BM_ALGO_BIQUAD_BPF,
-    BM_ALGO_BIQUAD_NOTCH
+    BM_ALGO_BIQUAD_NOTCH,
+    BM_ALGO_BIQUAD_PEAKING
 } bm_algo_biquad_type_t;
 
 typedef struct {

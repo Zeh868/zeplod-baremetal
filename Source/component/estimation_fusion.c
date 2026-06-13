@@ -21,6 +21,9 @@ int bm_estimation_fusion_validate_config(
     if (config == NULL || config->dt_s <= 0.0f) {
         return BM_ERR_INVALID;
     }
+    if (config->mode == BM_EST_FUSION_EKF_CV) {
+        return BM_ERR_INVALID;
+    }
     return BM_OK;
 }
 
@@ -59,11 +62,33 @@ void bm_estimation_fusion_step(bm_estimation_fusion_axis_t *axis) {
     cfg = &axis->config;
     st = &axis->state;
 
-    if (axis->resources.read_imu != NULL) {
-        if (axis->resources.read_imu(axis->resources.read_imu_user,
-                                     &gx, &gy, &gz, &ax, &ay, &az) != 0) {
-            return;
+    if (axis->resources.read_imu == NULL) {
+        st->step_count++;
+        st->telemetry.sequence = st->step_count;
+        st->telemetry.status = BM_EST_FUSION_TEL_NO_IMU;
+        st->telemetry.roll_rad = st->euler.roll_rad;
+        st->telemetry.pitch_rad = st->euler.pitch_rad;
+        st->telemetry.yaw_rad = st->euler.yaw_rad;
+        if (axis->resources.publish_telemetry != NULL) {
+            axis->resources.publish_telemetry(
+                axis->resources.publish_telemetry_user, &st->telemetry);
         }
+        return;
+    }
+
+    if (axis->resources.read_imu(axis->resources.read_imu_user,
+                                 &gx, &gy, &gz, &ax, &ay, &az) != 0) {
+        st->step_count++;
+        st->telemetry.sequence = st->step_count;
+        st->telemetry.status = BM_EST_FUSION_TEL_STALE;
+        st->telemetry.roll_rad = st->euler.roll_rad;
+        st->telemetry.pitch_rad = st->euler.pitch_rad;
+        st->telemetry.yaw_rad = st->euler.yaw_rad;
+        if (axis->resources.publish_telemetry != NULL) {
+            axis->resources.publish_telemetry(
+                axis->resources.publish_telemetry_user, &st->telemetry);
+        }
+        return;
     }
 
     switch (cfg->mode) {
@@ -78,13 +103,6 @@ void bm_estimation_fusion_step(bm_estimation_fusion_axis_t *axis) {
         bm_algo_mahony_step(&st->mahony, &cfg->mahony,
                             gx, gy, gz, ax, ay, az, cfg->dt_s);
         bm_algo_quat_to_euler(&st->mahony.q, &st->euler);
-        break;
-    case BM_EST_FUSION_EKF_CV:
-        bm_algo_ekf_cv_predict(&st->ekf_cv, &cfg->ekf_cv, cfg->dt_s);
-        bm_algo_ekf_cv_update(&st->ekf_cv, &cfg->ekf_cv, ax);
-        st->euler.roll_rad = 0.0f;
-        st->euler.pitch_rad = 0.0f;
-        st->euler.yaw_rad = st->ekf_cv.pos;
         break;
     default:
         break;

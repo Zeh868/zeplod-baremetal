@@ -59,7 +59,13 @@ static float lut_interp(const float *x, const float *y, uint32_t n, float xv) {
 
     for (i = 0u; i + 1u < n; ++i) {
         if (xv >= x[i] && xv <= x[i + 1u]) {
-            float t = (xv - x[i]) / (x[i + 1u] - x[i]);
+            float span = x[i + 1u] - x[i];
+            float t;
+
+            if (span <= 0.0f) {
+                return y[i];
+            }
+            t = (xv - x[i]) / span;
             return y[i] + t * (y[i + 1u] - y[i]);
         }
     }

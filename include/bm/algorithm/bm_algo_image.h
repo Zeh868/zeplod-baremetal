@@ -32,6 +32,7 @@ void bm_algo_image_erode_u8(const uint8_t *src, uint8_t *dst,
                             uint32_t width, uint32_t height);
 void bm_algo_image_dilate_u8(const uint8_t *src, uint8_t *dst,
                              uint32_t width, uint32_t height);
+/* Morphology writes zero borders and requires distinct src/dst buffers. */
 
 typedef struct {
     uint32_t label;

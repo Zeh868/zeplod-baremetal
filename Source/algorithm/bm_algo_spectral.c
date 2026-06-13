@@ -27,7 +27,9 @@ int bm_algo_goertzel_init(bm_algo_goertzel_state_t *state,
     float omega;
 
     if (state == NULL || config == NULL ||
-        config->block_size == 0u || config->sample_hz <= 0.0f) {
+        config->block_size == 0u || config->sample_hz <= 0.0f ||
+        config->target_freq_hz < 0.0f ||
+        config->target_freq_hz > 0.5f * config->sample_hz) {
         return -1;
     }
 

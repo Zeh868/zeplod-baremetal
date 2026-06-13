@@ -32,7 +32,13 @@ float bm_algo_lut1d_interp(const bm_algo_lut1d_t *lut, float x) {
 
     for (i = 0u; i + 1u < lut->point_count; ++i) {
         if (x >= lut->x[i] && x <= lut->x[i + 1u]) {
-            float t = (x - lut->x[i]) / (lut->x[i + 1u] - lut->x[i]);
+            float span = lut->x[i + 1u] - lut->x[i];
+            float t;
+
+            if (span <= 0.0f) {
+                return lut->y[i];
+            }
+            t = (x - lut->x[i]) / span;
             return lut->y[i] + t * (lut->y[i + 1u] - lut->y[i]);
         }
     }

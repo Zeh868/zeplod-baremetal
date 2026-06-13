@@ -15,7 +15,10 @@
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 #include "bm/algorithm/bm_algo_resample.h"
+#include "bm/algorithm/bm_algo_common.h"
 
+#include <limits.h>
+#include <math.h>
 #include <string.h>
 
 void bm_algo_decimator_reset(bm_algo_decimator_state_t *state) {
@@ -52,8 +55,12 @@ void bm_algo_linear_resampler_reset(bm_algo_linear_resampler_state_t *state,
                                     float ratio,
                                     float initial) {
     if (state != NULL) {
-        state->ratio = ratio;
-        state->phase = (ratio > 0.0f) ? (1.0f / ratio) : 0.0f;
+        state->ratio = (ratio > 0.0f && bm_algo_is_finite_f(ratio))
+                           ? ratio
+                           : 0.0f;
+        state->phase = (state->ratio > 0.0f)
+                           ? (1.0f / state->ratio)
+                           : 0.0f;
         state->prev_sample = initial;
     }
 }
@@ -64,7 +71,7 @@ int bm_algo_linear_resampler_step(bm_algo_linear_resampler_state_t *state,
                                   uint32_t max_outputs,
                                   uint32_t *out_count) {
     uint32_t n = 0u;
-    uint32_t required = 0u;
+    uint64_t required = 0u;
     float phase;
     float step;
 
@@ -78,11 +85,16 @@ int bm_algo_linear_resampler_step(bm_algo_linear_resampler_state_t *state,
 
     step = 1.0f / state->ratio;
     phase = state->phase;
-    while (phase <= 1.0f) {
+    if (!bm_algo_is_finite_f(step) || !bm_algo_is_finite_f(phase) ||
+        step <= 0.0f) {
+        *out_count = 0u;
+        return -1;
+    }
+    while (phase <= 1.0f && required <= (uint64_t)max_outputs) {
         required++;
         phase += step;
     }
-    if (required > max_outputs) {
+    if (required > (uint64_t)max_outputs || required > (uint64_t)INT_MAX) {
         *out_count = 0u;
         return -1;
     }
@@ -112,6 +124,8 @@ int bm_algo_polyphase_decim_init(bm_algo_polyphase_decim_state_t *state,
 
     state->delay_line = delay_line;
     state->delay_len = delay_len;
+    state->tap_count = config->tap_count;
+    state->decim = config->decim;
     bm_algo_polyphase_decim_reset(state, config);
     return 0;
 }
@@ -140,7 +154,11 @@ uint32_t bm_algo_polyphase_decim_process(bm_algo_polyphase_decim_state_t *state,
 
     if (state == NULL || config == NULL || in == NULL || out == NULL ||
         state->delay_line == NULL || config->coeffs == NULL ||
-        config->tap_count == 0u || config->decim == 0u || in_count == 0u) {
+        config->tap_count == 0u || config->tap_count > state->delay_len ||
+        config->tap_count != state->tap_count ||
+        config->decim != state->decim ||
+        config->decim == 0u || in_count == 0u ||
+        state->index >= config->tap_count) {
         return 0u;
     }
 

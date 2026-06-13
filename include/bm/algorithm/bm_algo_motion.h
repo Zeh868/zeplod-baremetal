@@ -65,8 +65,11 @@ typedef struct {
     int   step_y;
     float dx;
     float dy;
-    float steps;
-    float step_count;
+    float target_x;
+    float target_y;
+    float step_size;
+    uint32_t steps;
+    uint32_t step_count;
 } bm_algo_dda_state_t;
 
 void bm_algo_dda_reset(bm_algo_dda_state_t *state,

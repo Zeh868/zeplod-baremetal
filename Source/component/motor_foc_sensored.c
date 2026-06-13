@@ -132,22 +132,22 @@ static void publish_telemetry(const bm_motor_foc_sensored_axis_t *axis) {
 int bm_motor_foc_sensored_validate_config(
     const bm_motor_foc_sensored_config_t *config) {
     if (config == NULL) {
-        return -1;
+        return BM_ERR_INVALID;
     }
     if (config->pole_pairs <= 0.0f ||
         (config->encoder_direction != 1.0f &&
          config->encoder_direction != -1.0f) ||
         config->vbus_v <= 0.0f ||
         config->phase_r_ohm <= 0.0f) {
-        return -1;
+        return BM_ERR_INVALID;
     }
     if (config->current_dt_s <= 0.0f || config->speed_dt_s <= 0.0f) {
-        return -1;
+        return BM_ERR_INVALID;
     }
     if (config->encoder.counts_per_rev == 0u) {
-        return -1;
+        return BM_ERR_INVALID;
     }
-    return 0;
+    return BM_OK;
 }
 
 void bm_motor_foc_sensored_reset(bm_motor_foc_sensored_axis_t *axis) {
@@ -208,6 +208,10 @@ void bm_motor_foc_sensored_current_step(bm_motor_foc_sensored_axis_t *axis) {
     }
 
     if ((st->cmd.status & BM_MOTOR_FOC_CMD_ENABLED) == 0u) {
+        st->speed.iq_ref_a = 0.0f;
+        bm_algo_pi_reset(&st->current.pi_d, 0.0f);
+        bm_algo_pi_reset(&st->current.pi_q, 0.0f);
+        bm_algo_pi_reset(&st->speed.pi_speed, 0.0f);
         if (res->pwm != NULL) {
             (void)bm_hal_pwm_set_duty(res->pwm, 0u, 0u);
             (void)bm_hal_pwm_set_duty(res->pwm, 1u, 0u);
@@ -241,8 +245,8 @@ void bm_motor_foc_sensored_current_step(bm_motor_foc_sensored_axis_t *axis) {
     v_dq.id = vd;
     v_dq.iq = vq;
     bm_algo_inv_park(&v_dq, theta_elec, &v_ab);
-    bm_algo_svpwm(v_ab.i_alpha * cfg->vbus_v,
-                  v_ab.i_beta * cfg->vbus_v,
+    bm_algo_svpwm(v_ab.i_alpha * 0.5f * cfg->vbus_v,
+                  v_ab.i_beta * 0.5f * cfg->vbus_v,
                   cfg->vbus_v,
                   &svpwm);
 
@@ -349,7 +353,7 @@ int bm_motor_foc_sensored_exec_init(const bm_exec_t *instance) {
         return BM_ERR_INVALID;
     }
     axis = (bm_motor_foc_sensored_axis_t *)instance->state;
-    if (bm_motor_foc_sensored_validate_config(&axis->config) != 0) {
+    if (bm_motor_foc_sensored_validate_config(&axis->config) != BM_OK) {
         return BM_ERR_INVALID;
     }
     bm_motor_foc_sensored_reset(axis);

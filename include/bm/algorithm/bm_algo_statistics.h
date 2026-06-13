@@ -27,6 +27,8 @@ extern "C" {
 typedef struct {
     float sum;
     float sum_sq;
+    float mean;
+    float m2;
     float min_v;
     float max_v;
     uint32_t count;

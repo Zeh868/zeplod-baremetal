@@ -24,12 +24,15 @@
 extern "C" {
 #endif
 
-#define BM_EST_FUSION_TEL_VALID (1u << 0u)
+#define BM_EST_FUSION_TEL_VALID   (1u << 0u)
+#define BM_EST_FUSION_TEL_NO_IMU  (1u << 1u)
+#define BM_EST_FUSION_TEL_STALE   (1u << 2u)
 
 typedef enum {
     BM_EST_FUSION_COMPLEMENTARY = 0,
-    BM_EST_FUSION_MAHONY,
-    BM_EST_FUSION_EKF_CV
+    BM_EST_FUSION_MAHONY
+    /** @deprecated 占位枚举，validate 将拒绝；保留仅为 ABI 兼容 */
+    , BM_EST_FUSION_EKF_CV
 } bm_estimation_fusion_mode_t;
 
 typedef struct {

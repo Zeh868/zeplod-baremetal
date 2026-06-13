@@ -23,7 +23,9 @@
 extern "C" {
 #endif
 
-#define BM_SPECTRAL_DIAG_TEL_VALID (1u << 0u)
+#define BM_SPECTRAL_DIAG_TEL_VALID        (1u << 0u)
+#define BM_SPECTRAL_DIAG_TEL_STALE        (1u << 1u)
+#define BM_SPECTRAL_DIAG_TEL_ACCUMULATING (1u << 2u)
 
 #define BM_SPECTRAL_DIAG_MAX_BINS  64u
 

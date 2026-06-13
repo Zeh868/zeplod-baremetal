@@ -59,7 +59,7 @@ void bm_process_control_step(bm_process_control_axis_t *axis) {
     bm_process_control_state_t *st;
     float setpoint = 0.0f;
     float measurement = 0.0f;
-    float smith_out;
+    float smith_error;
     float inner_meas;
 
     if (axis == NULL) {
@@ -72,17 +72,26 @@ void bm_process_control_step(bm_process_control_axis_t *axis) {
     if (axis->resources.read_io != NULL &&
         axis->resources.read_io(axis->resources.read_io_user,
                                 &setpoint, &measurement) != 0) {
+        st->step_count++;
+        st->telemetry.sequence = st->step_count;
+        st->telemetry.status = BM_PROCESS_CTRL_TEL_STALE;
+        st->telemetry.outer_out = st->outer_out;
+        st->telemetry.inner_out = st->inner_out;
+        if (axis->resources.publish_telemetry != NULL) {
+            axis->resources.publish_telemetry(
+                axis->resources.publish_telemetry_user, &st->telemetry);
+        }
         return;
     }
 
     st->outer_out = bm_algo_pid_step(&st->outer_pid, &cfg->outer_pid,
                                      setpoint - measurement, cfg->dt_s);
     inner_meas = measurement;
-    smith_out = bm_algo_smith_predictor_step(&st->smith, &cfg->smith,
-                                             st->outer_out, inner_meas,
-                                             st->outer_out);
+    smith_error = bm_algo_smith_predictor_step(&st->smith, &cfg->smith,
+                                               st->outer_out, inner_meas,
+                                               st->outer_out);
     st->inner_out = bm_algo_pid_step(&st->inner_pid, &cfg->inner_pid,
-                                     smith_out - inner_meas, cfg->dt_s);
+                                     smith_error, cfg->dt_s);
 
     if (axis->resources.write_output != NULL) {
         (void)axis->resources.write_output(axis->resources.write_output_user,

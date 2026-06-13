@@ -46,10 +46,9 @@ void test_bms_supervision_clears_fault_latch_when_normal(void) {
     axis.config.i_max_a = 100.0f;
     axis.config.temp_max_c = 60.0f;
     axis.config.dt_s = 0.01f;
-    axis.state.derating.config.derate_ramp.rate_per_s = 10.0f;
-    axis.state.derating.config.recovery_time_s = 0.04f;
-    axis.state.derating.config.derate_target = 0.5f;
-    axis.state.derating.config.dt_s = 0.01f;
+    axis.config.derate_ramp.rate_per_s = 10.0f;
+    axis.config.recovery_time_s = 0.04f;
+    axis.config.derate_target = 0.5f;
     axis.resources.read_sample = read_sample;
 
     TEST_ASSERT_EQUAL(BM_OK, bm_bms_supervision_init(&axis));

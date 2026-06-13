@@ -15,19 +15,31 @@
  */
 #include "bm/algorithm/bm_algo_image.h"
 
+#include <limits.h>
+#include <stddef.h>
 #include <string.h>
 
-void bm_algo_image_threshold_u8(const uint8_t *src, uint8_t *dst,
-                              uint32_t width, uint32_t height,
-                              uint8_t thresh, uint8_t max_val) {
-    uint32_t i;
-    uint32_t n;
+static int image_pixel_count(uint32_t width, uint32_t height, size_t *count) {
+    if (count == NULL || width == 0u || height == 0u ||
+        width > UINT32_MAX / height ||
+        width > INT32_MAX || height > INT32_MAX) {
+        return -1;
+    }
+    *count = (size_t)width * (size_t)height;
+    return 0;
+}
 
-    if (src == NULL || dst == NULL) {
+void bm_algo_image_threshold_u8(const uint8_t *src, uint8_t *dst,
+                               uint32_t width, uint32_t height,
+                               uint8_t thresh, uint8_t max_val) {
+    size_t i;
+    size_t n;
+
+    if (src == NULL || dst == NULL ||
+        image_pixel_count(width, height, &n) != 0) {
         return;
     }
 
-    n = width * height;
     for (i = 0u; i < n; ++i) {
         dst[i] = (src[i] >= thresh) ? max_val : 0u;
     }
@@ -37,10 +49,14 @@ void bm_algo_image_erode_u8(const uint8_t *src, uint8_t *dst,
                             uint32_t width, uint32_t height) {
     uint32_t x;
     uint32_t y;
+    size_t n;
 
-    if (src == NULL || dst == NULL || width < 3u || height < 3u) {
+    if (src == NULL || dst == NULL || src == dst ||
+        width < 3u || height < 3u ||
+        image_pixel_count(width, height, &n) != 0) {
         return;
     }
+    memset(dst, 0, n);
 
     for (y = 1u; y + 1u < height; ++y) {
         for (x = 1u; x + 1u < width; ++x) {
@@ -51,7 +67,9 @@ void bm_algo_image_erode_u8(const uint8_t *src, uint8_t *dst,
 
             for (dy = -1; dy <= 1; ++dy) {
                 for (dx = -1; dx <= 1; ++dx) {
-                    uint8_t v = src[(y + (uint32_t)dy) * width + (x + (uint32_t)dx)];
+                    uint32_t ny = (uint32_t)((int32_t)y + dy);
+                    uint32_t nx = (uint32_t)((int32_t)x + dx);
+                    uint8_t v = src[ny * width + nx];
                     if (v < min_v) {
                         min_v = v;
                     }
@@ -66,10 +84,14 @@ void bm_algo_image_dilate_u8(const uint8_t *src, uint8_t *dst,
                              uint32_t width, uint32_t height) {
     uint32_t x;
     uint32_t y;
+    size_t n;
 
-    if (src == NULL || dst == NULL || width < 3u || height < 3u) {
+    if (src == NULL || dst == NULL || src == dst ||
+        width < 3u || height < 3u ||
+        image_pixel_count(width, height, &n) != 0) {
         return;
     }
+    memset(dst, 0, n);
 
     for (y = 1u; y + 1u < height; ++y) {
         for (x = 1u; x + 1u < width; ++x) {
@@ -80,7 +102,9 @@ void bm_algo_image_dilate_u8(const uint8_t *src, uint8_t *dst,
 
             for (dy = -1; dy <= 1; ++dy) {
                 for (dx = -1; dx <= 1; ++dx) {
-                    uint8_t v = src[(y + (uint32_t)dy) * width + (x + (uint32_t)dx)];
+                    uint32_t ny = (uint32_t)((int32_t)y + dy);
+                    uint32_t nx = (uint32_t)((int32_t)x + dx);
+                    uint8_t v = src[ny * width + nx];
                     if (v > max_v) {
                         max_v = v;
                     }
@@ -101,13 +125,16 @@ int bm_algo_image_label_u8(const uint8_t *binary,
     uint32_t y;
     uint16_t next_label = 1u;
     uint32_t blob_count = 0u;
+    size_t pixel_count;
 
     if (binary == NULL || labels == NULL || width == 0u || height == 0u ||
-        (blobs == NULL && max_blobs != 0u)) {
+        (blobs == NULL && max_blobs != 0u) ||
+        image_pixel_count(width, height, &pixel_count) != 0 ||
+        pixel_count > SIZE_MAX / sizeof(uint16_t)) {
         return -1;
     }
 
-    memset(labels, 0, width * height * sizeof(uint16_t));
+    memset(labels, 0, pixel_count * sizeof(uint16_t));
 
     for (y = 0u; y < height; ++y) {
         for (x = 0u; x < width; ++x) {
@@ -195,14 +222,14 @@ void bm_algo_image_frame_diff_u8(const uint8_t *prev,
                                  uint32_t width,
                                  uint32_t height,
                                  uint8_t thresh) {
-    uint32_t i;
-    uint32_t n;
+    size_t i;
+    size_t n;
 
-    if (prev == NULL || curr == NULL || diff == NULL) {
+    if (prev == NULL || curr == NULL || diff == NULL ||
+        image_pixel_count(width, height, &n) != 0) {
         return;
     }
 
-    n = width * height;
     for (i = 0u; i < n; ++i) {
         int d = (int)curr[i] - (int)prev[i];
         if (d < 0) {

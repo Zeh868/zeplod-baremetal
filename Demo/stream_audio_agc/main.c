@@ -178,7 +178,10 @@ static const bm_algo_agc_config_t g_agc_cfg = {
     .target_level = AUDIO_AGC_TARGET,
     .attack_coeff = 0.2f,
     .release_coeff = 0.05f,
-    .gain = 1.0f
+    .gain = 1.0f,
+    .min_gain = 0.05f,
+    .max_gain = 8.0f,
+    .silence_threshold = 0.001f
 };
 
 static const bm_algo_limiter_config_t g_limiter_cfg = {
