@@ -71,6 +71,8 @@ jobs:
           - stream_block_rms
           - stream_fft
           - stream_bms_pipeline
+          - stream_audio_agc
+          - stream_vibration_diag
           - power_buck_loop
           - bms_estimation_loop
           - multi_axis_sync

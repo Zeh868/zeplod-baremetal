@@ -245,6 +245,7 @@ if(BM_ENABLE_COMPONENT_MOTOR)
     endif()
     add_library(bm_component_motor STATIC
         Source/component/motor_foc_sensored.c
+        Source/component/motor_foc_sensorless.c
     )
     target_link_libraries(bm_component_motor PUBLIC bm_algorithm bm_hal bm_config)
     bm_target_internal_includes(bm_component_motor)

@@ -12,6 +12,8 @@
  *
  */
 #include "app_bms.h"
+#include "bms_demo_shared.h"
+#include "bm/algorithm/bm_algo_battery.h"
 #include "bm_exec.h"
 #include "bm_hrt.h"
 #include "bm_log.h"
@@ -46,7 +48,8 @@ typedef struct {
 } pack_state_t;
 
 typedef struct {
-    float coulomb_ah;
+    bm_algo_coulomb_state_t  coulomb;
+    bm_algo_coulomb_config_t coulomb_cfg;
     uint32_t integrate_ticks;
 } cell_state_t;
 
@@ -111,18 +114,33 @@ static const bm_exec_t g_pack_sampler = {
     g_pack_slots, 1u, NULL, 0u, &g_pack_ops
 };
 
-/** 电芯库仑积分：读取 Pack 电流快照并累加 */
+#if defined(BM_EXAMPLE_QEMU)
+#define CELL_TICKER_MS  10u
+#else
+#define CELL_TICKER_MS  100u
+#endif
+
+#define CELL_DT_S  ((float)CELL_TICKER_MS / 1000.0f)
+
+/** 电芯库仑积分：读取 Pack 电流快照，经 bm_algo_coulomb_step 更新 SOC */
 void app_cell_integrate_step(const bm_exec_t *instance) {
     cell_state_t *state = (cell_state_t *)instance->state;
     float amps;
 
     BM_SNAPSHOT_READ(g_pack_current, &amps);
-    state->coulomb_ah += amps / 3600.0f;
+    (void)bm_algo_coulomb_step(&state->coulomb, &state->coulomb_cfg,
+                                amps, CELL_DT_S);
     state->integrate_ticks++;
 }
 
 static int cell_init(const bm_exec_t *instance) {
-    (void)instance;
+    cell_state_t *state = (cell_state_t *)instance->state;
+
+    if (state == NULL) {
+        return BM_ERR_INVALID;
+    }
+    bms_demo_coulomb_config_init(&state->coulomb_cfg);
+    bm_algo_coulomb_reset(&state->coulomb, BMS_DEMO_SOC_INIT);
     return BM_OK;
 }
 
@@ -138,12 +156,6 @@ static void cell_safe_stop(const bm_exec_t *instance) {
 static const bm_exec_ops_t g_cell_ops = {
     cell_init, cell_start, cell_safe_stop
 };
-
-#if defined(BM_EXAMPLE_QEMU)
-#define CELL_TICKER_MS  10u
-#else
-#define CELL_TICKER_MS  100u
-#endif
 
 static const bm_ticker_slot_t g_cell_ticker[] = {
     { CELL_TICKER_MS, TICKER_INTEGRATE, 1u, "integrate" }
@@ -234,18 +246,18 @@ int main(void) {
 
     if (g_pack_state.sample_count > 0u &&
         g_cell_state.integrate_ticks > 0u &&
-        g_cell_state.coulomb_ah > 0.0001f &&
+        g_cell_state.coulomb.soc > BMS_DEMO_SOC_INIT &&
         !bm_hal_pwm_sim_outputs_enabled(&BM_HAL_PWM_SIM0)) {
-        BM_LOGI(TAG, "metrics ok: samples=%u integrate=%u coulomb=%.4f",
+        BM_LOGI(TAG, "metrics ok: samples=%u integrate=%u soc=%.4f",
                 (unsigned)g_pack_state.sample_count,
                 (unsigned)g_cell_state.integrate_ticks,
-                (double)g_cell_state.coulomb_ah);
+                (double)g_cell_state.coulomb.soc);
         hybrid_print_pass("HRT_BMS_COULOMB");
     } else {
-        BM_LOGE(TAG, "metrics failed: samples=%u integrate=%u coulomb=%.4f pwm=%d",
+        BM_LOGE(TAG, "metrics failed: samples=%u integrate=%u soc=%.4f pwm=%d",
                 (unsigned)g_pack_state.sample_count,
                 (unsigned)g_cell_state.integrate_ticks,
-                (double)g_cell_state.coulomb_ah,
+                (double)g_cell_state.coulomb.soc,
                 bm_hal_pwm_sim_outputs_enabled(&BM_HAL_PWM_SIM0));
         hybrid_print("EXAMPLE_HRT_BMS_COULOMB: FAIL metrics\n");
         bm_exec_safe_stop_all(g_instances, 2u);

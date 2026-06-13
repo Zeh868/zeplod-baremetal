@@ -12,5 +12,7 @@ bms_estimation_loop
 stream_block_rms
 stream_fft
 stream_bms_pipeline
+stream_audio_agc
+stream_vibration_diag
 multi_axis_sync
 multi_channel_bms

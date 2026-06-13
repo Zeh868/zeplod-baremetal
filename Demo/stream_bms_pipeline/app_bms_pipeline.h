@@ -14,6 +14,8 @@
 #ifndef APP_BMS_PIPELINE_H
 #define APP_BMS_PIPELINE_H
 
+#include "bms_demo_shared.h"
+
 #include <stdint.h>
 
 #define EVENT_BMS_ENABLE  1u
@@ -27,9 +29,9 @@
 #define BMS_BLOCK_DEPTH             4u
 #define BMS_BLOCK_BYTES             (BMS_SAMPLES_PER_BLOCK * sizeof(float) + sizeof(float))
 
-#define BMS_PACK_CHARGE_A           20.0f
-#define BMS_NOMINAL_CAPACITY_AH     1.0f
-#define BMS_SOC_INIT                0.50f
+#define BMS_PACK_CHARGE_A           BMS_DEMO_CHARGE_CURRENT_A
+#define BMS_NOMINAL_CAPACITY_AH     BMS_DEMO_NOMINAL_CAPACITY_AH
+#define BMS_SOC_INIT                BMS_DEMO_SOC_INIT
 #define BMS_PASS_MIN_BLOCKS         75u
 #define BMS_SOC_PASS_MIN            0.515f
 

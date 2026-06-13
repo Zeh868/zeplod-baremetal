@@ -12,6 +12,7 @@
  *
  */
 #include "app_bms.h"
+#include "bm/algorithm/bm_algo_filter.h"
 #include "bm_exec.h"
 #include "bm_event.h"
 #include "bm_module.h"
@@ -51,6 +52,10 @@ typedef struct {
     uint32_t channel;
     uint32_t overvoltage_hits;
     uint16_t last_mv;
+    uint16_t filtered_mv;
+    bm_algo_lpf1_config_t lpf_cfg;
+    bm_algo_lpf1_state_t  lpf;
+    int      lpf_ready;
 } cell_state_t;
 
 static pack_state_t g_pack_state;
@@ -115,7 +120,22 @@ static const bm_exec_t g_pack_sampler = {
 };
 
 static int cell_init(const bm_exec_t *instance) {
-    (void)instance;
+    cell_state_t *state = (cell_state_t *)instance->state;
+    float sample_hz;
+
+    if (state == NULL) {
+        return BM_ERR_INVALID;
+    }
+#if defined(BM_EXAMPLE_QEMU)
+    sample_hz = 1000.0f / (float)10u;
+#else
+    sample_hz = 1000.0f / (float)100u;
+#endif
+    if (bm_algo_lpf1_init_from_cutoff(&state->lpf_cfg, 5.0f, sample_hz) != 0) {
+        return BM_ERR_INVALID;
+    }
+    bm_algo_lpf1_reset(&state->lpf, 3300.0f);
+    state->lpf_ready = 1;
     return BM_OK;
 }
 
@@ -157,11 +177,27 @@ void app_on_cell_check(const bm_event_t *event, void *user_data) {
 
     for (i = 0u; i < CELL_COUNT; ++i) {
         uint16_t mv = 0u;
+        float filtered;
+
         BM_SNAPSHOT_READ(g_cell_voltages[i], &mv);
         g_cell_states[i].last_mv = mv;
-        if (mv > 4200u) {
+        if (g_cell_states[i].lpf_ready != 0) {
+            filtered = bm_algo_lpf1_step(&g_cell_states[i].lpf,
+                                         &g_cell_states[i].lpf_cfg,
+                                         (float)mv);
+            if (filtered < 0.0f) {
+                filtered = 0.0f;
+            }
+            g_cell_states[i].filtered_mv = (uint16_t)filtered;
+        } else {
+            g_cell_states[i].filtered_mv = mv;
+        }
+        if (g_cell_states[i].filtered_mv > 4200u) {
             g_cell_states[i].overvoltage_hits++;
-            BM_LOGW(TAG, "cell %u overvoltage: %u mV", (unsigned)i, (unsigned)mv);
+            BM_LOGW(TAG, "cell %u overvoltage: %u mV (raw %u)",
+                    (unsigned)i,
+                    (unsigned)g_cell_states[i].filtered_mv,
+                    (unsigned)mv);
         }
     }
 }

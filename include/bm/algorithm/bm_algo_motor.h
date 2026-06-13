@@ -86,6 +86,45 @@ float bm_algo_deadtime_comp_v(float phase_v,
                               float deadtime_s,
                               float vbus_v);
 
+/* ---------- 无感 FOC 辅助（K0） ---------- */
+typedef struct {
+    float rs_ohm;
+    float ls_h;
+    float pll_kp;
+    float pll_ki;
+} bm_algo_flux_observer_config_t;
+
+typedef struct {
+    float theta_rad;
+    float omega_rad_s;
+    float flux_alpha;
+    float flux_beta;
+} bm_algo_flux_observer_state_t;
+
+void bm_algo_flux_observer_reset(bm_algo_flux_observer_state_t *state,
+                                 float theta_rad);
+
+/**
+ * 磁链观测 + PLL，返回电角度（rad）
+ * 定子磁链：ψ = ∫(V - Rs·I)dt - Ls·I
+ */
+float bm_algo_flux_observer_step(bm_algo_flux_observer_state_t *state,
+                                 const bm_algo_flux_observer_config_t *config,
+                                 float v_alpha,
+                                 float v_beta,
+                                 float i_alpha,
+                                 float i_beta,
+                                 float dt_s);
+
+/** MTPA：由 iq 参考求 id 参考（简化 IPM 模型） */
+float bm_algo_mtpa_id_ref(float iq_ref_a,
+                          float ld_h,
+                          float lq_h,
+                          float psi_f_wb);
+
+/** 弱磁：电压饱和时下调 id 参考 */
+float bm_algo_fw_id_adjust(float id_ref_a, float vd, float vq, float v_max_pu);
+
 #ifdef __cplusplus
 }
 #endif

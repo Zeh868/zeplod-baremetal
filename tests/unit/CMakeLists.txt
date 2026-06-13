@@ -86,6 +86,12 @@ if(TARGET bm_component_motor)
     target_link_libraries(test_motor_foc_sensored PRIVATE bm_core)
     target_include_directories(test_motor_foc_sensored PRIVATE
         ${CMAKE_SOURCE_DIR}/portable/native_sim)
+    bm_add_test(test_motor_foc_sensorless
+        test_motor_foc_sensorless.c
+        bm_component_motor)
+    target_link_libraries(test_motor_foc_sensorless PRIVATE bm_core)
+    target_include_directories(test_motor_foc_sensorless PRIVATE
+        ${CMAKE_SOURCE_DIR}/portable/native_sim)
 endif()
 
 if(TARGET bm_component_bms)

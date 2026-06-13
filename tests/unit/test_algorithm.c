@@ -323,6 +323,41 @@ static void test_fixed_lpf1_q15_tracks_input(void) {
     TEST_ASSERT_FLOAT_WITHIN(0.05f, 1.0f, bm_algo_q15_to_float(v));
 }
 
+static void test_flux_observer_and_mtpa(void) {
+    bm_algo_flux_observer_config_t obs_cfg_ls = {
+        .rs_ohm = 0.5f, .ls_h = 0.001f, .pll_kp = 10.0f, .pll_ki = 100.0f
+    };
+    bm_algo_flux_observer_config_t obs_cfg_no_ls = obs_cfg_ls;
+    bm_algo_flux_observer_state_t obs_ls;
+    bm_algo_flux_observer_state_t obs_no_ls;
+    float theta_ls;
+    float theta_no_ls;
+    int i;
+
+    obs_cfg_no_ls.ls_h = 0.0f;
+    bm_algo_flux_observer_reset(&obs_ls, 0.0f);
+    bm_algo_flux_observer_reset(&obs_no_ls, 0.0f);
+    for (i = 0; i < 100; ++i) {
+        float t = (float)i * 0.001f;
+        float v_alpha = -sinf(t);
+        float v_beta = cosf(t);
+        float i_alpha = 0.5f * sinf(t);
+        float i_beta = -0.5f * cosf(t);
+
+        theta_ls = bm_algo_flux_observer_step(&obs_ls, &obs_cfg_ls,
+                                              v_alpha, v_beta,
+                                              i_alpha, i_beta, 0.001f);
+        theta_no_ls = bm_algo_flux_observer_step(&obs_no_ls, &obs_cfg_no_ls,
+                                                   v_alpha, v_beta,
+                                                   i_alpha, i_beta, 0.001f);
+        (void)theta_ls;
+        (void)theta_no_ls;
+    }
+    TEST_ASSERT_TRUE(fabsf(obs_ls.omega_rad_s) > 0.1f);
+    TEST_ASSERT_TRUE(fabsf(obs_ls.theta_rad - obs_no_ls.theta_rad) > 0.01f);
+    TEST_ASSERT_TRUE(bm_algo_mtpa_id_ref(2.0f, 0.001f, 0.002f, 0.05f) < 0.0f);
+}
+
 static void test_battery_temp_and_motor_extras(void) {
     bm_algo_battery_temp_config_t temp_cfg = {
         .ref_temp_c = 25.0f,
@@ -388,6 +423,7 @@ void test_algorithm(void) {
     RUN_TEST(test_sogi_states_decay_after_input_stops);
     RUN_TEST(test_fixed_pi_q31_saturates);
     RUN_TEST(test_fixed_lpf1_q15_tracks_input);
+    RUN_TEST(test_flux_observer_and_mtpa);
     RUN_TEST(test_battery_temp_and_motor_extras);
     RUN_TEST(test_zero_length_audio_is_ignored);
 }

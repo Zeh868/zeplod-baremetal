@@ -175,3 +175,74 @@ float bm_algo_deadtime_comp_v(float phase_v,
     comp = sign_i * deadtime_s * vbus_v;
     return phase_v + comp;
 }
+
+void bm_algo_flux_observer_reset(bm_algo_flux_observer_state_t *state,
+                                 float theta_rad) {
+    if (state != NULL) {
+        state->theta_rad = theta_rad;
+        state->omega_rad_s = 0.0f;
+        state->flux_alpha = 0.0f;
+        state->flux_beta = 0.0f;
+    }
+}
+
+float bm_algo_flux_observer_step(bm_algo_flux_observer_state_t *state,
+                                 const bm_algo_flux_observer_config_t *config,
+                                 float v_alpha,
+                                 float v_beta,
+                                 float i_alpha,
+                                 float i_beta,
+                                 float dt_s) {
+    float v_alpha_emf;
+    float v_beta_emf;
+    float flux_alpha;
+    float flux_beta;
+    float theta_meas;
+    float pll_error;
+
+    if (state == NULL || config == NULL || dt_s <= 0.0f) {
+        return 0.0f;
+    }
+
+    v_alpha_emf = v_alpha - config->rs_ohm * i_alpha;
+    v_beta_emf = v_beta - config->rs_ohm * i_beta;
+    state->flux_alpha += v_alpha_emf * dt_s;
+    state->flux_beta += v_beta_emf * dt_s;
+
+    flux_alpha = state->flux_alpha - config->ls_h * i_alpha;
+    flux_beta = state->flux_beta - config->ls_h * i_beta;
+    theta_meas = atan2f(flux_beta, flux_alpha);
+    pll_error = bm_algo_angle_delta_rad(state->theta_rad, theta_meas);
+
+    state->omega_rad_s += config->pll_ki * pll_error * dt_s;
+    state->theta_rad += state->omega_rad_s * dt_s + config->pll_kp * pll_error;
+    state->theta_rad = bm_algo_angle_wrap_rad(state->theta_rad);
+    return state->theta_rad;
+}
+
+float bm_algo_mtpa_id_ref(float iq_ref_a,
+                          float ld_h,
+                          float lq_h,
+                          float psi_f_wb) {
+    float delta_l;
+
+    (void)psi_f_wb;
+    delta_l = lq_h - ld_h;
+    if (fabsf(delta_l) < 1e-9f || ld_h <= 0.0f) {
+        return 0.0f;
+    }
+    return -(delta_l / (2.0f * ld_h)) * iq_ref_a;
+}
+
+float bm_algo_fw_id_adjust(float id_ref_a, float vd, float vq, float v_max_pu) {
+    float v_mag;
+
+    if (v_max_pu <= 0.0f) {
+        return id_ref_a;
+    }
+    v_mag = sqrtf(vd * vd + vq * vq);
+    if (v_mag <= v_max_pu) {
+        return id_ref_a;
+    }
+    return id_ref_a - 0.2f * (v_mag - v_max_pu);
+}
