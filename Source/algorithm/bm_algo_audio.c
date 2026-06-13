@@ -17,8 +17,10 @@
 #include "bm/algorithm/bm_algo_audio.h"
 #include "bm/algorithm/bm_algo_common.h"
 #include "bm/algorithm/bm_algo_filter.h"
+#include "bm/algorithm/bm_algo_fft.h"
 
 #include <math.h>
+#include <string.h>
 
 void bm_algo_audio_gain(const float *in, float *out, uint32_t n, float gain) {
     uint32_t i;
@@ -190,7 +192,12 @@ void bm_algo_eq_peaking_process(bm_algo_eq_peaking_state_t *state,
     }
 
     if (state->b0 == 0.0f && state->b1 == 0.0f && state->b2 == 0.0f) {
-        (void)bm_algo_eq_peaking_design(state, config);
+        if (bm_algo_eq_peaking_design(state, config) != 0) {
+            for (i = 0u; i < n; ++i) {
+                out[i] = in[i];
+            }
+            return;
+        }
     }
 
     bq_state.z1 = state->z1;
@@ -303,47 +310,125 @@ void bm_algo_noise_gate_process(bm_algo_noise_gate_state_t *state,
     }
 }
 
-static float gcc_phat_corr_at_lag(const float *ref,
-                                  const float *sig,
-                                  uint32_t n,
-                                  int32_t lag) {
-    uint32_t i;
-    float num = 0.0f;
-    float den_ref = 0.0f;
-    float den_sig = 0.0f;
-    int32_t j;
+#define GCC_PHAT_FFT_MAX BM_ALGO_FFT_SIZE_1024
 
-    for (i = 0u; i < n; ++i) {
-        j = (int32_t)i + lag;
-        if (j < 0 || (uint32_t)j >= n) {
-            continue;
+static uint32_t gcc_phat_pick_fft_size(uint32_t n) {
+    if (n <= BM_ALGO_FFT_SIZE_64) {
+        return BM_ALGO_FFT_SIZE_64;
+    }
+    if (n <= BM_ALGO_FFT_SIZE_128) {
+        return BM_ALGO_FFT_SIZE_128;
+    }
+    if (n <= BM_ALGO_FFT_SIZE_256) {
+        return BM_ALGO_FFT_SIZE_256;
+    }
+    if (n <= BM_ALGO_FFT_SIZE_512) {
+        return BM_ALGO_FFT_SIZE_512;
+    }
+    if (n <= BM_ALGO_FFT_SIZE_1024) {
+        return BM_ALGO_FFT_SIZE_1024;
+    }
+    return 0u;
+}
+
+static void gcc_phat_fill_time(float *ri, uint32_t fft_n, const float *src,
+                               uint32_t n) {
+    uint32_t i;
+
+    for (i = 0u; i < fft_n; ++i) {
+        if (i < n) {
+            ri[2u * i] = src[i];
+        } else {
+            ri[2u * i] = 0.0f;
         }
-        num += ref[i] * sig[(uint32_t)j];
-        den_ref += ref[i] * ref[i];
-        den_sig += sig[(uint32_t)j] * sig[(uint32_t)j];
+        ri[2u * i + 1u] = 0.0f;
+    }
+}
+
+static void gcc_phat_apply_phat(float *ref_spec, const float *sig_spec,
+                                uint32_t fft_n) {
+    uint32_t i;
+
+    for (i = 0u; i < fft_n; ++i) {
+        float rr = ref_spec[2u * i];
+        float ri = ref_spec[2u * i + 1u];
+        float sr = sig_spec[2u * i];
+        float si = sig_spec[2u * i + 1u];
+        float cr = rr * sr + ri * si;
+        float ci = -ri * sr + rr * si;
+        float mag = sqrtf(cr * cr + ci * ci);
+
+        if (mag > 1e-12f) {
+            ref_spec[2u * i] = cr / mag;
+            ref_spec[2u * i + 1u] = ci / mag;
+        } else {
+            ref_spec[2u * i] = 0.0f;
+            ref_spec[2u * i + 1u] = 0.0f;
+        }
+    }
+}
+
+static float gcc_phat_corr_at_lag(const float *gcc, uint32_t fft_n,
+                                  int32_t lag) {
+    uint32_t idx;
+
+    if (lag >= 0) {
+        idx = (uint32_t)lag;
+    } else {
+        idx = fft_n - (uint32_t)(-lag);
     }
 
-    if (den_ref <= 1e-12f || den_sig <= 1e-12f) {
+    if (idx >= fft_n) {
         return 0.0f;
     }
-    return num / sqrtf(den_ref * den_sig);
+    return gcc[2u * idx];
 }
 
 int32_t bm_algo_gcc_phat_delay(const float *ref,
                                const float *sig,
                                uint32_t n,
                                int32_t max_lag) {
+    float work_r[2u * GCC_PHAT_FFT_MAX];
+    float work_s[2u * GCC_PHAT_FFT_MAX];
+    bm_algo_cfft_f32_t fft;
+    uint32_t fft_n;
+    uint32_t use_n;
     int32_t lag;
     int32_t best_lag = 0;
-    float best = -2.0f;
+    float best = -1.0f;
     float c;
 
     if (ref == NULL || sig == NULL || n == 0u || max_lag < 0) {
         return 0;
     }
 
+    use_n = (n > GCC_PHAT_FFT_MAX) ? GCC_PHAT_FFT_MAX : n;
+    fft_n = gcc_phat_pick_fft_size(use_n);
+    if (fft_n == 0u) {
+        return 0;
+    }
+
+    gcc_phat_fill_time(work_r, fft_n, ref, use_n);
+    gcc_phat_fill_time(work_s, fft_n, sig, use_n);
+
+    if (bm_algo_cfft_f32_init(&fft, fft_n, work_r, 2u * fft_n) != 0 ||
+        bm_algo_cfft_f32_forward(&fft, work_r) != 0) {
+        return 0;
+    }
+    if (bm_algo_cfft_f32_init(&fft, fft_n, work_s, 2u * fft_n) != 0 ||
+        bm_algo_cfft_f32_forward(&fft, work_s) != 0) {
+        return 0;
+    }
+
+    gcc_phat_apply_phat(work_r, work_s, fft_n);
+
+    if (bm_algo_cfft_f32_init(&fft, fft_n, work_r, 2u * fft_n) != 0 ||
+        bm_algo_cfft_f32_inverse(&fft, work_r) != 0) {
+        return 0;
+    }
+
     for (lag = -max_lag; lag <= max_lag; ++lag) {
-        c = gcc_phat_corr_at_lag(ref, sig, n, lag);
+        c = fabsf(gcc_phat_corr_at_lag(work_r, fft_n, lag));
         if (c > best) {
             best = c;
             best_lag = lag;

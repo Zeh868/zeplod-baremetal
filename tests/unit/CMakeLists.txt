@@ -102,6 +102,10 @@ if(TARGET bm_component_power)
     bm_add_test(test_power_control test_power_control.c bm_component_power)
 endif()
 
+if(TARGET bm_component_process)
+    bm_add_test(test_bms_supervision test_bms_supervision.c bm_component_process)
+endif()
+
 if(BM_ENABLE_SYNC)
     add_executable(test_sync test_sync.c)
     target_link_libraries(test_sync PRIVATE unity bm_exec bm_hal_native)

@@ -15,6 +15,8 @@
  */
 #include "bm/algorithm/bm_algo_vision.h"
 
+#include <string.h>
+
 void bm_algo_vision_sobel_u8(const uint8_t *src, int16_t *gx, int16_t *gy,
                              uint32_t width, uint32_t height) {
     uint32_t x;
@@ -23,6 +25,9 @@ void bm_algo_vision_sobel_u8(const uint8_t *src, int16_t *gx, int16_t *gy,
     if (src == NULL || gx == NULL || gy == NULL || width < 3u || height < 3u) {
         return;
     }
+
+    memset(gx, 0, width * height * sizeof(int16_t));
+    memset(gy, 0, width * height * sizeof(int16_t));
 
     for (y = 1u; y + 1u < height; ++y) {
         for (x = 1u; x + 1u < width; ++x) {

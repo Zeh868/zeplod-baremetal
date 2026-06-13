@@ -93,6 +93,8 @@ void bm_bms_supervision_step(bm_bms_supervision_axis_t *axis) {
     st->limit_flags = flags;
     if (flags != 0u) {
         bm_fault_derating_latch(&st->derating);
+    } else {
+        bm_fault_derating_clear_request(&st->derating);
     }
 
     st->derating.config.dt_s = cfg->dt_s;

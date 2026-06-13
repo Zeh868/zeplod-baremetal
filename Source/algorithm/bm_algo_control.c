@@ -453,8 +453,10 @@ float bm_algo_smith_predictor_step(bm_algo_smith_predictor_state_t *state,
     y_nd = config->model_gain * u_controller;
     state->y_delayed = config->model_gain * u_delayed;
 
-    correction = (y_nd - state->y_delayed) +
-                 config->model_gain * (reference - measurement);
+    (void)reference;
+    (void)measurement;
+
+    correction = y_nd - state->y_delayed;
 
     state->u_delay_line[state->head] = u_controller;
     state->head = (state->head + 1u) % config->delay_steps;

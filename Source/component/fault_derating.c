@@ -55,7 +55,7 @@ void bm_fault_derating_latch(bm_fault_derating_axis_t *axis) {
 }
 
 void bm_fault_derating_clear_request(bm_fault_derating_axis_t *axis) {
-    if (axis == NULL) {
+    if (axis == NULL || !axis->state.fault_latched) {
         return;
     }
     axis->state.fault_latched = 0;

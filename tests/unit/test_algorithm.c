@@ -500,6 +500,49 @@ static void test_w2_audio_spectral_motion(void) {
                                              pulses, 4u) > 0u);
 }
 
+static void test_review_fixes(void) {
+    bm_algo_eq_peaking_config_t bad_eq = { .sample_hz = 0.0f };
+    bm_algo_eq_peaking_state_t eq;
+    float in[4] = { 1.0f, 2.0f, 3.0f, 4.0f };
+    float out[4];
+    float ref[64];
+    float sig[64];
+    bm_algo_smith_predictor_config_t smith_cfg = {
+        .model_gain = 1.0f,
+        .delay_steps = 2u
+    };
+    float delay_line[2];
+    bm_algo_smith_predictor_state_t smith;
+    const uint8_t src[9] = { 0u };
+    int16_t gx[9];
+    int16_t gy[9];
+    int i;
+
+    memset(&eq, 0, sizeof(eq));
+    bm_algo_eq_peaking_process(&eq, &bad_eq, in, out, 4u);
+    TEST_ASSERT_FLOAT_WITHIN(0.001f, 1.0f, out[0]);
+    TEST_ASSERT_FLOAT_WITHIN(0.001f, 4.0f, out[3]);
+
+    for (i = 0; i < 64; ++i) {
+        ref[i] = 0.0f;
+        sig[i] = 0.0f;
+    }
+    ref[10] = 1.0f;
+    sig[13] = 1.0f;
+    TEST_ASSERT_EQUAL_INT32(3, bm_algo_gcc_phat_delay(ref, sig, 64u, 10));
+
+    TEST_ASSERT_EQUAL(0, bm_algo_smith_predictor_init(&smith, &smith_cfg,
+                                                      delay_line, 2u));
+    TEST_ASSERT_FLOAT_WITHIN(0.001f, 2.0f,
+        bm_algo_smith_predictor_step(&smith, &smith_cfg, 5.0f, 2.0f, 1.0f));
+
+    memset(gx, 0x5A, sizeof(gx));
+    memset(gy, 0x5A, sizeof(gy));
+    bm_algo_vision_sobel_u8(src, gx, gy, 3u, 3u);
+    TEST_ASSERT_EQUAL_INT16(0, gx[0]);
+    TEST_ASSERT_EQUAL_INT16(0, gy[8]);
+}
+
 void test_algorithm(void) {
     RUN_TEST(test_common_clamp_and_deadband);
     RUN_TEST(test_pi_step_and_saturation);
@@ -526,6 +569,7 @@ void test_algorithm(void) {
     RUN_TEST(test_soc_ekf_and_power_quality);
     RUN_TEST(test_detection_matched_and_ultrasonic);
     RUN_TEST(test_w2_audio_spectral_motion);
+    RUN_TEST(test_review_fixes);
 }
 
 int main(void) {
