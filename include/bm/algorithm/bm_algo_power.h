@@ -94,6 +94,7 @@ typedef struct {
     uint32_t index;
     float *buffer;
     uint32_t buflen;
+    uint32_t window_samples;
 } bm_algo_rms_state_t;
 
 int bm_algo_rms_init(bm_algo_rms_state_t *state,
@@ -105,7 +106,7 @@ float bm_algo_rms_step(bm_algo_rms_state_t *state,
                        const bm_algo_rms_config_t *config,
                        float sample);
 
-/** 有功/无功功率（单相瞬时法） */
+/** 单相瞬时有功功率；单通道 v/i 无法求无功功率，q 固定写 0。 */
 void bm_algo_power_instant(float v, float i, float *p, float *q);
 
 #ifdef __cplusplus

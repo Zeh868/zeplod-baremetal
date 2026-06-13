@@ -111,8 +111,14 @@ void bm_algo_svpwm(float v_alpha,
         return;
     }
 
-    if (vbus_v <= 0.0f) {
-        vbus_v = 1.0f;
+    if (!bm_algo_is_finite_f(v_alpha) ||
+        !bm_algo_is_finite_f(v_beta) ||
+        !bm_algo_is_finite_f(vbus_v) ||
+        vbus_v <= 0.0f) {
+        out->duty_a = 0.5f;
+        out->duty_b = 0.5f;
+        out->duty_c = 0.5f;
+        return;
     }
 
     inv_vbus = 1.0f / vbus_v;
@@ -144,9 +150,9 @@ void bm_algo_svpwm(float v_alpha,
     vb += v_offset;
     vc += v_offset;
 
-    out->duty_a = bm_algo_clamp_f(0.5f + 0.5f * va * inv_vbus, 0.0f, 1.0f);
-    out->duty_b = bm_algo_clamp_f(0.5f + 0.5f * vb * inv_vbus, 0.0f, 1.0f);
-    out->duty_c = bm_algo_clamp_f(0.5f + 0.5f * vc * inv_vbus, 0.0f, 1.0f);
+    out->duty_a = bm_algo_clamp_f(0.5f + va * inv_vbus, 0.0f, 1.0f);
+    out->duty_b = bm_algo_clamp_f(0.5f + vb * inv_vbus, 0.0f, 1.0f);
+    out->duty_c = bm_algo_clamp_f(0.5f + vc * inv_vbus, 0.0f, 1.0f);
 }
 
 void bm_algo_current_from_2shunt(float ia, float ib, bm_algo_abc_t *abc) {
@@ -162,10 +168,27 @@ float bm_algo_deadtime_comp_v(float phase_v,
                               float phase_current_a,
                               float deadtime_s,
                               float vbus_v) {
+    (void)phase_current_a;
+    (void)deadtime_s;
+    (void)vbus_v;
+    return phase_v;
+}
+
+float bm_algo_deadtime_comp_v_period(float phase_v,
+                                     float phase_current_a,
+                                     float deadtime_s,
+                                     float pwm_period_s,
+                                     float vbus_v) {
     float sign_i;
     float comp;
 
-    if (deadtime_s <= 0.0f || vbus_v <= 0.0f) {
+    if (!bm_algo_is_finite_f(phase_v) ||
+        !bm_algo_is_finite_f(phase_current_a) ||
+        !bm_algo_is_finite_f(deadtime_s) ||
+        !bm_algo_is_finite_f(pwm_period_s) ||
+        !bm_algo_is_finite_f(vbus_v) ||
+        deadtime_s <= 0.0f || pwm_period_s <= 0.0f ||
+        deadtime_s >= pwm_period_s || vbus_v <= 0.0f) {
         return phase_v;
     }
 
@@ -177,7 +200,7 @@ float bm_algo_deadtime_comp_v(float phase_v,
         return phase_v;
     }
 
-    comp = sign_i * deadtime_s * vbus_v;
+    comp = sign_i * (deadtime_s / pwm_period_s) * vbus_v;
     return phase_v + comp;
 }
 

@@ -39,7 +39,10 @@ typedef struct {
     float target_level;
     float attack_coeff;
     float release_coeff;
-    float gain;
+    float gain;              /**< Deprecated nominal gain; retained for compatibility. */
+    float min_gain;          /**< <= 0 uses 0.01 */
+    float max_gain;          /**< <= 0 uses 64.0 */
+    float silence_threshold; /**< <= 0 uses 1e-6; gain freezes below this level */
 } bm_algo_agc_config_t;
 
 typedef struct {

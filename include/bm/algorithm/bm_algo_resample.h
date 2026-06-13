@@ -63,6 +63,8 @@ typedef struct {
 typedef struct {
     float *delay_line;
     uint32_t delay_len;
+    uint32_t tap_count;
+    uint32_t decim;
     uint32_t index;
     uint32_t decim_counter;
 } bm_algo_polyphase_decim_state_t;

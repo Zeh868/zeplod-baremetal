@@ -200,6 +200,7 @@ typedef struct {
 typedef struct {
     float *u_delay_line;
     uint32_t line_len;
+    uint32_t delay_steps;
     uint32_t head;
     float y_model;
     float y_delayed;

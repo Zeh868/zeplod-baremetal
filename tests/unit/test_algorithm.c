@@ -356,6 +356,222 @@ static void test_fixed_point_saturates_before_narrowing(void) {
     TEST_ASSERT_EQUAL_INT32(BM_ALGO_Q31_ONE, pi.integrator);
 }
 
+static void test_fixed_point_negative_full_scale_product_saturates(void) {
+    bm_algo_pi_q31_config_t pi_cfg = {
+        .kp = (bm_algo_q31_t)INT32_MIN,
+        .ki = 0,
+        .out_min = (bm_algo_q31_t)INT32_MIN,
+        .out_max = BM_ALGO_Q31_ONE,
+        .integrator_min = (bm_algo_q31_t)INT32_MIN,
+        .integrator_max = BM_ALGO_Q31_ONE
+    };
+    bm_algo_pi_q31_state_t pi;
+    bm_algo_biquad_q15_config_t bq_cfg = {
+        .b0 = (bm_algo_q15_t)INT16_MIN,
+        .b1 = 0,
+        .b2 = 0,
+        .a1 = 0,
+        .a2 = 0
+    };
+    bm_algo_biquad_q15_state_t bq;
+
+    bm_algo_pi_q31_reset(&pi, 0);
+    TEST_ASSERT_EQUAL_INT32(
+        BM_ALGO_Q31_ONE,
+        bm_algo_pi_q31_step(&pi, &pi_cfg, (bm_algo_q31_t)INT32_MIN, 1));
+
+    bm_algo_biquad_q15_reset(&bq);
+    TEST_ASSERT_EQUAL_INT16(
+        BM_ALGO_Q15_ONE,
+        bm_algo_biquad_q15_step(
+            &bq, &bq_cfg, (bm_algo_q15_t)INT16_MIN));
+}
+
+static void test_motion_and_profile_boundary_regressions(void) {
+    bm_algo_encoder_config_t enc_cfg = { .counts_per_rev = 4096u };
+    bm_algo_encoder_state_t enc;
+    bm_algo_dda_config_t dda_cfg = {
+        .x0 = 0.0f, .y0 = 0.0f, .x1 = 0.5f, .y1 = 0.0f,
+        .step_size = 0.1f
+    };
+    bm_algo_dda_state_t dda;
+    bm_algo_trapezoid_config_t trap_cfg = {
+        .max_vel = 1.0f, .max_accel = 2.0f, .max_decel = 2.0f
+    };
+    bm_algo_trapezoid_state_t trap;
+    float x = 0.0f;
+    float y = 0.0f;
+    int steps = 0;
+
+    bm_algo_encoder_reset(&enc, &enc_cfg, 2048);
+    (void)bm_algo_encoder_update(&enc, &enc_cfg, 2048, 0.001f);
+    TEST_ASSERT_FLOAT_WITHIN(0.0001f, 3.14159265f, enc.position_rad);
+    TEST_ASSERT_FLOAT_WITHIN(0.0001f, 0.0f, enc.velocity_rad_s);
+
+    bm_algo_dda_reset(&dda, &dda_cfg);
+    while (bm_algo_dda_step(&dda, &dda_cfg, &x, &y) != 0) {
+        steps++;
+        TEST_ASSERT_TRUE(steps <= 6);
+    }
+    TEST_ASSERT_EQUAL_INT(5, steps);
+    TEST_ASSERT_FLOAT_WITHIN(0.0001f, 0.5f, x);
+    TEST_ASSERT_FLOAT_WITHIN(0.0001f, 0.0f, y);
+
+    bm_algo_trapezoid_reset(&trap, 0.0f, 0.0f);
+    bm_algo_trapezoid_set_target(&trap, 1.0f);
+    (void)bm_algo_trapezoid_step(&trap, &trap_cfg, 2.0f);
+    TEST_ASSERT_EQUAL(1, trap.done);
+    TEST_ASSERT_FLOAT_WITHIN(0.0001f, 1.0f, trap.position);
+    TEST_ASSERT_FLOAT_WITHIN(0.0001f, 0.0f, trap.velocity);
+}
+
+static void test_motor_voltage_scaling_and_deadtime(void) {
+    bm_algo_svpwm_out_t pwm;
+
+    bm_algo_svpwm(6.0f, 0.0f, 24.0f, &pwm);
+    TEST_ASSERT_FLOAT_WITHIN(0.0001f, 0.6875f, pwm.duty_a);
+    TEST_ASSERT_FLOAT_WITHIN(0.0001f, 0.3125f, pwm.duty_b);
+    TEST_ASSERT_FLOAT_WITHIN(0.0001f, 0.3125f, pwm.duty_c);
+
+    TEST_ASSERT_FLOAT_WITHIN(
+        0.0001f, 3.2f,
+        bm_algo_deadtime_comp_v_period(
+            2.0f, 1.0f, 1e-6f, 20e-6f, 24.0f));
+    TEST_ASSERT_FLOAT_WITHIN(
+        0.0001f, 2.0f,
+        bm_algo_deadtime_comp_v(2.0f, 1.0f, 1e-6f, 24.0f));
+}
+
+static void test_numeric_guard_regressions(void) {
+    bm_algo_agc_config_t agc_cfg = {
+        .target_level = 1.0f,
+        .attack_coeff = 1.0f,
+        .release_coeff = 1.0f,
+        .gain = 1.0f,
+        .min_gain = 0.1f,
+        .max_gain = 4.0f,
+        .silence_threshold = 0.001f
+    };
+    bm_algo_agc_state_t agc;
+    bm_algo_kalman1d_config_t kalman_cfg = { .q = 0.0f, .r = 0.0f };
+    bm_algo_kalman1d_state_t kalman;
+    bm_algo_stats_state_t stats;
+    float silence[4] = { 0.0f, 0.0f, 0.0f, 0.0f };
+    float quiet[1] = { 0.01f };
+    float out[4];
+    int i;
+
+    TEST_ASSERT_TRUE(isinf(bm_algo_angle_wrap_rad(INFINITY)));
+    TEST_ASSERT_TRUE(isinf(bm_algo_angle_wrap_0_2pi_rad(-INFINITY)));
+
+    bm_algo_agc_reset(&agc, 2.0f);
+    bm_algo_agc_process(&agc, &agc_cfg, silence, out, 4u);
+    TEST_ASSERT_FLOAT_WITHIN(0.0001f, 2.0f, agc.gain);
+    for (i = 0; i < 4; ++i) {
+        bm_algo_agc_process(&agc, &agc_cfg, quiet, out, 1u);
+    }
+    TEST_ASSERT_FLOAT_WITHIN(0.0001f, 4.0f, agc.gain);
+
+    bm_algo_kalman1d_reset(&kalman, 3.0f, 0.0f);
+    TEST_ASSERT_FLOAT_WITHIN(
+        0.0001f, 3.0f,
+        bm_algo_kalman1d_update(&kalman, &kalman_cfg, 100.0f));
+    TEST_ASSERT_TRUE(isfinite(kalman.x));
+
+    TEST_ASSERT_EQUAL_INT8(INT8_MAX,
+                           bm_algo_quantize_f32_to_i8(INFINITY, 0.1f, 0));
+    TEST_ASSERT_EQUAL_INT8(INT8_MIN,
+                           bm_algo_quantize_f32_to_i8(-INFINITY, 0.1f, 0));
+    TEST_ASSERT_EQUAL_INT8(0,
+                           bm_algo_quantize_f32_to_i8(NAN, 0.1f, 0));
+
+    bm_algo_stats_reset(&stats);
+    bm_algo_stats_push(&stats, 100000.0f);
+    bm_algo_stats_push(&stats, 100001.0f);
+    TEST_ASSERT_FLOAT_WITHIN(0.001f, 0.25f,
+                             bm_algo_stats_variance(&stats));
+}
+
+static void test_soc_and_image_boundary_regressions(void) {
+    bm_algo_soc_ekf_config_t ekf_cfg = {
+        .q_soc = 0.0f,
+        .q_bias = 0.0f,
+        .r_v = 0.01f,
+        .coulomb_efficiency = 1.0f,
+        .nominal_capacity_ah = 10.0f,
+        .ocv_slope_v_per_soc = 0.5f
+    };
+    bm_algo_soc_ekf_state_t ekf;
+    const uint8_t src[9] = {
+        255u, 255u, 255u,
+        255u, 255u, 255u,
+        255u, 255u, 255u
+    };
+    uint8_t dst[9];
+
+    bm_algo_soc_ekf_reset(&ekf, 0.8f);
+    bm_algo_soc_ekf_update_voltage(&ekf, &ekf_cfg, 3.9f, 3.9f);
+    TEST_ASSERT_FLOAT_WITHIN(0.0001f, 0.8f, ekf.soc);
+
+    memset(dst, 0xA5, sizeof(dst));
+    bm_algo_image_erode_u8(src, dst, 3u, 3u);
+    TEST_ASSERT_EQUAL_UINT8(0u, dst[0]);
+    TEST_ASSERT_EQUAL_UINT8(255u, dst[4]);
+    TEST_ASSERT_EQUAL_UINT8(0u, dst[8]);
+}
+
+static void test_runtime_buffer_config_changes_are_rejected(void) {
+    float moving_buffer[3] = { 0.0f, 0.0f, 1234.0f };
+    bm_algo_moving_avg_config_t moving_cfg = {
+        .buffer = moving_buffer, .length = 2u
+    };
+    bm_algo_moving_avg_state_t moving;
+    float rms_buffer[3] = { 0.0f, 0.0f, 1234.0f };
+    bm_algo_rms_config_t rms_cfg = { .window_samples = 2u };
+    bm_algo_rms_state_t rms;
+    const float fir_coeffs[3] = { 1.0f, 0.0f, 0.0f };
+    float fir_delay[3] = { 0.0f, 0.0f, 1234.0f };
+    bm_algo_fir_config_t fir_cfg = {
+        .coeffs = fir_coeffs, .tap_count = 2u, .delay_line = fir_delay
+    };
+    bm_algo_fir_state_t fir;
+    const float poly_coeffs[3] = { 1.0f, 0.0f, 0.0f };
+    float poly_delay[3] = { 0.0f, 0.0f, 1234.0f };
+    bm_algo_polyphase_decim_config_t poly_cfg = {
+        .coeffs = poly_coeffs, .tap_count = 2u, .decim = 2u
+    };
+    bm_algo_polyphase_decim_state_t poly;
+    const float input = 1.0f;
+    float output = 0.0f;
+
+    TEST_ASSERT_EQUAL(0, bm_algo_moving_avg_init(&moving, &moving_cfg));
+    moving_cfg.length = 3u;
+    TEST_ASSERT_FLOAT_WITHIN(
+        0.0f, input, bm_algo_moving_avg_step(&moving, &moving_cfg, input));
+    TEST_ASSERT_FLOAT_WITHIN(0.0f, 1234.0f, moving_buffer[2]);
+
+    TEST_ASSERT_EQUAL(0, bm_algo_rms_init(&rms, &rms_cfg, rms_buffer, 2u));
+    rms_cfg.window_samples = 3u;
+    TEST_ASSERT_FLOAT_WITHIN(
+        0.0f, input, bm_algo_rms_step(&rms, &rms_cfg, input));
+    TEST_ASSERT_FLOAT_WITHIN(0.0f, 1234.0f, rms_buffer[2]);
+
+    TEST_ASSERT_EQUAL(0, bm_algo_fir_init(&fir, &fir_cfg));
+    fir_cfg.tap_count = 3u;
+    TEST_ASSERT_FLOAT_WITHIN(
+        0.0f, input, bm_algo_fir_step(&fir, &fir_cfg, input));
+    TEST_ASSERT_FLOAT_WITHIN(0.0f, 1234.0f, fir_delay[2]);
+
+    TEST_ASSERT_EQUAL(
+        0, bm_algo_polyphase_decim_init(&poly, &poly_cfg, poly_delay, 2u));
+    poly_cfg.tap_count = 3u;
+    TEST_ASSERT_EQUAL_UINT32(
+        0u,
+        bm_algo_polyphase_decim_process(
+            &poly, &poly_cfg, &input, &output, 1u));
+    TEST_ASSERT_FLOAT_WITHIN(0.0f, 1234.0f, poly_delay[2]);
+}
+
 static void test_flux_observer_and_mtpa(void) {
     bm_algo_flux_observer_config_t obs_cfg_ls = {
         .rs_ohm = 0.5f, .ls_h = 0.001f, .pll_kp = 10.0f, .pll_ki = 100.0f
@@ -667,6 +883,12 @@ void test_algorithm(void) {
     RUN_TEST(test_fixed_pi_q31_saturates);
     RUN_TEST(test_fixed_lpf1_q15_tracks_input);
     RUN_TEST(test_fixed_point_saturates_before_narrowing);
+    RUN_TEST(test_fixed_point_negative_full_scale_product_saturates);
+    RUN_TEST(test_motion_and_profile_boundary_regressions);
+    RUN_TEST(test_motor_voltage_scaling_and_deadtime);
+    RUN_TEST(test_numeric_guard_regressions);
+    RUN_TEST(test_soc_and_image_boundary_regressions);
+    RUN_TEST(test_runtime_buffer_config_changes_are_rejected);
     RUN_TEST(test_flux_observer_and_mtpa);
     RUN_TEST(test_battery_temp_and_motor_extras);
     RUN_TEST(test_zero_length_audio_is_ignored);

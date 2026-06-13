@@ -71,6 +71,7 @@ void bm_algo_inv_clarke(const bm_algo_alphabeta_t *ab, bm_algo_abc_t *abc);
  * @param v_alpha,v_beta  per-unit 电压（相对直流母线）
  * @param vbus_v          母线电压（V），用于归一化；若已 per-unit 可传 1
  */
+/* v_alpha/v_beta and vbus_v must use the same voltage unit. */
 void bm_algo_svpwm(float v_alpha,
                    float v_beta,
                    float vbus_v,
@@ -83,13 +84,19 @@ void bm_algo_voltage_limit(float *vd, float *vq, float v_max);
 void bm_algo_current_from_2shunt(float ia, float ib, bm_algo_abc_t *abc);
 
 /**
- * 死区压降补偿：按相电流方向补偿测量电压（V）
- * @param deadtime_s  死区时间（s）
+ * @deprecated 缺少 PWM 周期，无法进行量纲正确的补偿；保持输入不变。
  */
 float bm_algo_deadtime_comp_v(float phase_v,
                               float phase_current_a,
                               float deadtime_s,
                               float vbus_v);
+
+/** 死区压降补偿，补偿量为 sign(I) * Vbus * deadtime / PWM period。 */
+float bm_algo_deadtime_comp_v_period(float phase_v,
+                                     float phase_current_a,
+                                     float deadtime_s,
+                                     float pwm_period_s,
+                                     float vbus_v);
 
 /* ---------- 无感 FOC 辅助（K0） ---------- */
 typedef struct {

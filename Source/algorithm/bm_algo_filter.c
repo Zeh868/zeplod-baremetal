@@ -111,12 +111,14 @@ int bm_algo_moving_avg_init(bm_algo_moving_avg_state_t *state,
 
 void bm_algo_moving_avg_reset(bm_algo_moving_avg_state_t *state,
                               const bm_algo_moving_avg_config_t *config) {
-    if (state == NULL || config == NULL) {
+    if (state == NULL || config == NULL ||
+        config->buffer == NULL || config->length == 0u) {
         return;
     }
     state->sum = 0.0f;
     state->index = 0u;
     state->count = 0u;
+    state->length = config->length;
     memset(config->buffer, 0, config->length * sizeof(float));
 }
 
@@ -126,7 +128,9 @@ float bm_algo_moving_avg_step(bm_algo_moving_avg_state_t *state,
     float old;
 
     if (state == NULL || config == NULL ||
-        config->buffer == NULL || config->length == 0u) {
+        config->buffer == NULL || config->length == 0u ||
+        config->length != state->length ||
+        state->index >= state->length) {
         return input;
     }
 
@@ -212,6 +216,7 @@ void bm_algo_fir_reset(bm_algo_fir_state_t *state,
         return;
     }
     state->index = 0u;
+    state->tap_count = config->tap_count;
     memset(config->delay_line, 0, config->tap_count * sizeof(float));
 }
 
@@ -223,7 +228,10 @@ float bm_algo_fir_step(bm_algo_fir_state_t *state,
     uint32_t idx;
 
     if (state == NULL || config == NULL ||
-        config->coeffs == NULL || config->delay_line == NULL) {
+        config->coeffs == NULL || config->delay_line == NULL ||
+        config->tap_count == 0u ||
+        config->tap_count != state->tap_count ||
+        state->index >= state->tap_count) {
         return input;
     }
 
@@ -254,7 +262,12 @@ int bm_algo_biquad_design(bm_algo_biquad_config_t *config,
 
     if (config == NULL || design == NULL ||
         design->sample_hz <= 0.0f || design->freq_hz <= 0.0f ||
-        design->q <= 0.0f) {
+        design->freq_hz >= 0.5f * design->sample_hz ||
+        design->q <= 0.0f ||
+        !bm_algo_is_finite_f(design->sample_hz) ||
+        !bm_algo_is_finite_f(design->freq_hz) ||
+        !bm_algo_is_finite_f(design->q) ||
+        !bm_algo_is_finite_f(design->gain_db)) {
         return -1;
     }
 

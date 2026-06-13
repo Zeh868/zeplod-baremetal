@@ -415,6 +415,7 @@ int bm_algo_smith_predictor_init(bm_algo_smith_predictor_state_t *state,
 
     state->u_delay_line = delay_line;
     state->line_len = line_len;
+    state->delay_steps = config->delay_steps;
     bm_algo_smith_predictor_reset(state, config);
     return 0;
 }
@@ -424,6 +425,11 @@ void bm_algo_smith_predictor_reset(bm_algo_smith_predictor_state_t *state,
     uint32_t i;
 
     if (state == NULL || state->u_delay_line == NULL || config == NULL) {
+        return;
+    }
+    if (config->delay_steps == 0u ||
+        config->delay_steps > state->line_len ||
+        config->delay_steps != state->delay_steps) {
         return;
     }
 
@@ -445,7 +451,10 @@ float bm_algo_smith_predictor_step(bm_algo_smith_predictor_state_t *state,
     float y_predicted;
 
     if (state == NULL || config == NULL || state->u_delay_line == NULL ||
-        config->delay_steps == 0u) {
+        config->delay_steps == 0u ||
+        config->delay_steps > state->line_len ||
+        config->delay_steps != state->delay_steps ||
+        state->head >= config->delay_steps) {
         return reference - measurement;
     }
 

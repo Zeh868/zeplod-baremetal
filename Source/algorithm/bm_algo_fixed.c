@@ -17,6 +17,7 @@
 #include "bm/algorithm/bm_algo_fixed.h"
 
 #include <limits.h>
+#include <math.h>
 
 bm_algo_q31_t bm_algo_clamp_q31(bm_algo_q31_t value,
                                 bm_algo_q31_t min_v,
@@ -45,6 +46,9 @@ bm_algo_q15_t bm_algo_clamp_q15(bm_algo_q15_t value,
 bm_algo_q31_t bm_algo_float_to_q31(float value) {
     float scaled;
 
+    if (isnan(value)) {
+        return 0;
+    }
     if (value >= 1.0f) {
         return BM_ALGO_Q31_ONE;
     }
@@ -68,6 +72,9 @@ float bm_algo_q31_to_float(bm_algo_q31_t value) {
 bm_algo_q15_t bm_algo_float_to_q15(float value) {
     float scaled;
 
+    if (isnan(value)) {
+        return 0;
+    }
     if (value >= 1.0f) {
         return BM_ALGO_Q15_ONE;
     }
@@ -95,10 +102,14 @@ void bm_algo_pi_q31_reset(bm_algo_pi_q31_state_t *state, bm_algo_q31_t output) {
     }
 }
 
+static bm_algo_q31_t saturate_q31_i64(int64_t value);
+static bm_algo_q15_t saturate_q15_i32(int32_t value);
+
 static bm_algo_q31_t mul_q31(bm_algo_q31_t a, bm_algo_q31_t b) {
     int64_t prod = (int64_t)a * (int64_t)b;
+    int64_t scaled = prod >> 31;
 
-    return (bm_algo_q31_t)(prod >> 31);
+    return saturate_q31_i64(scaled);
 }
 
 static bm_algo_q31_t saturate_q31_i64(int64_t value) {
@@ -311,7 +322,7 @@ void bm_algo_biquad_q15_reset(bm_algo_biquad_q15_state_t *state) {
 static bm_algo_q15_t mul_q15(bm_algo_q15_t a, bm_algo_q15_t b) {
     int32_t prod = (int32_t)a * (int32_t)b;
 
-    return (bm_algo_q15_t)(prod >> 15);
+    return saturate_q15_i32(prod >> 15);
 }
 
 bm_algo_q15_t bm_algo_biquad_q15_step(bm_algo_biquad_q15_state_t *state,

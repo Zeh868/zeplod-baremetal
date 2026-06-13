@@ -105,22 +105,26 @@ float bm_algo_rate_limit_step(bm_algo_rate_limit_state_t *state,
 }
 
 float bm_algo_angle_wrap_rad(float angle_rad) {
-    while (angle_rad >= BM_ALGO_PI_F) {
-        angle_rad -= 2.0f * BM_ALGO_PI_F;
+    const float two_pi = 2.0f * BM_ALGO_PI_F;
+
+    if (!bm_algo_is_finite_f(angle_rad)) {
+        return angle_rad;
     }
-    while (angle_rad < -BM_ALGO_PI_F) {
-        angle_rad += 2.0f * BM_ALGO_PI_F;
+    angle_rad = fmodf(angle_rad + BM_ALGO_PI_F, two_pi);
+    if (angle_rad < 0.0f) {
+        angle_rad += two_pi;
     }
-    return angle_rad;
+    return angle_rad - BM_ALGO_PI_F;
 }
 
 float bm_algo_angle_wrap_0_2pi_rad(float angle_rad) {
     const float two_pi = 2.0f * BM_ALGO_PI_F;
 
-    while (angle_rad >= two_pi) {
-        angle_rad -= two_pi;
+    if (!bm_algo_is_finite_f(angle_rad)) {
+        return angle_rad;
     }
-    while (angle_rad < 0.0f) {
+    angle_rad = fmodf(angle_rad, two_pi);
+    if (angle_rad < 0.0f) {
         angle_rad += two_pi;
     }
     return angle_rad;

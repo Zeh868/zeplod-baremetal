@@ -19,13 +19,25 @@
 #include <math.h>
 
 int8_t bm_algo_quantize_f32_to_i8(float value, float scale, int32_t zero_point) {
-    int32_t q;
+    double transformed;
+    long q;
 
-    if (scale <= 0.0f) {
+    if (scale <= 0.0f || !bm_algo_is_finite_f(scale)) {
         return 0;
     }
+    if (!bm_algo_is_finite_f(value)) {
+        return (value > 0.0f) ? INT8_MAX :
+               (value < 0.0f) ? INT8_MIN : 0;
+    }
 
-    q = (int32_t)lroundf(value / scale) + zero_point;
+    transformed = (double)value / (double)scale + (double)zero_point;
+    if (transformed >= (double)INT8_MAX) {
+        return INT8_MAX;
+    }
+    if (transformed <= (double)INT8_MIN) {
+        return INT8_MIN;
+    }
+    q = lround(transformed);
     if (q < -128) {
         q = -128;
     }

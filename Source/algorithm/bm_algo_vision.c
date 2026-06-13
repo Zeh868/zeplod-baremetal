@@ -15,19 +15,27 @@
  */
 #include "bm/algorithm/bm_algo_vision.h"
 
+#include <limits.h>
+#include <stddef.h>
 #include <string.h>
 
 void bm_algo_vision_sobel_u8(const uint8_t *src, int16_t *gx, int16_t *gy,
                              uint32_t width, uint32_t height) {
     uint32_t x;
     uint32_t y;
+    size_t pixel_count;
 
-    if (src == NULL || gx == NULL || gy == NULL || width < 3u || height < 3u) {
+    if (src == NULL || gx == NULL || gy == NULL ||
+        width < 3u || height < 3u ||
+        width > UINT32_MAX / height ||
+        (size_t)width * (size_t)height >
+            SIZE_MAX / sizeof(int16_t)) {
         return;
     }
 
-    memset(gx, 0, width * height * sizeof(int16_t));
-    memset(gy, 0, width * height * sizeof(int16_t));
+    pixel_count = (size_t)width * (size_t)height;
+    memset(gx, 0, pixel_count * sizeof(int16_t));
+    memset(gy, 0, pixel_count * sizeof(int16_t));
 
     for (y = 1u; y + 1u < height; ++y) {
         for (x = 1u; x + 1u < width; ++x) {
@@ -62,6 +70,9 @@ int bm_algo_vision_centroid_u8(const uint8_t *mask,
     if (mask == NULL || cx == NULL || cy == NULL || width == 0u || height == 0u) {
         return -1;
     }
+    if (width > UINT32_MAX / height) {
+        return -1;
+    }
 
     for (y = 0u; y < height; ++y) {
         for (x = 0u; x < width; ++x) {
@@ -92,14 +103,17 @@ int bm_algo_vision_block_flow_u8(const uint8_t *prev,
                                  uint32_t search_radius,
                                  int32_t *dx,
                                  int32_t *dy) {
-    uint32_t best_sad = UINT32_MAX;
+    uint64_t best_sad = UINT64_MAX;
     int32_t best_dx = 0;
     int32_t best_dy = 0;
     int32_t sdy;
     int32_t sdx;
 
     if (prev == NULL || curr == NULL || dx == NULL || dy == NULL ||
-        block_size == 0u || bx + block_size > width || by + block_size > height) {
+        block_size == 0u || bx > width || by > height ||
+        block_size > width - bx || block_size > height - by ||
+        bx > INT32_MAX || by > INT32_MAX ||
+        search_radius >= INT32_MAX) {
         return -1;
     }
 
@@ -107,21 +121,23 @@ int bm_algo_vision_block_flow_u8(const uint8_t *prev,
         for (sdx = -(int32_t)search_radius; sdx <= (int32_t)search_radius; ++sdx) {
             uint32_t x;
             uint32_t y;
-            uint32_t sad = 0u;
-            int32_t cx0 = (int32_t)bx + sdx;
-            int32_t cy0 = (int32_t)by + sdy;
+            uint64_t sad = 0u;
+            int64_t cx0 = (int64_t)bx + (int64_t)sdx;
+            int64_t cy0 = (int64_t)by + (int64_t)sdy;
 
             if (cx0 < 0 || cy0 < 0 ||
-                (uint32_t)cx0 + block_size > width ||
-                (uint32_t)cy0 + block_size > height) {
+                (uint64_t)cx0 > width ||
+                (uint64_t)cy0 > height ||
+                block_size > width - (uint32_t)cx0 ||
+                block_size > height - (uint32_t)cy0) {
                 continue;
             }
 
             for (y = 0u; y < block_size; ++y) {
                 for (x = 0u; x < block_size; ++x) {
                     int32_t a = (int32_t)prev[(by + y) * width + (bx + x)];
-                    int32_t b = (int32_t)curr[(uint32_t)(cy0 + (int32_t)y) * width +
-                                               (uint32_t)(cx0 + (int32_t)x)];
+                    int32_t b = (int32_t)curr[
+                        ((uint32_t)cy0 + y) * width + ((uint32_t)cx0 + x)];
                     int32_t d = a - b;
                     if (d < 0) {
                         d = -d;
@@ -140,7 +156,7 @@ int bm_algo_vision_block_flow_u8(const uint8_t *prev,
 
     *dx = best_dx;
     *dy = best_dy;
-    if (best_sad == UINT32_MAX) {
+    if (best_sad == UINT64_MAX) {
         return -1;
     }
     return 0;

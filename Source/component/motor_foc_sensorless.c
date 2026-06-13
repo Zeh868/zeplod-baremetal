@@ -252,8 +252,8 @@ void bm_motor_foc_sensorless_current_step(bm_motor_foc_sensorless_axis_t *axis) 
     v_dq.id = vd;
     v_dq.iq = vq;
     bm_algo_inv_park(&v_dq, theta_elec, &v_ab);
-    bm_algo_svpwm(v_ab.i_alpha * cfg->vbus_v,
-                  v_ab.i_beta * cfg->vbus_v,
+    bm_algo_svpwm(v_ab.i_alpha * 0.5f * cfg->vbus_v,
+                  v_ab.i_beta * 0.5f * cfg->vbus_v,
                   cfg->vbus_v,
                   &svpwm);
 

@@ -68,6 +68,7 @@ typedef struct {
     float sum;
     uint32_t index;
     uint32_t count;
+    uint32_t length;
 } bm_algo_moving_avg_state_t;
 
 int bm_algo_moving_avg_init(bm_algo_moving_avg_state_t *state,
@@ -105,6 +106,7 @@ typedef struct {
 
 typedef struct {
     uint32_t index;
+    uint32_t tap_count;
 } bm_algo_fir_state_t;
 
 int bm_algo_fir_init(bm_algo_fir_state_t *state,

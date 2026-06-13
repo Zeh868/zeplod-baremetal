@@ -84,7 +84,7 @@ void bm_algo_soc_ekf_update_voltage(bm_algo_soc_ekf_state_t *state,
     if (slope <= 0.0f) {
         slope = 0.5f;
     }
-    y = terminal_v - (ocv_from_soc + slope * (state->soc - 0.5f));
+    y = terminal_v - ocv_from_soc;
     s = state->p00 * slope * slope + config->r_v;
     if (s <= 1e-9f) {
         return;
@@ -106,4 +106,6 @@ void bm_algo_soc_ekf_update_voltage(bm_algo_soc_ekf_state_t *state,
     state->p01 = p01 - k0 * slope * p01;
     state->p10 = p10 - k1 * slope * p00;
     state->p11 = p11 - k1 * slope * p01;
+    state->p01 = 0.5f * (state->p01 + state->p10);
+    state->p10 = state->p01;
 }

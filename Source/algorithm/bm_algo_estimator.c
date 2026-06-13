@@ -14,13 +14,14 @@
  * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 #include "bm/algorithm/bm_algo_estimator.h"
+#include "bm/algorithm/bm_algo_common.h"
 
 void bm_algo_kalman1d_reset(bm_algo_kalman1d_state_t *state,
                             float x0,
                             float p0) {
     if (state != NULL) {
         state->x = x0;
-        state->p = p0;
+        state->p = (p0 >= 0.0f && bm_algo_is_finite_f(p0)) ? p0 : 0.0f;
     }
 }
 
@@ -29,7 +30,9 @@ float bm_algo_kalman1d_predict(bm_algo_kalman1d_state_t *state,
     if (state == NULL || config == NULL) {
         return 0.0f;
     }
-    state->p += config->q;
+    if (config->q >= 0.0f && bm_algo_is_finite_f(config->q)) {
+        state->p += config->q;
+    }
     return state->x;
 }
 
@@ -37,12 +40,21 @@ float bm_algo_kalman1d_update(bm_algo_kalman1d_state_t *state,
                               const bm_algo_kalman1d_config_t *config,
                               float measurement) {
     float k;
+    float denom;
 
     if (state == NULL || config == NULL) {
         return measurement;
     }
 
-    k = state->p / (state->p + config->r);
+    if (!bm_algo_is_finite_f(measurement) || config->r < 0.0f ||
+        !bm_algo_is_finite_f(config->r)) {
+        return state->x;
+    }
+    denom = state->p + config->r;
+    if (denom <= 1e-12f || !bm_algo_is_finite_f(denom)) {
+        return state->x;
+    }
+    k = state->p / denom;
     state->x += k * (measurement - state->x);
     state->p *= (1.0f - k);
     return state->x;

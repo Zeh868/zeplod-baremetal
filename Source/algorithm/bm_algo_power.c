@@ -67,12 +67,7 @@ void bm_algo_sogi_pll_step(bm_algo_sogi_pll_state_t *state,
     state->omega_rad_s = config->nominal_omega_rad_s + state->integrator;
     state->theta_rad += state->omega_rad_s * dt_s;
 
-    while (state->theta_rad >= 2.0f * BM_ALGO_PI_F) {
-        state->theta_rad -= 2.0f * BM_ALGO_PI_F;
-    }
-    while (state->theta_rad < 0.0f) {
-        state->theta_rad += 2.0f * BM_ALGO_PI_F;
-    }
+    state->theta_rad = bm_algo_angle_wrap_0_2pi_rad(state->theta_rad);
 }
 
 void bm_algo_mppt_po_reset(bm_algo_mppt_po_state_t *state, float v_init) {
@@ -126,7 +121,7 @@ float bm_algo_mppt_ic_step(bm_algo_mppt_ic_state_t *state,
     dv = voltage - state->prev_v;
     di = current - state->prev_i;
 
-    if (dv != 0.0f) {
+    if (dv != 0.0f && fabsf(voltage) > 1e-12f) {
         if (di / dv >= -current / voltage) {
             state->v_ref += config->step_v;
         } else {
@@ -150,6 +145,7 @@ int bm_algo_rms_init(bm_algo_rms_state_t *state,
     }
     state->buffer = buffer;
     state->buflen = buflen;
+    state->window_samples = config->window_samples;
     bm_algo_rms_reset(state);
     return 0;
 }
@@ -172,7 +168,11 @@ float bm_algo_rms_step(bm_algo_rms_state_t *state,
     float old;
     uint32_t win;
 
-    if (state == NULL || config == NULL || state->buffer == NULL) {
+    if (state == NULL || config == NULL || state->buffer == NULL ||
+        config->window_samples == 0u ||
+        config->window_samples > state->buflen ||
+        config->window_samples != state->window_samples ||
+        state->index >= state->window_samples) {
         return sample;
     }
 
@@ -186,6 +186,12 @@ float bm_algo_rms_step(bm_algo_rms_state_t *state,
         state->count++;
     }
 
+    if (state->sum_sq < 0.0f && state->sum_sq > -1e-6f) {
+        state->sum_sq = 0.0f;
+    }
+    if (state->sum_sq < 0.0f || state->count == 0u) {
+        return 0.0f;
+    }
     return sqrtf(state->sum_sq / (float)state->count);
 }
 

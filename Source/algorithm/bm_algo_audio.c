@@ -55,8 +55,8 @@ void bm_algo_limiter_process(const float *in, float *out, uint32_t n,
         return;
     }
 
-    th = config->threshold;
-    knee = config->knee;
+    th = (config->threshold > 0.0f) ? config->threshold : 0.0f;
+    knee = (config->knee > 0.0f) ? config->knee : 0.0f;
 
     for (i = 0u; i < n; ++i) {
         float x = in[i];
@@ -89,6 +89,9 @@ void bm_algo_agc_process(bm_algo_agc_state_t *state,
     float level;
     float err;
     float coeff;
+    float min_gain;
+    float max_gain;
+    float silence_threshold;
 
     if (state == NULL || config == NULL || in == NULL || out == NULL ||
         n == 0u) {
@@ -101,12 +104,22 @@ void bm_algo_agc_process(bm_algo_agc_state_t *state,
     }
     level /= (float)n;
 
-    err = config->target_level - level * state->gain;
-    coeff = (err > 0.0f) ? config->attack_coeff : config->release_coeff;
-    state->gain += coeff * err;
-    if (state->gain < 0.01f) {
-        state->gain = 0.01f;
+    min_gain = (config->min_gain > 0.0f) ? config->min_gain : 0.01f;
+    max_gain = (config->max_gain >= min_gain) ? config->max_gain : 64.0f;
+    silence_threshold = (config->silence_threshold > 0.0f)
+                            ? config->silence_threshold
+                            : 1e-6f;
+
+    if (!bm_algo_is_finite_f(state->gain)) {
+        state->gain = min_gain;
     }
+    if (level >= silence_threshold && bm_algo_is_finite_f(level)) {
+        err = config->target_level - level * state->gain;
+        coeff = (err > 0.0f) ? config->attack_coeff : config->release_coeff;
+        coeff = bm_algo_clamp_f(coeff, 0.0f, 1.0f);
+        state->gain += coeff * err;
+    }
+    state->gain = bm_algo_clamp_f(state->gain, min_gain, max_gain);
 
     for (i = 0u; i < n; ++i) {
         out[i] = in[i] * state->gain;
@@ -334,6 +347,9 @@ static uint32_t gcc_phat_pick_fft_size(uint32_t linear_n) {
 static uint32_t gcc_phat_linear_len(uint32_t n, int32_t max_lag) {
     uint32_t extra = (max_lag > 0) ? (uint32_t)max_lag : 0u;
 
+    if (extra > UINT32_MAX - n) {
+        return 0u;
+    }
     return n + extra;
 }
 
@@ -345,6 +361,9 @@ uint32_t bm_algo_gcc_phat_work_count(uint32_t n, int32_t max_lag) {
         return 0u;
     }
     linear_n = gcc_phat_linear_len(n, max_lag);
+    if (linear_n == 0u) {
+        return 0u;
+    }
     fft_n = gcc_phat_pick_fft_size(linear_n);
     if (fft_n == 0u) {
         return 0u;
@@ -427,6 +446,9 @@ int32_t bm_algo_gcc_phat_delay(const float *ref,
     }
 
     linear_n = gcc_phat_linear_len(n, max_lag);
+    if (linear_n == 0u) {
+        return BM_ALGO_GCC_PHAT_DELAY_INVALID;
+    }
     fft_n = gcc_phat_pick_fft_size(linear_n);
     if (fft_n == 0u || work_count < 4u * fft_n) {
         return BM_ALGO_GCC_PHAT_DELAY_INVALID;
