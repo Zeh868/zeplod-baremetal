@@ -11,7 +11,7 @@
  * 2026-06-10       1.0            zeh            正式发布
  *
  */
-#include "bm_ctrl_inst.h"
+#include "bm_exec.h"
 #include "bm_hrt.h"
 #include "bm_log.h"
 #include "bm_sync.h"
@@ -44,7 +44,7 @@ typedef struct {
 static axis_state_t g_axis_state[3];
 
 /** 同步触发后记录启动时刻并使能 PWM */
-static void axis_step(const bm_ctrl_inst_t *instance) {
+static void axis_step(const bm_exec_t *instance) {
     axis_state_t *state = (axis_state_t *)instance->state;
     if (!state->started) {
         state->start_tick = bm_hal_timer_get_ticks();
@@ -56,40 +56,38 @@ static void axis_step(const bm_ctrl_inst_t *instance) {
     }
 }
 
-static int axis_init(const bm_ctrl_inst_t *instance) {
+static int axis_init(const bm_exec_t *instance) {
     (void)instance;
     return BM_OK;
 }
 
-static int axis_start(const bm_ctrl_inst_t *instance) {
+static int axis_start(const bm_exec_t *instance) {
     (void)instance;
     return BM_OK;
 }
 
-static void axis_safe_stop(const bm_ctrl_inst_t *instance) {
+static void axis_safe_stop(const bm_exec_t *instance) {
     const bm_hal_pwm_t *pwm = (const bm_hal_pwm_t *)instance->config;
     if (pwm) {
         bm_hal_pwm_request_safe_state(pwm);
     }
 }
 
-static const bm_ctrl_ops_t g_axis_ops = {
+static const bm_exec_ops_t g_axis_ops = {
     axis_init, axis_start, axis_safe_stop
 };
 
-static const bm_ctrl_slot_t g_axis_slot[] = {
+static const bm_exec_slot_t g_axis_slot[] = {
     {
-        BM_CTRL_SLOT_SCHEDULED,
-        1000u,
-        BM_HRT_TRIGGER_TIMER,
-        axis_step,
-        NULL,
-        "axis"
+        .kind = BM_EXEC_SLOT_PERIODIC,
+        .period_us = 1000u,
+        .run = axis_step,
+        .name = "axis"
     }
 };
 
 #define DEFINE_AXIS(ID, PWM, STATE) \
-    static const bm_ctrl_inst_t axis_##ID = { \
+    static const bm_exec_t axis_##ID = { \
         (ID), "axis_" #ID, (STATE), (const void *)(PWM), NULL, \
         g_axis_slot, 1u, NULL, 0u, &g_axis_ops \
     }
@@ -98,7 +96,7 @@ DEFINE_AXIS(1, &BM_HAL_PWM_SIM0, &g_axis_state[0]);
 DEFINE_AXIS(2, &BM_HAL_PWM_SIM1, &g_axis_state[1]);
 DEFINE_AXIS(3, &BM_HAL_PWM_SIM2, &g_axis_state[2]);
 
-static const bm_ctrl_inst_t *const g_members[] = {
+static const bm_exec_t *const g_members[] = {
     &axis_1, &axis_2, &axis_3
 };
 
@@ -112,7 +110,7 @@ static const bm_sync_domain_t g_domain = {
     3u
 };
 
-static const bm_ctrl_inst_t *const g_instances[] = {
+static const bm_exec_t *const g_instances[] = {
     &axis_1, &axis_2, &axis_3
 };
 
@@ -124,7 +122,7 @@ int main(void) {
     bm_hal_uart_init(NULL);
     (void)bm_hal_timer_init(10000u);
 
-    rc = bm_ctrl_init_all(g_instances, 3u);
+    rc = bm_exec_init_all(g_instances, 3u);
     if (rc != BM_OK) {
         BM_LOGE(TAG, "ctrl init failed, rc=%d", rc);
         hybrid_print("EXAMPLE_MULTI_AXIS_SYNC: FAIL init\n");
@@ -133,25 +131,25 @@ int main(void) {
     rc = bm_sync_configure(&g_domain);
     if (rc != BM_OK) {
         BM_LOGE(TAG, "sync configure failed, rc=%d", rc);
-        bm_ctrl_safe_stop_all(g_instances, 3u);
+        bm_exec_safe_stop_all(g_instances, 3u);
         return 1;
     }
     rc = bm_sync_arm(&g_domain);
     if (rc != BM_OK) {
         BM_LOGE(TAG, "sync arm failed, rc=%d", rc);
-        bm_ctrl_safe_stop_all(g_instances, 3u);
+        bm_exec_safe_stop_all(g_instances, 3u);
         return 1;
     }
-    rc = bm_ctrl_start_all(g_instances, 3u);
+    rc = bm_exec_start_all(g_instances, 3u);
     if (rc != BM_OK) {
         BM_LOGE(TAG, "ctrl start failed, rc=%d", rc);
-        bm_ctrl_safe_stop_all(g_instances, 3u);
+        bm_exec_safe_stop_all(g_instances, 3u);
         return 1;
     }
     rc = bm_sync_trigger(&g_domain);
     if (rc != BM_OK) {
         BM_LOGE(TAG, "sync trigger failed, rc=%d", rc);
-        bm_ctrl_safe_stop_all(g_instances, 3u);
+        bm_exec_safe_stop_all(g_instances, 3u);
         return 1;
     }
     BM_LOGI(TAG, "sync domain triggered");
@@ -183,12 +181,12 @@ int main(void) {
                 (unsigned)g_axis_state[2].start_tick);
         hybrid_print("EXAMPLE_MULTI_AXIS_SYNC: FAIL sync\n");
         bm_sync_safe_stop(&g_domain);
-        bm_ctrl_safe_stop_all(g_instances, 3u);
+        bm_exec_safe_stop_all(g_instances, 3u);
         return 1;
     }
 
     bm_sync_safe_stop(&g_domain);
-    bm_ctrl_safe_stop_all(g_instances, 3u);
+    bm_exec_safe_stop_all(g_instances, 3u);
 #ifdef NATIVE_SIM
     return 0;
 #else

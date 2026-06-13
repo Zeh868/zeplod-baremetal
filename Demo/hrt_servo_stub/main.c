@@ -11,7 +11,7 @@
  * 2026-06-10       1.0            zeh            正式发布
  *
  */
-#include "bm_ctrl_inst.h"
+#include "bm_exec.h"
 #include "bm_event.h"
 #include "bm_hrt.h"
 #include "bm_log.h"
@@ -47,7 +47,7 @@ typedef struct {
 servo_state_t g_servo_state;
 
 /** 电流环：ADC 采样后更新 PWM 占空比 */
-static void current_step(const bm_ctrl_inst_t *instance) {
+static void current_step(const bm_exec_t *instance) {
     servo_state_t *state = (servo_state_t *)instance->state;
     uint16_t sample = 0u;
 
@@ -63,64 +63,60 @@ static void current_step(const bm_ctrl_inst_t *instance) {
 }
 
 /** 速度环：定时递增位置计数 */
-static void speed_step(const bm_ctrl_inst_t *instance) {
+static void speed_step(const bm_exec_t *instance) {
     servo_state_t *state = (servo_state_t *)instance->state;
     state->position++;
     state->speed_hits++;
 }
 
 /** 将 ADC 完成中断绑定到 HRT 硬件槽 */
-static int bind_adc(const bm_ctrl_inst_t *instance,
+static int bind_adc(const bm_exec_t *instance,
                     const bm_hal_hrt_binding_t *binding) {
     (void)instance;
     return bm_hal_adc_bind_complete(&BM_HAL_ADC_SIM0, binding);
 }
 
-static int servo_init(const bm_ctrl_inst_t *instance) {
+static int servo_init(const bm_exec_t *instance) {
     (void)instance;
     bm_hal_adc_sim_set_rank(&BM_HAL_ADC_SIM0, 0u, 512u);
     BM_LOGD(TAG, "servo init, ADC rank=512");
     return BM_OK;
 }
 
-static int servo_start(const bm_ctrl_inst_t *instance) {
+static int servo_start(const bm_exec_t *instance) {
     (void)instance;
     BM_LOGI(TAG, "servo start, enable PWM outputs");
     return bm_hal_pwm_enable_outputs(&BM_HAL_PWM_SIM0, 1);
 }
 
-static void servo_safe_stop(const bm_ctrl_inst_t *instance) {
+static void servo_safe_stop(const bm_exec_t *instance) {
     (void)instance;
     BM_LOGW(TAG, "servo safe stop");
     bm_hal_pwm_request_safe_state(&BM_HAL_PWM_SIM0);
 }
 
-static const bm_ctrl_ops_t g_servo_ops = {
+static const bm_exec_ops_t g_servo_ops = {
     servo_init,
     servo_start,
     servo_safe_stop
 };
 
-static const bm_ctrl_slot_t g_servo_slots[] = {
+static const bm_exec_slot_t g_servo_slots[] = {
     {
-        BM_CTRL_SLOT_HARDWARE,
-        0u,
-        BM_HRT_TRIGGER_ADC_COMPLETE,
-        current_step,
-        bind_adc,
-        "current"
+        .kind = BM_EXEC_SLOT_HARDWARE,
+        .run = current_step,
+        .bind = bind_adc,
+        .name = "current"
     },
     {
-        BM_CTRL_SLOT_SCHEDULED,
-        1000u,
-        BM_HRT_TRIGGER_TIMER,
-        speed_step,
-        NULL,
-        "speed"
+        .kind = BM_EXEC_SLOT_PERIODIC,
+        .period_us = 1000u,
+        .run = speed_step,
+        .name = "speed"
     }
 };
 
-static const bm_ctrl_inst_t g_servo = {
+static const bm_exec_t g_servo = {
     1u,
     "servo",
     &g_servo_state,
@@ -133,7 +129,7 @@ static const bm_ctrl_inst_t g_servo = {
     &g_servo_ops
 };
 
-static const bm_ctrl_inst_t *const g_instances[] = { &g_servo };
+static const bm_exec_t *const g_instances[] = { &g_servo };
 
 #if defined(BM_EXAMPLE_QEMU)
 #define SERVO_TICKER_MS  10u
@@ -141,11 +137,11 @@ static const bm_ctrl_inst_t *const g_instances[] = { &g_servo };
 #define SERVO_TICKER_MS  100u
 #endif
 
+#define EVENT_POSITION 1u
+
 static const bm_ticker_slot_t g_ticker_slots[] = {
     { SERVO_TICKER_MS, EVENT_POSITION, 1u, "position" }
 };
-
-#define EVENT_POSITION 1u
 
 /** 推进仿真时钟并轮询 ticker / 事件 */
 static int run_cycles(uint32_t cycles) {
@@ -187,7 +183,7 @@ int main(void) {
 
     (void)bm_hal_timer_init(10000u);
 
-    rc = bm_ctrl_init_all(g_instances,
+    rc = bm_exec_init_all(g_instances,
                           (uint32_t)(sizeof(g_instances) / sizeof(g_instances[0])));
     if (rc != BM_OK) {
         BM_LOGE(TAG, "ctrl init failed, rc=%d", rc);
@@ -195,12 +191,12 @@ int main(void) {
         return 1;
     }
 
-    rc = bm_ctrl_start_all(g_instances,
+    rc = bm_exec_start_all(g_instances,
                            (uint32_t)(sizeof(g_instances) / sizeof(g_instances[0])));
     if (rc != BM_OK) {
         BM_LOGE(TAG, "ctrl start failed, rc=%d", rc);
         hybrid_print("EXAMPLE_HRT_SERVO_STUB: FAIL start\n");
-        bm_ctrl_safe_stop_all(g_instances,
+        bm_exec_safe_stop_all(g_instances,
                               (uint32_t)(sizeof(g_instances) / sizeof(g_instances[0])));
         return 1;
     }
@@ -245,12 +241,12 @@ int main(void) {
                 (unsigned)g_servo_state.speed_hits,
                 (unsigned)g_servo_state.position_events);
         hybrid_print("EXAMPLE_HRT_SERVO_STUB: FAIL metrics\n");
-        bm_ctrl_safe_stop_all(g_instances,
+        bm_exec_safe_stop_all(g_instances,
                               (uint32_t)(sizeof(g_instances) / sizeof(g_instances[0])));
         return 1;
     }
 
-    bm_ctrl_safe_stop_all(g_instances,
+    bm_exec_safe_stop_all(g_instances,
                           (uint32_t)(sizeof(g_instances) / sizeof(g_instances[0])));
 
 #ifdef NATIVE_SIM

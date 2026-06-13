@@ -22,7 +22,7 @@
 |------|------|------|
 | native_sim | `platform/backends/native_sim/bm_drv_singleton_native.c` | 编译器屏障 |
 | QEMU Cortex-M0 | `platform/backends/qemu_cortex_m0/bm_drv_singleton_qemu.c` | 编译器屏障 |
-| STM32G4 | `platform/backends/register_stm32g4/bm_drv_singleton_stm32g4.c` | `dmb` / `dsb` |
+| STM32G4 | `portable/sdk_stm32g4/bm_drv_singleton_stm32g4.c` | `dmb` / `dsb` |
 | CH32V003 | `platform/backends/register_ch32v003/bm_drv_singleton_ch32v003.c` | RISC-V `fence` |
 
 ## 移植要点

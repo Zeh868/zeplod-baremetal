@@ -43,14 +43,24 @@
 #ifndef BM_CONFIG_ENABLE_TICKER
 #define BM_CONFIG_ENABLE_TICKER              0
 #endif
-#ifndef BM_CONFIG_ENABLE_CTRL_INST
-#define BM_CONFIG_ENABLE_CTRL_INST           0
+#ifndef BM_CONFIG_ENABLE_EXEC
+#define BM_CONFIG_ENABLE_EXEC           0
 #endif
 #ifndef BM_CONFIG_ENABLE_SYNC
 #define BM_CONFIG_ENABLE_SYNC                0
 #endif
+#ifndef BM_CONFIG_ENABLE_STREAM
+#define BM_CONFIG_ENABLE_STREAM              0
+#endif
+#ifndef BM_CONFIG_ENABLE_PIPELINE
+#define BM_CONFIG_ENABLE_PIPELINE            0
+#endif
+#ifndef BM_CONFIG_ENABLE_ALGORITHM
+#define BM_CONFIG_ENABLE_ALGORITHM           0
+#endif
 
-/* 日志子系统 */
+/* 流式域（Block/Frame RT） */
+#define BM_CONFIG_STREAM_MAX_BLOCKS          4u
 #define BM_CONFIG_ENABLE_LOG                 1
 #define BM_CONFIG_LOG_LEVEL                  3   /* BM_LOG_INFO */
 #define BM_CONFIG_LOG_BUF_SIZE               128
@@ -89,10 +99,10 @@
 #define BM_CONFIG_HRT_MAX_SLOTS              16
 #define BM_CONFIG_TICKER_MAX_SLOTS           8
 #define BM_CONFIG_TICKER_MAX_CATCHUP         4
-#define BM_CONFIG_MAX_CTRL_SLOTS             32
-#define BM_CONFIG_MAX_CTRL_INSTANCES         16
+#define BM_CONFIG_MAX_EXEC_SLOTS             32
+#define BM_CONFIG_MAX_EXEC_INSTANCES         16
 #define BM_CONFIG_MAX_RESOURCE_CLAIMS        64
-#define BM_CONFIG_MAX_SYNC_MEMBERS           BM_CONFIG_MAX_CTRL_INSTANCES
+#define BM_CONFIG_MAX_SYNC_MEMBERS           BM_CONFIG_MAX_EXEC_INSTANCES
 #define BM_CONFIG_SYNC_MAX_PHASE_TICKS       1000000000u
 
 #endif /* BM_CONFIG_H */

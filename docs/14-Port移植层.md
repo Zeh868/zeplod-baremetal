@@ -9,7 +9,7 @@
 
 **模板：** [`portable/template/bm_port.c`](../portable/template/bm_port.c)
 
-**参考实现：** `portable/register_<mcu>/`（PC 开发可用 `BM_BACKEND=native_sim`）
+**参考实现：** `portable/sdk_<mcu>/`（PC 开发可用 `BM_BACKEND=native_sim`）
 
 ## 2. 必须实现
 
@@ -26,14 +26,14 @@
 | `bm_drv_uart_api` | 日志、Shell |
 | `bm_drv_pwm_api` 等 | 混合域外设 |
 
-实现时对接厂商 `HAL_*` 或寄存器；可参考 `portable/register_stm32g4/`。
+实现时对接厂商 SDK（Cube `HAL_*`、ESP-IDF `driver/*`）；可参考 `portable/sdk_stm32g4/`、`portable/sdk_esp32_idf/`。
 
 ## 4. 集成检查清单
 
 1. 从 `portable/template/bm_port.c` 复制到应用 `Core/Src/` 或 `source/`。
 2. 按 PROFILE 实现本应用用到的 `bm_drv_*_api`。
 3. 在 `native_sim` 或 QEMU 上跑通单元测试（若适用）。
-4. 真机验证 HRT 时序与 ISR 上下文（混合域见 [03 §3.1](03-执行域与跨域通讯.md#31-直接-hal-绑定不用-bm_ctrl_inst)）。
+4. 真机验证 HRT 时序与 ISR 上下文（混合域见 [03 §3.1](03-执行域与跨域通讯.md#31-直接-hal-绑定不用-bm_exec)）。
 
 ## 5. 相关文档
 

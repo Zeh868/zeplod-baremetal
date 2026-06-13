@@ -15,8 +15,8 @@ include_guard(GLOBAL)
 include(${CMAKE_CURRENT_LIST_DIR}/zeplod_profiles.cmake)
 
 set(_ZEPLod_BACKEND_ALIAS_native_sim bm_hal_native)
-set(_ZEPLod_BACKEND_ALIAS_register_stm32g4 bm_hal_stm32g4)
-set(_ZEPLod_BACKEND_ALIAS_register_esp32wroom32e bm_hal_esp32wroom32e)
+set(_ZEPLod_BACKEND_ALIAS_sdk_stm32g4 bm_hal_stm32g4)
+set(_ZEPLod_BACKEND_ALIAS_sdk_esp32_idf bm_hal_esp32wroom32e)
 set(_ZEPLod_BACKEND_ALIAS_register_ch32v003 bm_hal_ch32v003)
 set(_ZEPLod_BACKEND_ALIAS_qemu_cortex_m0 bm_backend_qemu_cortex_m0)
 

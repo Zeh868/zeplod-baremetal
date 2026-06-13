@@ -15,7 +15,7 @@
 |------|------|
 | `name` | 同步域名称 |
 | `master_timer` | 主 `bm_hal_timer_t` 指针 |
-| `members` | `bm_ctrl_inst_t` 指针数组 |
+| `members` | `bm_exec_t` 指针数组 |
 | `phase_ticks` | 各成员相对主定时器的相位（tick） |
 | `member_count` | 成员数量 |
 
@@ -35,7 +35,7 @@ HAL 失败时立即执行 safe-stop 并清除活动域。
 ### `bm_sync_trigger(domain)`
 
 触发同步域，按 `phase_ticks` 释放各成员硬件相位（one-shot：成功后清除 armed，重复触发须先 `arm`）。  
-QEMU 参考 HAL 在 `trigger` 时同步执行成员 `step`（仿真用）。
+QEMU 参考 HAL 在 `trigger` 时同步触发成员执行（仿真用）。
 HAL 失败时立即执行 safe-stop，后续必须重新 configure。
 
 ### `bm_sync_safe_stop(domain)`
@@ -60,7 +60,7 @@ HAL 失败时立即执行 safe-stop，后续必须重新 configure。
 configure → arm → trigger → （须 re-arm 才能再次 trigger）→ safe_stop
 ```
 
-`configure` / `arm` 可在 `bm_ctrl_start_all` 之前或之后完成；`trigger` 通常在 `start_all` 之后（Scheduled 槽依赖 HRT 已启动）。示例见 `Demo/multi_axis_sync`。
+`configure` / `arm` 可在 `bm_exec_start_all` 之前或之后完成；`trigger` 通常在 `start_all` 之后（Periodic 槽依赖 HRT 已启动）。示例见 `Demo/multi_axis_sync`。
 
 ## 平台实现
 
@@ -68,6 +68,6 @@ configure → arm → trigger → （须 re-arm 才能再次 trigger）→ safe_
 |------|------|
 | native_sim | `platform/backends/native_sim/bm_sync_hal_native.c` |
 | QEMU M0 | `platform/backends/qemu_cortex_m0/bm_sync_hal_qemu.c` |
-| STM32G4 | `platform/backends/register_stm32g4/bm_sync_hal_stm32g4.c` |
+| STM32G4 | `portable/sdk_stm32g4/bm_sync_hal_stm32g4.c` |
 
 真实 MCU 上 `trigger` 通过定时器比较/ITR 硬件路由；仿真环境可退化为软件逐步调用。

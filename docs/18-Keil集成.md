@@ -30,6 +30,6 @@ python tools/list_sources.py --profile event --list-includes --format keil --roo
 
 ## 4. HAL / Port
 
-在 `bm_port.c` 中实现 `bm_drv_*_api`。参考：`portable/register_stm32g4/`。
+在 `bm_port.c` 中实现 `bm_drv_*_api`。参考：`portable/sdk_stm32g4/`。
 
 CubeMX 工程要点见 [16-STM32-CubeMX集成](16-STM32-CubeMX集成.md)。

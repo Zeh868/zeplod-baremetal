@@ -9,7 +9,7 @@
  * - Ultra：`BM_CONFIG_ENABLE_ULTRA=1`
  * - Nano/Event：`MODULE`+`WDG`，混合域全关
  * - Lite：在 Nano 基础上按需开 `CHANNEL` / `SHELL`
- * - Control：在 Lite 基础上开 `HRT` / `TICKER` / `CTRL_INST` / `SYNC`
+ * - Control：在 Lite 基础上开 `HRT` / `TICKER` / `EXEC` / `SYNC`
  *
  * CMake 集成：`zeplod_configure(PROFILE ...)` 会自动同步组件开关。
  */

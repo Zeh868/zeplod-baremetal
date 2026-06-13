@@ -4,15 +4,17 @@
  *
  * 将多实例资源声明展平后检查互斥、共享读与协调访问规则。
  * @author zeh (china_qzh@163.com)
- * @version 1.1
- * @date 2026-06-11
+ * @version 2.0
+ * @date 2026-06-12
  *
  * @par 修改日志:
  *
  *    Date         Version        Author          Description
  * 2026-06-10       1.0            zeh            正式发布
  * 2026-06-11       1.1            zeh            claim_count 上界与显式兼容矩阵
+ * 2026-06-12       2.0            zeh            resource_class 可扩展 ID
  *
+ * SPDX-License-Identifier: LGPL-3.0-or-later
  */
 #include "bm_resource.h"
 #include "bm_config.h"
@@ -24,13 +26,13 @@
 typedef struct {
     uintptr_t key;
     uintptr_t share_group;
-    bm_resource_kind_t kind;
+    bm_resource_class_t resource_class;
     bm_resource_access_t access;
     uint32_t instance_index;
 } flat_claim_t;
 
-#ifndef BM_CONFIG_MAX_CTRL_INSTANCES
-#define BM_CONFIG_MAX_CTRL_INSTANCES 16u
+#ifndef BM_CONFIG_MAX_EXEC_INSTANCES
+#define BM_CONFIG_MAX_EXEC_INSTANCES 16u
 #endif
 
 #ifndef BM_CONFIG_MAX_RESOURCE_CLAIMS
@@ -72,7 +74,7 @@ static int access_pair_compatible(bm_resource_access_t a,
  * @return 1 兼容；0 冲突
  */
 static int claims_compatible(const flat_claim_t *a, const flat_claim_t *b) {
-    if (a->kind != b->kind || a->key != b->key) {
+    if (a->resource_class != b->resource_class || a->key != b->key) {
         return 1;
     }
     if (a->instance_index == b->instance_index) {
@@ -99,7 +101,7 @@ static int validate_owner_reader_pairs(const flat_claim_t *flat,
         uint32_t reader_count = 0u;
 
         for (j = 0u; j < flat_count; ++j) {
-            if (flat[i].kind != flat[j].kind || flat[i].key != flat[j].key) {
+            if (flat[i].resource_class != flat[j].resource_class || flat[i].key != flat[j].key) {
                 continue;
             }
             if (flat[j].access == BM_RESOURCE_OWNER) {
@@ -112,19 +114,19 @@ static int validate_owner_reader_pairs(const flat_claim_t *flat,
 
         if (reader_count > 0u) {
             if (owner_count != 1u) {
-                BM_LOGE("resource", "owner/reader mismatch kind=%u key=%p",
-                        (unsigned)flat[i].kind, (void *)flat[i].key);
+                BM_LOGE("resource", "owner/reader mismatch class=0x%04x key=%p",
+                        (unsigned)flat[i].resource_class, (void *)flat[i].key);
                 return BM_ERR_INVALID;
             }
             for (j = 0u; j < flat_count; ++j) {
-                if (flat[i].kind != flat[j].kind || flat[i].key != flat[j].key) {
+                if (flat[i].resource_class != flat[j].resource_class || flat[i].key != flat[j].key) {
                     continue;
                 }
                 if (flat[j].access == BM_RESOURCE_OWNER ||
                     flat[j].access == BM_RESOURCE_SHARED_READ) {
                     if (flat[j].share_group == 0u) {
-                        BM_LOGE("resource", "missing share_group kind=%u",
-                                (unsigned)flat[j].kind);
+                        BM_LOGE("resource", "missing share_group class=0x%04x",
+                                (unsigned)flat[j].resource_class);
                         return BM_ERR_INVALID;
                     }
                 }
@@ -146,11 +148,11 @@ static int validate_no_duplicate_claims(const flat_claim_t *flat,
     for (i = 0u; i < flat_count; ++i) {
         for (j = i + 1u; j < flat_count; ++j) {
             if (flat[i].instance_index == flat[j].instance_index &&
-                flat[i].kind == flat[j].kind &&
+                flat[i].resource_class == flat[j].resource_class &&
                 flat[i].key == flat[j].key) {
-                BM_LOGW("resource", "duplicate claim inst=%u kind=%u key=%p",
+                BM_LOGW("resource", "duplicate claim inst=%u class=0x%04x key=%p",
                         (unsigned)flat[i].instance_index,
-                        (unsigned)flat[i].kind, (void *)flat[i].key);
+                        (unsigned)flat[i].resource_class, (void *)flat[i].key);
                 return BM_ERR_INVALID;
             }
         }
@@ -160,6 +162,20 @@ static int validate_no_duplicate_claims(const flat_claim_t *flat,
 
 /** 展平缓冲：非可重入，仅限主上下文调用 */
 static flat_claim_t s_flat_claims[BM_CONFIG_MAX_RESOURCE_CLAIMS];
+
+/**
+ * @brief 判断资源 class 是否在框架内置范围内或为应用扩展区
+ */
+int bm_resource_class_valid(bm_resource_class_t resource_class) {
+    if (resource_class >= BM_RESOURCE_CLASS_APP_BASE) {
+        return 1;
+    }
+    if (resource_class >= BM_RESOURCE_CLASS_HAL_BASE &&
+        resource_class <= BM_RESOURCE_CLASS_LAST_BUILTIN) {
+        return 1;
+    }
+    return 0;
+}
 
 /**
  * @brief 检查多实例资源声明是否存在冲突
@@ -183,7 +199,7 @@ int bm_resource_check_conflicts(const bm_resource_claim_t *const *claims,
     if (!claims || !claim_counts) {
         return BM_ERR_INVALID;
     }
-    if (instance_count == 0u || instance_count > BM_CONFIG_MAX_CTRL_INSTANCES) {
+    if (instance_count == 0u || instance_count > BM_CONFIG_MAX_EXEC_INSTANCES) {
         BM_LOGE("resource", "invalid instance_count=%u", (unsigned)instance_count);
         return BM_ERR_INVALID;
     }
@@ -202,14 +218,14 @@ int bm_resource_check_conflicts(const bm_resource_claim_t *const *claims,
                 BM_LOGE("resource", "claim table overflow");
                 return BM_ERR_OVERFLOW;
             }
-            if ((unsigned)claims[i][j].kind > (unsigned)BM_RESOURCE_IRQ) {
+            if (!bm_resource_class_valid(claims[i][j].resource_class)) {
                 return BM_ERR_INVALID;
             }
             if ((unsigned)claims[i][j].access >
                 (unsigned)BM_RESOURCE_SHARED_COORDINATED) {
                 return BM_ERR_INVALID;
             }
-            flat[flat_count].kind = claims[i][j].kind;
+            flat[flat_count].resource_class = claims[i][j].resource_class;
             flat[flat_count].key = claims[i][j].key;
             flat[flat_count].access = claims[i][j].access;
             flat[flat_count].share_group = claims[i][j].share_group;
@@ -226,10 +242,10 @@ int bm_resource_check_conflicts(const bm_resource_claim_t *const *claims,
     for (i = 0u; i < flat_count; ++i) {
         for (j = i + 1u; j < flat_count; ++j) {
             if (!claims_compatible(&flat[i], &flat[j])) {
-                BM_LOGW("resource", "conflict inst %u vs %u kind=%u key=%p",
+                BM_LOGW("resource", "conflict inst %u vs %u class=0x%04x key=%p",
                         (unsigned)flat[i].instance_index,
                         (unsigned)flat[j].instance_index,
-                        (unsigned)flat[i].kind, (void *)flat[i].key);
+                        (unsigned)flat[i].resource_class, (void *)flat[i].key);
                 return BM_ERR_BUSY;
             }
         }
@@ -241,11 +257,11 @@ int bm_resource_check_conflicts(const bm_resource_claim_t *const *claims,
                 if (i == k) {
                     continue;
                 }
-                if (flat[i].kind == flat[k].kind &&
+                if (flat[i].resource_class == flat[k].resource_class &&
                     flat[i].key == flat[k].key &&
                     flat[k].access != BM_RESOURCE_SHARED_COORDINATED) {
-                    BM_LOGW("resource", "coordinated mixed access kind=%u",
-                            (unsigned)flat[i].kind);
+                    BM_LOGW("resource", "coordinated mixed access class=0x%04x",
+                            (unsigned)flat[i].resource_class);
                     return BM_ERR_BUSY;
                 }
             }

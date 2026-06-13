@@ -8,7 +8,7 @@ set(BM_ENABLE_SHELL ${EXAMPLE_ENABLE_SHELL} CACHE BOOL "" FORCE)
 set(BM_ENABLE_WDG ${EXAMPLE_ENABLE_WDG} CACHE BOOL "" FORCE)
 set(BM_ENABLE_HRT ${EXAMPLE_ENABLE_HRT} CACHE BOOL "" FORCE)
 set(BM_ENABLE_TICKER ${EXAMPLE_ENABLE_TICKER} CACHE BOOL "" FORCE)
-set(BM_ENABLE_CTRL_INST ${EXAMPLE_ENABLE_CTRL_INST} CACHE BOOL "" FORCE)
+set(BM_ENABLE_EXEC ${EXAMPLE_ENABLE_EXEC} CACHE BOOL "" FORCE)
 set(BM_ENABLE_SYNC ${EXAMPLE_ENABLE_SYNC} CACHE BOOL "" FORCE)
 if(EXAMPLE_ENABLE_SYNC)
     set(BM_SYNC_HAL_QEMU ON CACHE BOOL "" FORCE)
@@ -45,6 +45,12 @@ function(bm_add_qemu_example TARGET)
     target_include_directories(${TARGET}.elf PRIVATE
         "${CMAKE_CURRENT_SOURCE_DIR}"
         "${ZEPLOD_ROOT}/Demo/common"
+        "${ZEPLOD_ROOT}/include"
+        "${ZEPLOD_ROOT}/include/bm/common"
+        "${ZEPLOD_ROOT}/include/bm/core"
+        "${ZEPLOD_ROOT}/include/bm/hybrid"
+        "${ZEPLOD_ROOT}/include/hal"
+        "${ZEPLOD_ROOT}/include/drv"
         "${ZEPLOD_ROOT}/portable/native_sim"
     )
     target_link_libraries(${TARGET}.elf PRIVATE

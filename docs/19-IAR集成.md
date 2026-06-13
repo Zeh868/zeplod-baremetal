@@ -20,6 +20,6 @@ Include 路径规则同 [18-Keil集成](18-Keil集成.md) §2。
 
 ## 3. 参考 Port
 
-`portable/register_stm32g4/bm_drv_singleton_stm32g4.c` 展示了 STM32G4 上单例驱动表的接法。
+`portable/sdk_stm32g4/bm_drv_singleton_stm32g4.c` 展示了 STM32G4 上单例驱动表的接法。
 
 静态库链接见 [15-静态库构建](15-静态库构建.md)。

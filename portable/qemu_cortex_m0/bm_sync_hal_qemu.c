@@ -43,7 +43,7 @@ int bm_sync_hal_trigger(const bm_sync_domain_t *domain) {
     }
 
     for (i = 0u; i < domain->member_count; ++i) {
-        const bm_ctrl_inst_t *inst = domain->members[i];
+        const bm_exec_t *inst = domain->members[i];
         if (!inst || !inst->slots) {
             continue;
         }

@@ -3,7 +3,7 @@
 > **本文职责**：HAL 契约、driver API 分层、参考平台与混合域外设移植要点。  
 > **不负责**：Keil/IAR 加源文件 → [18](18-Keil集成.md)、[19](19-IAR集成.md)；挂库总览 → [13](13-集成到现有工程.md)。
 
-应用与 `Source/` 只依赖 `include/bm_hal_*.h`；厂商 Port 在 `portable/`（量产用 `template/bm_port.c` 接 SDK）。混合域 **bind 如何接到向量 ISR** 见 [03 §3.1](03-执行域与跨域通讯.md#31-直接-hal-绑定不用-bm_ctrl_inst)。
+应用与 `Source/` 只依赖 `include/bm_hal_*.h`；厂商 Port 在 `portable/`（量产用 `template/bm_port.c` 接 SDK）。混合域 **bind 如何接到向量 ISR** 见 [03 §3.1](03-执行域与跨域通讯.md#31-直接-hal-绑定不用-bm_exec)。
 
 ## 三层结构（driver API）
 
@@ -26,8 +26,8 @@ portable/                   Port 实现（模板 + 参考后端）
 | 后端目录 | 定位 |
 |----------|------|
 | `portable/native_sim` | PC 测试与示例 |
-| `portable/register_stm32g4` | STM32G4 寄存器参考 |
-| `portable/register_esp32wroom32e` | ESP32 寄存器参考 |
+| `portable/sdk_stm32g4` | STM32G4 CMSIS（需 `BM_STM32_CUBE_PATH`） |
+| `portable/sdk_esp32_idf` | ESP32 ESP-IDF driver（需 `IDF_PATH` 或 IDF 组件） |
 | `portable/register_ch32v003` | CH32V003 桩 |
 | `portable/qemu_cortex_m0` | QEMU 冒烟 |
 | `portable/boot/qemu_cortex_m0/` | QEMU 启动、`crt0`、链接脚本 |

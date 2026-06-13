@@ -6,20 +6,20 @@ if(NATIVE_SIM_BUILD)
     project(multi_axis_sync_native C)
     set(EXAMPLE_ENABLE_HRT ON)
     set(EXAMPLE_ENABLE_TICKER OFF)
-    set(EXAMPLE_ENABLE_CTRL_INST ON)
+    set(EXAMPLE_ENABLE_EXEC ON)
     set(EXAMPLE_ENABLE_SYNC ON)
     include(../cmake/native_sim_example.cmake)
     bm_add_native_sim_example(multi_axis_sync
-        FRAMEWORK_LIBS bm_core bm_hrt bm_ctrl_inst
+        FRAMEWORK_LIBS bm_core bm_hrt bm_exec
     )
 else()
     project(multi_axis_sync C ASM)
     set(EXAMPLE_ENABLE_HRT ON)
     set(EXAMPLE_ENABLE_TICKER OFF)
-    set(EXAMPLE_ENABLE_CTRL_INST ON)
+    set(EXAMPLE_ENABLE_EXEC ON)
     set(EXAMPLE_ENABLE_SYNC ON)
     include(../cmake/qemu_example.cmake)
     bm_add_qemu_example(multi_axis_sync
-        FRAMEWORK_LIBS bm_core bm_hrt bm_ctrl_inst
+        FRAMEWORK_LIBS bm_core bm_hrt bm_exec
     )
 endif()

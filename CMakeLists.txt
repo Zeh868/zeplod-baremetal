@@ -12,20 +12,31 @@ option(BM_ENABLE_SHELL "Enable bm-shell" OFF)
 option(BM_ENABLE_WDG "Enable bm-wdg" ON)
 option(BM_ENABLE_HRT "Enable bm-hrt" OFF)
 option(BM_ENABLE_TICKER "Enable bm-ticker" OFF)
-option(BM_ENABLE_CTRL_INST "Enable multi-instance control layer" OFF)
+option(BM_ENABLE_EXEC "Enable deterministic execution instances" OFF)
+option(BM_ENABLE_STREAM "Enable block/frame stream (bm_stream)" OFF)
+option(BM_ENABLE_PIPELINE "Enable static linear bm_pipeline" OFF)
+option(BM_ENABLE_ALGORITHM "Enable deterministic algorithm library (bm_algorithm)" OFF)
+option(BM_ENABLE_EXTENSIONS "Enable K3 extension adapters (bm_extensions)" OFF)
+option(BM_ENABLE_COMPONENT_MOTOR "Enable motor domain components" OFF)
+option(BM_ENABLE_COMPONENT_BMS "Enable BMS domain components" OFF)
+option(BM_ENABLE_COMPONENT_POWER "Enable power domain components" OFF)
+option(BM_ENABLE_COMPONENT_DIAGNOSTICS "Enable diagnostics domain components (fault_derating, sensor_quality, spectral_diagnostics)" OFF)
+option(BM_ENABLE_COMPONENT_FUSION "Enable fusion domain components (estimation_fusion)" OFF)
+option(BM_ENABLE_COMPONENT_PROCESS "Enable process domain components (process_control, grid_control, motion_coordination, transport_qos, bms_supervision)" OFF)
+option(BM_BUILD_ALL_COMPONENTS "Enable all domain component libraries" OFF)
 option(BM_ENABLE_SYNC "Enable sync domain" OFF)
-option(BM_SYNC_HAL_NATIVE "Link native_sim sync HAL into bm_ctrl_inst" OFF)
-option(BM_SYNC_HAL_QEMU "Link QEMU sync HAL into bm_ctrl_inst" OFF)
+option(BM_SYNC_HAL_NATIVE "Link native_sim sync HAL into bm_exec" OFF)
+option(BM_SYNC_HAL_QEMU "Link QEMU sync HAL into bm_exec" OFF)
 option(BM_BUILD_TESTS "Build unit tests" ON)
 set(BM_BACKEND "" CACHE STRING
-    "Portable backend: native_sim, register_stm32g4, qemu_cortex_m0, external, ...")
+    "Portable backend: native_sim, sdk_stm32g4, sdk_esp32_idf, qemu_cortex_m0, external, ...")
 
-if(BM_ENABLE_CTRL_INST AND NOT BM_ENABLE_HRT)
-    message(FATAL_ERROR "BM_ENABLE_CTRL_INST requires BM_ENABLE_HRT")
+if(BM_ENABLE_EXEC AND NOT BM_ENABLE_HRT)
+    message(FATAL_ERROR "BM_ENABLE_EXEC requires BM_ENABLE_HRT")
 endif()
 
-if(BM_ENABLE_SYNC AND NOT BM_ENABLE_CTRL_INST)
-    message(FATAL_ERROR "BM_ENABLE_SYNC requires BM_ENABLE_CTRL_INST")
+if(BM_ENABLE_SYNC AND NOT BM_ENABLE_EXEC)
+    message(FATAL_ERROR "BM_ENABLE_SYNC requires BM_ENABLE_EXEC")
 endif()
 set(BM_CONFIG_FILE "" CACHE FILEPATH "Configuration header force-included in all targets")
 
@@ -35,6 +46,31 @@ endif()
 
 include(${CMAKE_CURRENT_LIST_DIR}/cmake/bm_include_dirs.cmake)
 include(${CMAKE_CURRENT_LIST_DIR}/cmake/bm_config_export.cmake)
+
+if(BM_BUILD_ALL_COMPONENTS)
+    set(BM_ENABLE_ALGORITHM ON CACHE BOOL "" FORCE)
+    set(BM_ENABLE_COMPONENT_MOTOR ON CACHE BOOL "" FORCE)
+    set(BM_ENABLE_COMPONENT_BMS ON CACHE BOOL "" FORCE)
+    set(BM_ENABLE_COMPONENT_POWER ON CACHE BOOL "" FORCE)
+    set(BM_ENABLE_COMPONENT_DIAGNOSTICS ON CACHE BOOL "" FORCE)
+    set(BM_ENABLE_COMPONENT_FUSION ON CACHE BOOL "" FORCE)
+    set(BM_ENABLE_COMPONENT_PROCESS ON CACHE BOOL "" FORCE)
+endif()
+
+if(BM_BUILD_TESTS)
+    set(BM_ENABLE_STREAM ON CACHE BOOL "" FORCE)
+    set(BM_ENABLE_PIPELINE ON CACHE BOOL "" FORCE)
+    set(BM_ENABLE_ALGORITHM ON CACHE BOOL "" FORCE)
+    set(BM_ENABLE_COMPONENT_MOTOR ON CACHE BOOL "" FORCE)
+    set(BM_ENABLE_COMPONENT_BMS ON CACHE BOOL "" FORCE)
+    set(BM_ENABLE_COMPONENT_POWER ON CACHE BOOL "" FORCE)
+    set(BM_ENABLE_COMPONENT_DIAGNOSTICS ON CACHE BOOL "" FORCE)
+    set(BM_ENABLE_COMPONENT_FUSION ON CACHE BOOL "" FORCE)
+    set(BM_ENABLE_COMPONENT_PROCESS ON CACHE BOOL "" FORCE)
+    if(NOT BM_BACKEND)
+        set(BM_BACKEND "native_sim")
+    endif()
+endif()
 
 add_library(bm_config INTERFACE)
 target_include_directories(bm_config INTERFACE ${BM_INCLUDE_BACKEND_DIRS})
@@ -61,13 +97,15 @@ add_library(bm_hal STATIC
     Source/hal/bm_hal_adc.c
     Source/hal/bm_hal_comp.c
     Source/hal/bm_hal_encoder.c
+    Source/hal/bm_hal_dma_stream.c
 )
 target_link_libraries(bm_hal PUBLIC bm_config)
 bm_target_internal_includes(bm_hal)
 
-if(BM_BUILD_TESTS AND NOT BM_BACKEND)
-    set(BM_BACKEND "native_sim")
+if(BM_ENABLE_PIPELINE AND NOT BM_ENABLE_STREAM AND NOT BM_ENABLE_EXEC)
+    message(FATAL_ERROR "BM_ENABLE_PIPELINE requires BM_ENABLE_STREAM or BM_ENABLE_EXEC")
 endif()
+
 if(BM_BACKEND STREQUAL "external")
     target_compile_definitions(bm_hal PRIVATE BM_DRV_HAS_BACKEND)
 elseif(BM_BACKEND)
@@ -137,7 +175,7 @@ if(BM_ENABLE_TICKER)
     target_link_libraries(bm_framework INTERFACE bm_ticker)
 endif()
 
-if(BM_BUILD_TESTS OR BM_ENABLE_CTRL_INST)
+if(BM_BUILD_TESTS OR BM_ENABLE_EXEC)
     if(NOT TARGET bm_resource)
         add_library(bm_resource STATIC Source/hybrid/bm_resource.c)
         target_link_libraries(bm_resource PUBLIC bm_core)
@@ -145,26 +183,177 @@ if(BM_BUILD_TESTS OR BM_ENABLE_CTRL_INST)
     endif()
 endif()
 
-if(BM_ENABLE_CTRL_INST)
-    add_library(bm_ctrl_inst STATIC Source/hybrid/bm_ctrl_inst.c)
-    target_link_libraries(bm_ctrl_inst PUBLIC bm_hrt bm_core bm_resource)
-    bm_target_internal_includes(bm_ctrl_inst)
+if(BM_ENABLE_EXEC)
+    add_library(bm_exec STATIC
+        Source/hybrid/bm_exec.c
+        Source/hybrid/bm_stream.c
+    )
+    target_link_libraries(bm_exec PUBLIC bm_hrt bm_core bm_resource)
+    bm_target_internal_includes(bm_exec)
     if(BM_ENABLE_SYNC)
-        target_sources(bm_ctrl_inst PRIVATE Source/hybrid/bm_sync.c)
+        target_sources(bm_exec PRIVATE Source/hybrid/bm_sync.c)
         if(BM_SYNC_HAL_NATIVE OR BM_BUILD_TESTS)
-            target_sources(bm_ctrl_inst PRIVATE
+            target_sources(bm_exec PRIVATE
                 portable/native_sim/bm_sync_hal_native.c)
         elseif(BM_SYNC_HAL_QEMU)
-            target_sources(bm_ctrl_inst PRIVATE
+            target_sources(bm_exec PRIVATE
                 portable/qemu_cortex_m0/bm_sync_hal_qemu.c)
         else()
             message(WARNING
                 "BM_ENABLE_SYNC without BM_SYNC_HAL_NATIVE/QEMU: "
                 "linking bm_sync_hal_stub.c (not for production)")
-            target_sources(bm_ctrl_inst PRIVATE Source/hybrid/bm_sync_hal_stub.c)
+            target_sources(bm_exec PRIVATE Source/hybrid/bm_sync_hal_stub.c)
         endif()
     endif()
-    target_link_libraries(bm_framework INTERFACE bm_ctrl_inst)
+    target_link_libraries(bm_framework INTERFACE bm_exec)
+elseif(BM_ENABLE_STREAM)
+    add_library(bm_stream STATIC Source/hybrid/bm_stream.c)
+    target_link_libraries(bm_stream PUBLIC bm_core bm_config)
+    bm_target_internal_includes(bm_stream)
+    target_link_libraries(bm_framework INTERFACE bm_stream)
+endif()
+
+if(BM_ENABLE_PIPELINE)
+    add_library(bm_pipeline STATIC Source/hybrid/bm_pipeline.c)
+    target_link_libraries(bm_pipeline PUBLIC bm_core bm_config)
+    bm_target_internal_includes(bm_pipeline)
+    if(TARGET bm_exec)
+        target_link_libraries(bm_pipeline PUBLIC bm_exec)
+    elseif(TARGET bm_stream)
+        target_link_libraries(bm_pipeline PUBLIC bm_stream)
+    endif()
+    target_link_libraries(bm_framework INTERFACE bm_pipeline)
+endif()
+
+if(BM_ENABLE_ALGORITHM)
+    add_library(bm_algorithm STATIC
+        Source/algorithm/bm_algo_common.c
+        Source/algorithm/bm_algo_control.c
+        Source/algorithm/bm_algo_filter.c
+        Source/algorithm/bm_algo_profile.c
+        Source/algorithm/bm_algo_motion.c
+        Source/algorithm/bm_algo_motor.c
+        Source/algorithm/bm_algo_power.c
+        Source/algorithm/bm_algo_battery.c
+        Source/algorithm/bm_algo_fft.c
+        Source/algorithm/bm_algo_spectral.c
+        Source/algorithm/bm_algo_resample.c
+        Source/algorithm/bm_algo_fusion.c
+        Source/algorithm/bm_algo_audio.c
+        Source/algorithm/bm_algo_image.c
+        Source/algorithm/bm_algo_features.c
+        Source/algorithm/bm_algo_calibration.c
+        Source/algorithm/bm_algo_statistics.c
+        Source/algorithm/bm_algo_comm.c
+        Source/algorithm/bm_algo_signal_quality.c
+        Source/algorithm/bm_algo_estimator.c
+        Source/algorithm/bm_algo_fixed.c
+        Source/algorithm/bm_algo_vision.c
+        Source/algorithm/bm_algo_detection.c
+        Source/algorithm/bm_algo_compensation.c
+        Source/algorithm/bm_algo_battery_model.c
+        Source/algorithm/bm_algo_power_quality.c
+    )
+    target_link_libraries(bm_algorithm PUBLIC bm_config)
+    if(NOT MSVC)
+        target_link_libraries(bm_algorithm PUBLIC m)
+    endif()
+    bm_target_internal_includes(bm_algorithm)
+    target_link_libraries(bm_framework INTERFACE bm_algorithm)
+endif()
+
+if(BM_ENABLE_EXTENSIONS)
+    add_library(bm_extensions STATIC
+        Source/extensions/bm_ext_algorithm.c
+    )
+    target_link_libraries(bm_extensions PUBLIC bm_config)
+    bm_target_internal_includes(bm_extensions)
+    target_link_libraries(bm_framework INTERFACE bm_extensions)
+endif()
+
+if(BM_ENABLE_COMPONENT_MOTOR)
+    if(NOT BM_ENABLE_ALGORITHM)
+        message(FATAL_ERROR "BM_ENABLE_COMPONENT_MOTOR requires BM_ENABLE_ALGORITHM")
+    endif()
+    add_library(bm_component_motor STATIC
+        Source/component/motor_foc_sensored.c
+        Source/component/motor_foc_sensorless.c
+        Source/component/motor_current_sense.c
+    )
+    target_link_libraries(bm_component_motor PUBLIC bm_algorithm bm_hal bm_config)
+    bm_target_internal_includes(bm_component_motor)
+    target_link_libraries(bm_framework INTERFACE bm_component_motor)
+endif()
+
+if(BM_ENABLE_COMPONENT_BMS)
+    if(NOT BM_ENABLE_ALGORITHM)
+        message(FATAL_ERROR "BM_ENABLE_COMPONENT_BMS requires BM_ENABLE_ALGORITHM")
+    endif()
+    add_library(bm_component_bms STATIC
+        Source/component/bms_estimation.c
+    )
+    target_link_libraries(bm_component_bms PUBLIC bm_algorithm bm_config)
+    bm_target_internal_includes(bm_component_bms)
+    target_link_libraries(bm_framework INTERFACE bm_component_bms)
+endif()
+
+if(BM_ENABLE_COMPONENT_POWER)
+    if(NOT BM_ENABLE_ALGORITHM)
+        message(FATAL_ERROR "BM_ENABLE_COMPONENT_POWER requires BM_ENABLE_ALGORITHM")
+    endif()
+    add_library(bm_component_power STATIC
+        Source/component/power_control.c
+        Source/component/power_converter.c
+    )
+    target_link_libraries(bm_component_power PUBLIC bm_algorithm bm_config)
+    bm_target_internal_includes(bm_component_power)
+    target_link_libraries(bm_framework INTERFACE bm_component_power)
+endif()
+
+if(BM_ENABLE_COMPONENT_PROCESS AND NOT BM_ENABLE_COMPONENT_DIAGNOSTICS)
+    set(BM_ENABLE_COMPONENT_DIAGNOSTICS ON CACHE BOOL "" FORCE)
+endif()
+
+if(BM_ENABLE_COMPONENT_DIAGNOSTICS)
+    if(NOT BM_ENABLE_ALGORITHM)
+        message(FATAL_ERROR "BM_ENABLE_COMPONENT_DIAGNOSTICS requires BM_ENABLE_ALGORITHM")
+    endif()
+    add_library(bm_component_diagnostics STATIC
+        Source/component/fault_derating.c
+        Source/component/sensor_quality.c
+        Source/component/spectral_diagnostics.c
+    )
+    target_link_libraries(bm_component_diagnostics PUBLIC bm_algorithm bm_config)
+    bm_target_internal_includes(bm_component_diagnostics)
+    target_link_libraries(bm_framework INTERFACE bm_component_diagnostics)
+endif()
+
+if(BM_ENABLE_COMPONENT_FUSION)
+    if(NOT BM_ENABLE_ALGORITHM)
+        message(FATAL_ERROR "BM_ENABLE_COMPONENT_FUSION requires BM_ENABLE_ALGORITHM")
+    endif()
+    add_library(bm_component_fusion STATIC
+        Source/component/estimation_fusion.c
+    )
+    target_link_libraries(bm_component_fusion PUBLIC bm_algorithm bm_config)
+    bm_target_internal_includes(bm_component_fusion)
+    target_link_libraries(bm_framework INTERFACE bm_component_fusion)
+endif()
+
+if(BM_ENABLE_COMPONENT_PROCESS)
+    if(NOT BM_ENABLE_ALGORITHM)
+        message(FATAL_ERROR "BM_ENABLE_COMPONENT_PROCESS requires BM_ENABLE_ALGORITHM")
+    endif()
+    add_library(bm_component_process STATIC
+        Source/component/process_control.c
+        Source/component/grid_control.c
+        Source/component/motion_coordination.c
+        Source/component/transport_qos.c
+        Source/component/bms_supervision.c
+    )
+    target_link_libraries(bm_component_process PUBLIC bm_algorithm bm_component_diagnostics bm_config)
+    bm_target_internal_includes(bm_component_process)
+    target_link_libraries(bm_framework INTERFACE bm_component_process)
 endif()
 
 if(BM_BUILD_TESTS)

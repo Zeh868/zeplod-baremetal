@@ -1,8 +1,13 @@
 # Zeplod Baremetal
 
-面向机电控制的资源可裁剪裸机事件驱动框架。
+面向资源受限 MCU 的可裁剪确定性事件、控制与流式计算框架。
 
-Zeplod Baremetal 定位于电机驱动、数字电源、电池管理系统（BMS）以及机器人末端节点等场景——在这些场景下，RTOS 过于沉重或根本不可用。它为从 8 位微控制器到中等规模 ARM Cortex-M 提供统一的编程模型，并在硬件资源充裕时，提供清晰的向 [Zeplod on Zephyr](https://github.com/zeplod/zeplod) 的迁移路径。
+当前稳定的是面向电机驱动、数字电源、BMS 和机器人末端节点的确定性执行底座；**公共纯算法库 `bm_algorithm`（K0，`E1`）已交付**，领域组件（有感 FOC、电源/BMS 编排等）仍在路线图阶段。架构路线将同一套静态资源、确定性执行和故障隔离能力扩展到音频 DSP、振动诊断、工业测量、传感融合、超声/低速雷达和低分辨率视觉。它为从 8 位微控制器到中等规模 ARM Cortex-M 提供统一的编程模型，并在硬件资源充裕时，提供清晰的向 [Zeplod on Zephyr](https://github.com/zeplod/zeplod) 的迁移路径。
+
+> 多领域能力正在按 [多领域确定性流式架构](docs/23-多领域确定性流式架构.md)
+> 分阶段演进；未实现组件不会在本文中作为现成功能承诺。
+> 具体行业是否适配、解决哪些物理痛点以及需要什么成熟度证据，见
+> [物理世界领域与算法深度矩阵](docs/24-物理世界领域与算法深度矩阵.md)。
 
 ---
 
@@ -11,10 +16,12 @@ Zeplod Baremetal 定位于电机驱动、数字电源、电池管理系统（BMS
 - **资源分级可裁剪**：从 `<8 KB Flash / <1 KB RAM`（头文件库 `bm-ultra`）到 `~12 KB Flash / ~4 KB RAM`（完整混合域控制）。
 - **零堆内存设计**：所有内存在编译期或早期 `init()` 中静态分配。不使用 `malloc` / `free`。
 - **混合域执行**：硬实时（HRT）控制回路与软实时（SRT）事件驱动业务逻辑严格隔离。
-- **多实例控制**：同时运行多个独立控制算法（多轴伺服、多电芯 BMS），支持显式资源声明与冲突检测。
+- **多实例执行**：同时运行多个控制、采集或估算实例，支持显式资源声明与冲突检测。
 - **同步域**：对多路 PWM/ADC 进行相位锁定，适用于交错电源拓扑或同步机器人关节。
 - **跨域数据交换**：无锁三缓冲快照（`bm_snapshot`），实现 HRT 到 SRT 的安全数据传递。
-- **故障安全启动**：`bm_ctrl_init_all()` 在执行前先校验所有实例、资源和绑定关系；任何失败都会触发有序回滚并进入安全停机状态。
+- **故障安全启动**：`bm_exec_init_all()` 在执行前先校验所有实例、资源和绑定关系；任何失败都会触发有序回滚并进入安全停机状态。
+- **纯算法库**：`bm_algorithm` 提供 PI/滤波/FOC 数学核、FFT、融合等 K0 API（`E1`，float32），与 `bm_core` 无依赖。
+- **多领域演进**：`bm_stream` 静态零拷贝块流已合入；DMA block/frame deadline 与完整 pipeline 按 [23](docs/23-多领域确定性流式架构.md) 推进。
 
 ---
 
@@ -37,13 +44,17 @@ Zeplod Baremetal 定位于电机驱动、数字电源、电池管理系统（BMS
 │  ┌────────────────────────────────────────────────────────────────┐ │
 │  │  混合域（可选）                                                    │ │
 │  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────────┐ │ │
-│  │  │   bm_hrt    │  │  bm_ticker  │  │      bm_ctrl_inst       │ │ │
-│  │  │(定时调度 HRT)│  │ (SRT 周期任务)│  │ (多实例控制 + 资源声明)   │ │ │
+│  │  │   bm_hrt    │  │  bm_ticker  │  │      bm_exec       │ │ │
+│  │  │(定时调度 HRT)│  │ (SRT 周期任务)│  │ (通用执行实例 + 资源声明) │ │ │
 │  │  └─────────────┘  └─────────────┘  └─────────────────────────┘ │ │
 │  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────────┐ │ │
 │  │  │bm_snapshot  │  │   bm_sync   │  │    HAL 接口契约          │ │ │
 │  │  │(跨域邮箱)   │  │ (相位同步)   │  │  (PWM/ADC/比较器/编码器)  │ │ │
 │  │  └─────────────┘  └─────────────┘  └─────────────────────────┘ │ │
+│  └────────────────────────────────────────────────────────────────┘ │
+│  ┌────────────────────────────────────────────────────────────────┐ │
+│  │  算法库（可选，独立于 bm_core）                                  │ │
+│  │  bm_algorithm — PI/滤波/电机数学核/FFT/融合/音频/图像…（E1）      │ │
 │  └────────────────────────────────────────────────────────────────┘ │
 └─────────────────────────────────────────────────────────────────────┘
 ```
@@ -58,6 +69,9 @@ Zeplod Baremetal 定位于电机驱动、数字电源、电池管理系统（BMS
 
 **核心规则**：Hardware HRT 与 Scheduled HRT 绝不访问 SRT 的事件队列或受临界区保护的数据结构。这保证了高优先级控制回路不会被业务逻辑处理延迟。
 
+规划中的 **Block/Frame RT** 由 DMA half/full 或 frame-ready 触发；`bm_stream`
+已提供静态块流 API，与 `bm_exec` block slot 的深度集成仍在演进。
+
 ---
 
 ## 资源层级
@@ -67,22 +81,33 @@ Zeplod Baremetal 定位于电机驱动、数字电源、电池管理系统（BMS
 | **Ultra** | < 8 KB | < 1 KB | STM8、AVR、8051 | `BM_CONFIG_ENABLE_ULTRA` / `bm_ultra.h` |
 | **Nano** | 8–32 KB | 1–4 KB | CH32V003、STM32F030 | `zeplod.h` 或 `bm_lite.h` |
 | **Lite** | 32–128 KB | 4–16 KB | STM32F103、nRF51822、ESP32-WROOM-32E | + channel / shell（`BM_CONFIG_ENABLE_*`） |
-| **Control** | 32–128 KB+ | 4–16 KB+ | STM32G4、STM32F3 | + HRT / ctrl_inst / sync（`bm_hybrid.h`） |
+| **Control** | 32–128 KB+ | 4–16 KB+ | STM32G4、STM32F3 | + HRT / `bm_exec` / sync（`bm_hybrid.h`） |
+| **DSP** | 64–256 KB | 16–128 KB | Cortex-M4F/M7、ESP32-S3 | + `bm_algorithm`、`bm_stream` |
+| **Media Edge（规划）** | 128 KB+ | 64 KB+ / 外部 RAM | Cortex-M7、带 PSRAM MCU | + 完整 pipeline、camera/audio HAL |
 
 ---
 
 ## 覆盖领域
 
-Zeplod Baremetal 专为**资源受限 MCU 上的机电控制节点**而设计。以下按原生匹配度分级列出。
+Zeplod Baremetal 面向**资源受限 MCU 上的确定性控制与流式计算节点**。以下
+同时标注现有能力与规划能力。
+
+这里的“覆盖”指承担行业设备中的实时 MCU 子系统，不等于提供完整 PLC、
+工业协议栈、SLAM、医疗诊断、功能安全认证或高分辨率媒体系统。
 
 ### ★★★★★ 原生匹配 — 核心设计目标
 
-| 领域 | 典型应用场景 | 匹配原因 |
-|------|------------|---------|
-| **数字电源** | DC-DC、PFC、LLC、多相 VRM | Hardware HRT（PWM→ADC 触发）+ Scheduled HRT（电压环）+ 同步域（交错并联） |
-| **电池管理（BMS）** | 电芯采样、库仑计数、均衡控制 | 多实例模型与“包采样器 + N 电芯”一一对应；比较器 Break 实现故障保护 |
-| **伺服/运动控制** | 工业伺服、机器人关节、步进驱动 | 电流/速度/位置三环与 Hardware HRT + Scheduled HRT + SRT 完全对应 |
-| **机器人** | 机械臂、移动机器人、人形末端执行器 | Zeplod 软件栈的组成部分；多轴同步 + 与上层 Zeplod/Zephyr 的事件 ID 对齐 |
+| 领域 | 典型应用场景 | 匹配原因 | 状态 |
+|------|------------|---------|------|
+| **数字电源** | DC-DC、PFC、LLC、多相 VRM | Hardware HRT + Scheduled HRT + 同步域 | 现有底座 |
+| **电池管理（BMS）** | 电芯采样、库仑计数、均衡控制 | 多实例、ADC/DMA、snapshot、保护 | 现有底座 |
+| **伺服/运动控制** | 工业伺服、机器人关节、步进驱动 | 电流/速度/位置多速率环 | 现有底座 |
+| **机器人** | 机械臂、移动机器人、末端执行器 | 多轴实例、同步、事件协调 | 现有底座 |
+| **声学/振动诊断** | 异音、轴承、结构健康 | DMA 块 + FFT/包络/特征 | R1–R3 规划 |
+| **工业测量/计量** | 高速采集、功率质量、记录仪 | 同步采样块 + 统计/频谱 | R1–R3 规划 |
+| **传感融合/感知** | IMU/AHRS、超声、低速雷达 | 时间戳、周期融合、相关/FFT | R2–R3 规划 |
+| **移动与作业机械低层** | AGV、农机、液压、输送、3D 打印 | 运动/过程闭环、融合、联锁 | 算法组件规划 |
+| **过程与楼宇节点** | HVAC、灌溉、门机、半导体辅助控制 | 多速率控制、顺序状态机、故障降级 | 算法组件规划 |
 
 ### ★★★★☆ 高度适配 — 少量缺口（通信协议栈）
 
@@ -91,8 +116,13 @@ Zeplod Baremetal 专为**资源受限 MCU 上的机电控制节点**而设计。
 | **汽车电子（QM 级）** | BCM、热管理、灯光、传感器节点 | 需集成 CAN/LIN/UDS 协议栈 |
 | **无人机/飞行器** | 电调、云台电机、舵机驱动 | 需无感 FOC 算法和 DShot/OneShot 协议 |
 | **消费电子/白色家电** | 变频空调、洗衣机、吸尘器 | 需显示/触摸和无线连接协议栈 |
-| **能源/光伏/储能** | 光伏逆变器、PCS、充电桩模块 | 需 MPPT/PLL 和 OCPP/IEC 61850 协议 |
+| **能源/光伏/储能** | 光伏逆变器、PCS、充电桩模块 | MPPT/PLL **数学核已有**；需 OCPP/IEC 61850 协议与领域组件 |
 | **物联网/传感器节点** | 环境监测、智能表计、农业物联网 | 需 LoRa/BLE/Zigbee 和深度低功耗策略 |
+| **嵌入式音频** | 对讲前处理、提示音、EQ、AGC、VAD | 需 stream/pipeline 与 I2S/SAI/PDM/DAC HAL |
+| **低分辨率视觉** | 阈值、形态学、码/线检测、帧差 | 需 frame stream、DCMI/CSI、cache/外部 RAM |
+| **生物信号** | ECG/PPG/EMG 前处理 | 需产品级医学算法与认证证据 |
+| **通信 DSP / TinyML** | DTMF/FSK、特征、异常检测 | 协议栈/推理内核建议外置 |
+| **PLC/网关/实时以太网适配** | 过程镜像、报文整形、确定性 QoS | 语言 runtime 和认证协议栈外置 |
 
 ### ★★★☆☆ 有限适配 — 可行但需额外投入
 
@@ -102,7 +132,9 @@ Zeplod Baremetal 专为**资源受限 MCU 上的机电控制节点**而设计。
 | **医疗设备** | 输注泵、呼吸机电机、电动病床 | 需 IEC 62304 流程和安全认证（框架本身未认证） |
 | **智能照明** | LED 驱动、DALI/DMX 解码器 | 需 DALI/DMX 和无线 mesh 协议 |
 
-> **不适用场景**：商业航空（DO-178C）、高安全等级汽车（ASIL-D）、复杂 GUI/HMI 应用。
+> **不适用场景**：商业航空（DO-178C）、高安全等级汽车（ASIL-D）、复杂
+> GUI/HMI、高分辨率软件视频编解码、大型神经语音/视觉模型、完整 5G 基带、
+> 植入式医疗和 SIL4 轨交整机控制。
 
 ---
 
@@ -113,13 +145,14 @@ zeplod-baremetal/
 ├── include/              # 公共 API（见 include/README.md）
 │   ├── zeplod.h          # 统一对外入口
 │   ├── bm_*.h            # 分层聚合头 + bm_hal.h
-│   ├── bm/common|core|hybrid/  # 框架实现头
+│   ├── bm/common|core|hybrid|algorithm/  # 框架与算法头
 │   ├── hal/              # bm_hal_* 契约
 │   └── drv/              # bm_drv_*（Port）
 ├── Source/               # 库内核（类比 FreeRTOS/Source/）
 │   ├── core/             # 事件、内存池、模块、看门狗…
 │   ├── hal/              # HAL 分发层
-│   └── hybrid/           # HRT、ctrl_inst、sync…
+│   ├── hybrid/           # HRT、bm_exec、sync、stream…
+│   └── algorithm/        # bm_algorithm 纯数学核
 ├── portable/             # 平台 Port（类比 FreeRTOS/portable/）
 │   ├── template/         # bm_port.c 模板（复制到应用工程）
 │   ├── boot/             # QEMU 启动与链接脚本
@@ -142,16 +175,19 @@ zeplod-baremetal/
 
 [`Demo/`](Demo/) 目录包含逐步扩展的演示程序（类比 FreeRTOS/Demo/）：
 
-| 示例 | 重点 | 层级 |
-|---------|-------|------|
-| [`ultra_blink`](Demo/ultra_blink) | 最小化的头文件版事件队列 | Ultra |
-| [`core_sensor`](Demo/core_sensor) | 事件、内存池与模块生命周期 | Nano |
-| [`full_system`](Demo/full_system) | 多模块、事件优先级、看门狗 | Lite |
-| [`interrupt_demo`](Demo/interrupt_demo) | SysTick、外设中断与 ISR 事件发布 | Nano |
-| [`hrt_servo_stub`](Demo/hrt_servo_stub) | 混合域伺服 | Control |
-| [`hrt_bms_coulomb`](Demo/hrt_bms_coulomb) | BMS 混合域 | Control |
-| [`multi_axis_sync`](Demo/multi_axis_sync) | 同步域多轴 | Control |
-| [`multi_channel_bms`](Demo/multi_channel_bms) | 多通道 BMS | Control |
+| 示例 | 重点 | 层级 | 成熟度 |
+|---------|-------|------|--------|
+| [`ultra_blink`](Demo/ultra_blink) | 最小化的头文件版事件队列 | Ultra | `D0` |
+| [`core_sensor`](Demo/core_sensor) | 事件、内存池与模块生命周期 | Nano | `D0` |
+| [`full_system`](Demo/full_system) | 多模块、事件优先级、看门狗 | Lite | `D0` |
+| [`interrupt_demo`](Demo/interrupt_demo) | SysTick、外设中断与 ISR 事件发布 | Nano | `D0` |
+| [`hrt_servo_stub`](Demo/hrt_servo_stub) | 混合域伺服 | Control | `D0` |
+| [`hrt_bms_coulomb`](Demo/hrt_bms_coulomb) | BMS 混合域 | Control | `D0` |
+| [`multi_axis_sync`](Demo/multi_axis_sync) | 同步域多轴 | Control | `D0` |
+| [`multi_channel_bms`](Demo/multi_channel_bms) | 多通道 BMS | Control | `D0` |
+
+`D0` 表示机制演示，不代表相关领域算法达到产品或工业成熟度。成熟度定义见
+[领域算法与模块化路线图](docs/22-领域算法与模块化路线图.md#11-技术深度与成熟度要求)。
 
 构建说明见 [`Demo/README.md`](Demo/README.md)。
 
@@ -175,6 +211,7 @@ zeplod_link(app)
 ```c
 /* 应用侧：Include Path 只需框架 include/ 一条 */
 #include "zeplod.h"
+#include "bm_algorithm.h"  /* 可选：控制/DSP 纯算法 */
 #include "bm_hal_uart.h"   /* 板级 HAL 按需 */
 ```
 
@@ -233,7 +270,7 @@ cd build && ctest
 /* 混合域 */
 #define BM_CONFIG_HRT_TICK_US                100
 #define BM_CONFIG_HRT_MAX_SLOTS              16
-#define BM_CONFIG_MAX_CTRL_INSTANCES         16
+#define BM_CONFIG_MAX_EXEC_INSTANCES         16
 #define BM_CONFIG_MAX_RESOURCE_CLAIMS        64
 ```
 
@@ -244,6 +281,7 @@ cd build && ctest
 ```c
 #define BM_CONFIG_ENABLE_MODULE             1
 #define BM_CONFIG_ENABLE_HRT                0   /* Control 层再置 1 */
+#define BM_CONFIG_ENABLE_ALGORITHM          0   /* 算法库，CMake: BM_ENABLE_ALGORITHM */
 #define BM_CONFIG_ENABLE_ULTRA              0   /* Ultra 剖面置 1 */
 ```
 
@@ -293,8 +331,11 @@ Zeplod Baremetal 被设计为机器人/电子系统三层架构的底层：
 | 14–19 | [Port](docs/14-Port移植层.md) · [静态库](docs/15-静态库构建.md) · [CubeMX](docs/16-STM32-CubeMX集成.md) · [MCUX](docs/17-NXP-MCUXpresso集成.md) · [Keil](docs/18-Keil集成.md) · [IAR](docs/19-IAR集成.md) |
 | 20 | [头文件布局](docs/20-头文件布局.md)（`zeplod.h` 入口） |
 | 21 | [测试覆盖率基线](docs/21-测试覆盖率基线.md) |
+| 22 | [领域算法与模块化路线图](docs/22-领域算法与模块化路线图.md)（含 §0 实现进度） |
+| 23 | [多领域确定性流式架构](docs/23-多领域确定性流式架构.md) |
+| 24 | [物理世界领域与算法深度矩阵](docs/24-物理世界领域与算法深度矩阵.md) |
 
-API 参考：[docs/api/](docs/api/)
+API 参考：[docs/api/](docs/api/)（含 [bm_algorithm](docs/api/bm_algorithm.md)）
 
 ---
 

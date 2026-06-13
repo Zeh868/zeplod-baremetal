@@ -12,7 +12,8 @@
  *
  */
 #include "app_bms.h"
-#include "bm_ctrl_inst.h"
+#include "bm/algorithm/bm_algo_filter.h"
+#include "bm_exec.h"
 #include "bm_event.h"
 #include "bm_module.h"
 #include "bm_hrt.h"
@@ -51,13 +52,17 @@ typedef struct {
     uint32_t channel;
     uint32_t overvoltage_hits;
     uint16_t last_mv;
+    uint16_t filtered_mv;
+    bm_algo_lpf1_config_t lpf_cfg;
+    bm_algo_lpf1_state_t  lpf;
+    int      lpf_ready;
 } cell_state_t;
 
 static pack_state_t g_pack_state;
 static cell_state_t g_cell_states[CELL_COUNT];
 
 /** Pack 级 ADC 采样：遍历各电芯通道并发布快照 */
-static void pack_sample_step(const bm_ctrl_inst_t *instance) {
+static void pack_sample_step(const bm_exec_t *instance) {
     pack_state_t *state = (pack_state_t *)instance->state;
     uint32_t ch;
     uint16_t value;
@@ -72,71 +77,84 @@ static void pack_sample_step(const bm_ctrl_inst_t *instance) {
     state->samples++;
 }
 
-static int bind_pack_adc(const bm_ctrl_inst_t *instance,
+static int bind_pack_adc(const bm_exec_t *instance,
                          const bm_hal_hrt_binding_t *binding) {
     (void)instance;
     return bm_hal_adc_bind_complete(&BM_HAL_ADC_SIM0, binding);
 }
 
-static int pack_init(const bm_ctrl_inst_t *instance) {
+static int pack_init(const bm_exec_t *instance) {
     (void)instance;
     return BM_OK;
 }
 
-static int pack_start(const bm_ctrl_inst_t *instance) {
+static int pack_start(const bm_exec_t *instance) {
     (void)instance;
     return BM_OK;
 }
 
-static void pack_safe_stop(const bm_ctrl_inst_t *instance) {
+static void pack_safe_stop(const bm_exec_t *instance) {
     (void)instance;
 }
 
-static const bm_ctrl_ops_t g_pack_ops = {
+static const bm_exec_ops_t g_pack_ops = {
     pack_init, pack_start, pack_safe_stop
 };
 
-static const bm_ctrl_slot_t g_pack_slots[] = {
+static const bm_exec_slot_t g_pack_slots[] = {
     {
-        BM_CTRL_SLOT_HARDWARE,
-        0u,
-        BM_HRT_TRIGGER_ADC_COMPLETE,
-        pack_sample_step,
-        bind_pack_adc,
-        "pack"
+        .kind = BM_EXEC_SLOT_HARDWARE,
+        .run = pack_sample_step,
+        .bind = bind_pack_adc,
+        .name = "pack"
     }
 };
 
 static const bm_resource_claim_t g_pack_claim_table[] = {
-    { BM_RESOURCE_ADC_GROUP, PACK_ADC_KEY, BM_RESOURCE_OWNER, 1u, "adc_pack" }
+    { BM_RESOURCE_CLASS_ADC_GROUP, PACK_ADC_KEY, BM_RESOURCE_OWNER, 1u, "adc_pack" }
 };
 
-static const bm_ctrl_inst_t g_pack_sampler = {
+static const bm_exec_t g_pack_sampler = {
     1u, "pack_sampler", &g_pack_state, NULL, NULL,
     g_pack_slots, 1u, g_pack_claim_table, 1u, &g_pack_ops
 };
 
-static int cell_init(const bm_ctrl_inst_t *instance) {
+static int cell_init(const bm_exec_t *instance) {
+    cell_state_t *state = (cell_state_t *)instance->state;
+    float sample_hz;
+
+    if (state == NULL) {
+        return BM_ERR_INVALID;
+    }
+#if defined(BM_EXAMPLE_QEMU)
+    sample_hz = 1000.0f / (float)10u;
+#else
+    sample_hz = 1000.0f / (float)100u;
+#endif
+    if (bm_algo_lpf1_init_from_cutoff(&state->lpf_cfg, 5.0f, sample_hz) != 0) {
+        return BM_ERR_INVALID;
+    }
+    bm_algo_lpf1_reset(&state->lpf, 3300.0f);
+    state->lpf_ready = 1;
+    return BM_OK;
+}
+
+static int cell_start(const bm_exec_t *instance) {
     (void)instance;
     return BM_OK;
 }
 
-static int cell_start(const bm_ctrl_inst_t *instance) {
-    (void)instance;
-    return BM_OK;
-}
-
-static void cell_safe_stop(const bm_ctrl_inst_t *instance) {
+static void cell_safe_stop(const bm_exec_t *instance) {
     (void)instance;
 }
 
-static const bm_ctrl_ops_t g_cell_ops = {
+static const bm_exec_ops_t g_cell_ops = {
     cell_init, cell_start, cell_safe_stop
 };
 
 static bm_resource_claim_t g_cell_claims[CELL_COUNT];
-static bm_ctrl_inst_t g_cells[CELL_COUNT];
-static const bm_ctrl_inst_t *g_instance_table[CELL_COUNT + 1u];
+static bm_exec_t g_cells[CELL_COUNT];
+static const bm_exec_t *g_instance_table[CELL_COUNT + 1u];
 
 #if defined(BM_EXAMPLE_QEMU)
 #define BMS_CHECK_MS  10u
@@ -159,11 +177,27 @@ void app_on_cell_check(const bm_event_t *event, void *user_data) {
 
     for (i = 0u; i < CELL_COUNT; ++i) {
         uint16_t mv = 0u;
+        float filtered;
+
         BM_SNAPSHOT_READ(g_cell_voltages[i], &mv);
         g_cell_states[i].last_mv = mv;
-        if (mv > 4200u) {
+        if (g_cell_states[i].lpf_ready != 0) {
+            filtered = bm_algo_lpf1_step(&g_cell_states[i].lpf,
+                                         &g_cell_states[i].lpf_cfg,
+                                         (float)mv);
+            if (filtered < 0.0f) {
+                filtered = 0.0f;
+            }
+            g_cell_states[i].filtered_mv = (uint16_t)filtered;
+        } else {
+            g_cell_states[i].filtered_mv = mv;
+        }
+        if (g_cell_states[i].filtered_mv > 4200u) {
             g_cell_states[i].overvoltage_hits++;
-            BM_LOGW(TAG, "cell %u overvoltage: %u mV", (unsigned)i, (unsigned)mv);
+            BM_LOGW(TAG, "cell %u overvoltage: %u mV (raw %u)",
+                    (unsigned)i,
+                    (unsigned)g_cell_states[i].filtered_mv,
+                    (unsigned)mv);
         }
     }
 }
@@ -173,7 +207,7 @@ static void setup_cells(void) {
     uint32_t i;
 
     for (i = 0u; i < CELL_COUNT; ++i) {
-        g_cell_claims[i].kind = BM_RESOURCE_GPIO;
+        g_cell_claims[i].resource_class = BM_RESOURCE_CLASS_GPIO;
         g_cell_claims[i].key = CELL_GPIO_BASE + i;
         g_cell_claims[i].access = BM_RESOURCE_EXCLUSIVE;
         g_cell_claims[i].share_group = 0u;
@@ -215,16 +249,16 @@ int main(void) {
 
     (void)bm_hal_timer_init(1000u);
 
-    rc = bm_ctrl_init_all(g_instance_table, CELL_COUNT + 1u);
+    rc = bm_exec_init_all(g_instance_table, CELL_COUNT + 1u);
     if (rc != BM_OK) {
         BM_LOGE(TAG, "ctrl init failed, rc=%d", rc);
         hybrid_print("EXAMPLE_MULTI_CHANNEL_BMS: FAIL init\n");
         return 1;
     }
-    rc = bm_ctrl_start_all(g_instance_table, CELL_COUNT + 1u);
+    rc = bm_exec_start_all(g_instance_table, CELL_COUNT + 1u);
     if (rc != BM_OK) {
         BM_LOGE(TAG, "ctrl start failed, rc=%d", rc);
-        bm_ctrl_safe_stop_all(g_instance_table, CELL_COUNT + 1u);
+        bm_exec_safe_stop_all(g_instance_table, CELL_COUNT + 1u);
         return 1;
     }
 #ifdef BM_EXAMPLE_QEMU
@@ -234,7 +268,7 @@ int main(void) {
     rc = bm_ticker_init(g_check_ticker, 1u);
     if (rc != BM_OK) {
         BM_LOGE(TAG, "ticker init failed, rc=%d", rc);
-        bm_ctrl_safe_stop_all(g_instance_table, CELL_COUNT + 1u);
+        bm_exec_safe_stop_all(g_instance_table, CELL_COUNT + 1u);
         return 1;
     }
 
@@ -277,11 +311,11 @@ int main(void) {
                 (unsigned)g_pack_state.samples, (unsigned)reported,
                 (unsigned)CELL_COUNT);
         hybrid_print("EXAMPLE_MULTI_CHANNEL_BMS: FAIL metrics\n");
-        bm_ctrl_safe_stop_all(g_instance_table, CELL_COUNT + 1u);
+        bm_exec_safe_stop_all(g_instance_table, CELL_COUNT + 1u);
         return 1;
     }
 
-    bm_ctrl_safe_stop_all(g_instance_table, CELL_COUNT + 1u);
+    bm_exec_safe_stop_all(g_instance_table, CELL_COUNT + 1u);
 #ifdef NATIVE_SIM
     return 0;
 #else

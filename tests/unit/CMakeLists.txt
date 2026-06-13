@@ -52,15 +52,63 @@ if(TARGET bm_resource)
     bm_add_test(test_resource_claim test_resource_claim.c bm_resource)
 endif()
 
-if(BM_ENABLE_CTRL_INST)
-    bm_add_test(test_ctrl_inst test_ctrl_inst.c bm_ctrl_inst)
-    target_include_directories(test_ctrl_inst PRIVATE
+if(BM_ENABLE_EXEC)
+    bm_add_test(test_exec test_exec.c bm_exec)
+    target_include_directories(test_exec PRIVATE
         ${CMAKE_SOURCE_DIR}/portable/native_sim)
+endif()
+
+if(TARGET bm_stream)
+    bm_add_test(test_stream test_stream.c bm_stream)
+elseif(BM_ENABLE_EXEC)
+    bm_add_test(test_stream test_stream.c bm_exec)
+endif()
+
+bm_add_test(test_hal_dma_stream test_hal_dma_stream.c bm_core)
+target_include_directories(test_hal_dma_stream PRIVATE
+    ${CMAKE_SOURCE_DIR}/portable/native_sim)
+
+if(BM_ENABLE_ALGORITHM)
+    bm_add_test(test_algorithm test_algorithm.c bm_algorithm)
+    if(NOT MSVC)
+        target_link_libraries(test_algorithm PRIVATE m)
+    endif()
+endif()
+
+if(TARGET bm_pipeline)
+    bm_add_test(test_pipeline test_pipeline.c bm_pipeline)
+endif()
+
+if(TARGET bm_component_motor)
+    bm_add_test(test_motor_foc_sensored
+        test_motor_foc_sensored.c
+        bm_component_motor)
+    target_link_libraries(test_motor_foc_sensored PRIVATE bm_core)
+    target_include_directories(test_motor_foc_sensored PRIVATE
+        ${CMAKE_SOURCE_DIR}/portable/native_sim)
+    bm_add_test(test_motor_foc_sensorless
+        test_motor_foc_sensorless.c
+        bm_component_motor)
+    target_link_libraries(test_motor_foc_sensorless PRIVATE bm_core)
+    target_include_directories(test_motor_foc_sensorless PRIVATE
+        ${CMAKE_SOURCE_DIR}/portable/native_sim)
+endif()
+
+if(TARGET bm_component_bms)
+    bm_add_test(test_bms_estimation test_bms_estimation.c bm_component_bms)
+endif()
+
+if(TARGET bm_component_power)
+    bm_add_test(test_power_control test_power_control.c bm_component_power)
+endif()
+
+if(TARGET bm_component_process)
+    bm_add_test(test_bms_supervision test_bms_supervision.c bm_component_process)
 endif()
 
 if(BM_ENABLE_SYNC)
     add_executable(test_sync test_sync.c)
-    target_link_libraries(test_sync PRIVATE unity bm_ctrl_inst bm_hal_native)
+    target_link_libraries(test_sync PRIVATE unity bm_exec bm_hal_native)
     bm_target_internal_includes(test_sync)
     target_include_directories(test_sync PRIVATE
         ${CMAKE_SOURCE_DIR}/tests/unit/unity

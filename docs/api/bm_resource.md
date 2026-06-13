@@ -5,7 +5,7 @@
 
 ## 概述
 
-控制实例通过 `bm_resource_claim_t` 声明对外设资源的访问模式。`bm_ctrl_start_all` 启动前调用冲突检测，防止多实例独占同一 PWM、ADC 规则组等。
+控制实例通过 `bm_resource_claim_t` 声明对外设资源的访问模式。`bm_exec_start_all` 启动前调用冲突检测，防止多实例独占同一 PWM、ADC 规则组等。
 
 ## 类型
 
@@ -51,9 +51,9 @@
 
 ```c
 static const bm_resource_claim_t g_claims[] = {
-    { BM_RESOURCE_PWM, (uintptr_t)&BM_HAL_PWM_TIM1,
+    { BM_RESOURCE_CLASS_PWM, (uintptr_t)&BM_HAL_PWM_TIM1,
       BM_RESOURCE_EXCLUSIVE, 0, "tim1_pwm" },
-    { BM_RESOURCE_ADC_GROUP, (uintptr_t)&BM_HAL_ADC1,
+    { BM_RESOURCE_CLASS_ADC_GROUP, (uintptr_t)&BM_HAL_ADC1,
       BM_RESOURCE_OWNER, 1, "adc1_owner" },
 };
 ```
