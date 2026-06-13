@@ -151,7 +151,7 @@ int bm_algo_eq_peaking_design(bm_algo_eq_peaking_state_t *state,
         return -1;
     }
 
-    design.type = BM_ALGO_BIQUAD_BPF;
+    design.type = BM_ALGO_BIQUAD_PEAKING;
     design.sample_hz = config->sample_hz;
     design.freq_hz = config->freq_hz;
     design.q = config->q;

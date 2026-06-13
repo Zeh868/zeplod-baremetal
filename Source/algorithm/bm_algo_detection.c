@@ -16,6 +16,7 @@
  */
 #include "bm/algorithm/bm_algo_detection.h"
 
+#include <float.h>
 #include <math.h>
 
 float bm_algo_matched_filter(const float *signal,
@@ -24,7 +25,7 @@ float bm_algo_matched_filter(const float *signal,
                              uint32_t template_len,
                              uint32_t *best_index) {
     uint32_t i;
-    float best = -1.0f;
+    float best = -FLT_MAX;
     uint32_t best_i = 0u;
 
     if (signal == NULL || template == NULL || template_len == 0u ||

@@ -120,7 +120,8 @@ typedef enum {
     BM_ALGO_BIQUAD_LPF = 0,
     BM_ALGO_BIQUAD_HPF,
     BM_ALGO_BIQUAD_BPF,
-    BM_ALGO_BIQUAD_NOTCH
+    BM_ALGO_BIQUAD_NOTCH,
+    BM_ALGO_BIQUAD_PEAKING
 } bm_algo_biquad_type_t;
 
 typedef struct {

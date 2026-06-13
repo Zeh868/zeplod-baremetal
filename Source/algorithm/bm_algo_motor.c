@@ -230,13 +230,18 @@ float bm_algo_mtpa_id_ref(float iq_ref_a,
                           float lq_h,
                           float psi_f_wb) {
     float delta_l;
+    float root;
 
-    (void)psi_f_wb;
     delta_l = lq_h - ld_h;
-    if (fabsf(delta_l) < 1e-9f || ld_h <= 0.0f) {
+    if (fabsf(delta_l) < 1e-9f || ld_h <= 0.0f || lq_h <= 0.0f ||
+        psi_f_wb < 0.0f || fabsf(iq_ref_a) < 1e-9f) {
         return 0.0f;
     }
-    return -(delta_l / (2.0f * ld_h)) * iq_ref_a;
+
+    root = sqrtf(psi_f_wb * psi_f_wb
+                 + 8.0f * delta_l * delta_l * iq_ref_a * iq_ref_a);
+    return -2.0f * delta_l * iq_ref_a * iq_ref_a /
+           (psi_f_wb + root);
 }
 
 float bm_algo_fw_id_adjust(float id_ref_a, float vd, float vq, float v_max_pu) {

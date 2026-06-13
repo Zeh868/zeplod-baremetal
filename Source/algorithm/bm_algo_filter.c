@@ -289,7 +289,7 @@ int bm_algo_biquad_design(bm_algo_biquad_config_t *config,
         a1 = -2.0f * cos_w0;
         a2 = 1.0f - alpha;
         break;
-    default:
+    case BM_ALGO_BIQUAD_BPF:
         b0 = alpha * A;
         b1 = 0.0f;
         b2 = -alpha * A;
@@ -297,6 +297,16 @@ int bm_algo_biquad_design(bm_algo_biquad_config_t *config,
         a1 = -2.0f * cos_w0;
         a2 = 1.0f - alpha / A;
         break;
+    case BM_ALGO_BIQUAD_PEAKING:
+        b0 = 1.0f + alpha * A;
+        b1 = -2.0f * cos_w0;
+        b2 = 1.0f - alpha * A;
+        a0 = 1.0f + alpha / A;
+        a1 = -2.0f * cos_w0;
+        a2 = 1.0f - alpha / A;
+        break;
+    default:
+        return -1;
     }
 
     config->b0 = b0 / a0;

@@ -323,6 +323,39 @@ static void test_fixed_lpf1_q15_tracks_input(void) {
     TEST_ASSERT_FLOAT_WITHIN(0.05f, 1.0f, bm_algo_q15_to_float(v));
 }
 
+static void test_fixed_point_saturates_before_narrowing(void) {
+    bm_algo_biquad_q15_config_t bq_cfg = {
+        .b0 = BM_ALGO_Q15_ONE,
+        .b1 = 0,
+        .b2 = 0,
+        .a1 = 0,
+        .a2 = 0
+    };
+    bm_algo_biquad_q15_state_t bq = {
+        .z1 = BM_ALGO_Q15_ONE,
+        .z2 = 0
+    };
+    bm_algo_pi_q31_config_t pi_cfg = {
+        .kp = 0,
+        .ki = 0,
+        .out_min = (bm_algo_q31_t)INT32_MIN,
+        .out_max = BM_ALGO_Q31_ONE,
+        .integrator_min = (bm_algo_q31_t)INT32_MIN,
+        .integrator_max = BM_ALGO_Q31_ONE
+    };
+    bm_algo_pi_q31_state_t pi = {
+        .integrator = BM_ALGO_Q31_ONE - 1,
+        .output = 0
+    };
+
+    TEST_ASSERT_EQUAL_INT16(
+        BM_ALGO_Q15_ONE,
+        bm_algo_biquad_q15_step(&bq, &bq_cfg, BM_ALGO_Q15_ONE));
+    (void)bm_algo_pi_q31_step(
+        &pi, &pi_cfg, BM_ALGO_Q31_ONE, bm_algo_float_to_q31(0.5f));
+    TEST_ASSERT_EQUAL_INT32(BM_ALGO_Q31_ONE, pi.integrator);
+}
+
 static void test_flux_observer_and_mtpa(void) {
     bm_algo_flux_observer_config_t obs_cfg_ls = {
         .rs_ohm = 0.5f, .ls_h = 0.001f, .pll_kp = 10.0f, .pll_ki = 100.0f
@@ -356,6 +389,9 @@ static void test_flux_observer_and_mtpa(void) {
     TEST_ASSERT_TRUE(fabsf(obs_ls.omega_rad_s) > 0.1f);
     TEST_ASSERT_TRUE(fabsf(obs_ls.theta_rad - obs_no_ls.theta_rad) > 0.01f);
     TEST_ASSERT_TRUE(bm_algo_mtpa_id_ref(2.0f, 0.001f, 0.002f, 0.05f) < 0.0f);
+    TEST_ASSERT_TRUE(
+        fabsf(bm_algo_mtpa_id_ref(2.0f, 0.001f, 0.002f, 0.01f)) >
+        fabsf(bm_algo_mtpa_id_ref(2.0f, 0.001f, 0.002f, 0.20f)));
 }
 
 static void test_battery_temp_and_motor_extras(void) {
@@ -441,6 +477,8 @@ static void test_soc_ekf_and_power_quality(void) {
     bm_algo_soc_ekf_predict(&ekf, &ekf_cfg, 1.0f, 1.0f);
     bm_algo_soc_ekf_update_voltage(&ekf, &ekf_cfg, 3.7f, 3.65f);
     TEST_ASSERT_TRUE(ekf.soc >= 0.0f && ekf.soc <= 1.0f);
+    TEST_ASSERT_TRUE(fabsf(ekf.p10) > 0.0f);
+    TEST_ASSERT_TRUE(fabsf(ekf.bias_a) > 0.0f);
 
     TEST_ASSERT_FLOAT_WITHIN(0.5f, 11.18f,
         bm_algo_thd_percent(harmonics, 3u));
@@ -468,6 +506,17 @@ static void test_detection_matched_and_ultrasonic(void) {
     echo[11] = 0.8f;
     tof = bm_algo_ultrasonic_tof(echo, 32u, 4u, 0.3f, 0.5f);
     TEST_ASSERT_EQUAL_INT32(10, tof);
+}
+
+static void test_matched_filter_accepts_negative_correlations(void) {
+    const float signal[2] = { -2.0f, -3.0f };
+    const float template_data[1] = { 1.0f };
+    uint32_t index = UINT32_MAX;
+
+    TEST_ASSERT_FLOAT_WITHIN(
+        0.001f, -2.0f,
+        bm_algo_matched_filter(signal, 2u, template_data, 1u, &index));
+    TEST_ASSERT_EQUAL_UINT32(0u, index);
 }
 
 static void test_w2_audio_spectral_motion(void) {
@@ -498,6 +547,55 @@ static void test_w2_audio_spectral_motion(void) {
     bm_algo_stepper_reset(&st, 0);
     TEST_ASSERT_TRUE(bm_algo_stepper_process(&st, &st_cfg, 100.0f, 0.01f,
                                              pulses, 4u) > 0u);
+}
+
+static void test_eq_stepper_and_smith_regressions(void) {
+    bm_algo_eq_peaking_config_t eq_cfg = {
+        .sample_hz = 48000.0f,
+        .freq_hz = 1000.0f,
+        .q = 1.0f,
+        .gain_db = 0.0f
+    };
+    bm_algo_eq_peaking_state_t eq;
+    const float impulse[4] = { 1.0f, 0.0f, 0.0f, 0.0f };
+    float eq_out[4];
+    bm_algo_stepper_config_t step_cfg = {
+        .max_velocity_steps_s = 1000.0f
+    };
+    bm_algo_stepper_state_t step;
+    int8_t pulse;
+    bm_algo_smith_predictor_config_t smith_cfg = {
+        .model_gain = 1.0f,
+        .delay_steps = 1u
+    };
+    bm_algo_smith_predictor_state_t smith;
+    float delay_line[1];
+    float low_measurement;
+    float high_measurement;
+
+    TEST_ASSERT_EQUAL(0, bm_algo_eq_peaking_design(&eq, &eq_cfg));
+    bm_algo_eq_peaking_process(&eq, &eq_cfg, impulse, eq_out, 4u);
+    TEST_ASSERT_FLOAT_WITHIN(0.0001f, 1.0f, eq_out[0]);
+    TEST_ASSERT_FLOAT_WITHIN(0.0001f, 0.0f, eq_out[1]);
+
+    bm_algo_stepper_reset(&step, 0);
+    TEST_ASSERT_EQUAL_UINT32(
+        1u,
+        bm_algo_stepper_process(
+            &step, &step_cfg, 250.0f, 0.01f, &pulse, 1u));
+    TEST_ASSERT_EQUAL_INT32(1, step.position_steps);
+    TEST_ASSERT_TRUE(step.phase >= 1.0f);
+
+    TEST_ASSERT_EQUAL(
+        0,
+        bm_algo_smith_predictor_init(
+            &smith, &smith_cfg, delay_line, 1u));
+    low_measurement = bm_algo_smith_predictor_step(
+        &smith, &smith_cfg, 5.0f, 2.0f, 1.0f);
+    bm_algo_smith_predictor_reset(&smith, &smith_cfg);
+    high_measurement = bm_algo_smith_predictor_step(
+        &smith, &smith_cfg, 5.0f, 3.0f, 1.0f);
+    TEST_ASSERT_TRUE(high_measurement < low_measurement);
 }
 
 static void test_review_fixes(void) {
@@ -568,13 +666,16 @@ void test_algorithm(void) {
     RUN_TEST(test_sogi_states_decay_after_input_stops);
     RUN_TEST(test_fixed_pi_q31_saturates);
     RUN_TEST(test_fixed_lpf1_q15_tracks_input);
+    RUN_TEST(test_fixed_point_saturates_before_narrowing);
     RUN_TEST(test_flux_observer_and_mtpa);
     RUN_TEST(test_battery_temp_and_motor_extras);
     RUN_TEST(test_zero_length_audio_is_ignored);
     RUN_TEST(test_vision_centroid_and_compensation);
     RUN_TEST(test_soc_ekf_and_power_quality);
     RUN_TEST(test_detection_matched_and_ultrasonic);
+    RUN_TEST(test_matched_filter_accepts_negative_correlations);
     RUN_TEST(test_w2_audio_spectral_motion);
+    RUN_TEST(test_eq_stepper_and_smith_regressions);
     RUN_TEST(test_review_fixes);
 }
 

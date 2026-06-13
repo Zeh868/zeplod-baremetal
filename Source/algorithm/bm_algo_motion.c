@@ -162,12 +162,12 @@ uint32_t bm_algo_stepper_process(bm_algo_stepper_state_t *state,
     state->phase += fabsf(velocity_steps_s) * dt_s;
 
     while (state->phase >= 1.0f) {
+        if (pulses != NULL && count >= max_pulses) {
+            break;
+        }
         state->phase -= 1.0f;
         state->position_steps += dir;
         if (pulses != NULL) {
-            if (count >= max_pulses) {
-                break;
-            }
             pulses[count++] = dir;
         } else {
             count++;

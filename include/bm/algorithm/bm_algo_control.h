@@ -211,6 +211,7 @@ int bm_algo_smith_predictor_init(bm_algo_smith_predictor_state_t *state,
                                  uint32_t line_len);
 void bm_algo_smith_predictor_reset(bm_algo_smith_predictor_state_t *state,
                                    const bm_algo_smith_predictor_config_t *config);
+/** 返回 reference 与 Smith 预测过程输出之间的控制误差。 */
 float bm_algo_smith_predictor_step(bm_algo_smith_predictor_state_t *state,
                                    const bm_algo_smith_predictor_config_t *config,
                                    float reference,
