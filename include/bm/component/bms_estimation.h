@@ -27,6 +27,7 @@ extern "C" {
 #endif
 
 #define BM_BMS_EST_TEL_VALID  (1u << 0u)
+#define BM_BMS_EST_TEL_STALE  (1u << 1u)
 
 typedef struct {
     uint32_t sequence;

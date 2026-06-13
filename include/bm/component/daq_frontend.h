@@ -65,6 +65,10 @@ void bm_daq_frontend_reset(bm_daq_frontend_axis_t *axis);
 void bm_daq_frontend_arm(bm_daq_frontend_axis_t *axis);
 /** @return BM_OK 继续；BM_DAQ_CAPTURE_DONE 采集完成；BM_ERR_INVALID 参数/未武装 */
 int bm_daq_frontend_feed(bm_daq_frontend_axis_t *axis, float sample);
+/** 按时间顺序复制预触发环形缓冲样本；@return 实际复制的样本数 */
+uint32_t bm_daq_frontend_copy_pre_trigger(const bm_daq_frontend_axis_t *axis,
+                                          float *dst,
+                                          uint32_t dst_len);
 
 #ifdef __cplusplus
 }

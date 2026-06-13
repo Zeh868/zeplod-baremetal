@@ -72,6 +72,15 @@ void bm_process_control_step(bm_process_control_axis_t *axis) {
     if (axis->resources.read_io != NULL &&
         axis->resources.read_io(axis->resources.read_io_user,
                                 &setpoint, &measurement) != 0) {
+        st->step_count++;
+        st->telemetry.sequence = st->step_count;
+        st->telemetry.status = BM_PROCESS_CTRL_TEL_STALE;
+        st->telemetry.outer_out = st->outer_out;
+        st->telemetry.inner_out = st->inner_out;
+        if (axis->resources.publish_telemetry != NULL) {
+            axis->resources.publish_telemetry(
+                axis->resources.publish_telemetry_user, &st->telemetry);
+        }
         return;
     }
 

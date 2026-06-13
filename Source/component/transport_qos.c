@@ -32,7 +32,6 @@ void bm_transport_qos_reset(bm_transport_qos_axis_t *axis) {
     }
 
     axis->state.prev_tx_ms = 0u;
-    axis->state.prev_rx_ms = 0u;
     axis->state.latency_ms = 0.0f;
     axis->state.jitter_ms = 0.0f;
     axis->state.latency_ema_ms = 0.0f;
@@ -88,7 +87,6 @@ void bm_transport_qos_on_rx(bm_transport_qos_axis_t *axis) {
     axis->state.latency_ema_ms =
         cfg->ema_alpha * latency +
         (1.0f - cfg->ema_alpha) * axis->state.latency_ema_ms;
-    axis->state.prev_rx_ms = now_ms;
     axis->state.prev_tx_ms = 0u;
 }
 
@@ -96,6 +94,7 @@ void bm_transport_qos_step(bm_transport_qos_axis_t *axis) {
     const bm_transport_qos_config_t *cfg;
     bm_transport_qos_state_t *st;
     uint32_t status;
+    uint32_t now_ms;
 
     if (axis == NULL) {
         return;
@@ -103,6 +102,14 @@ void bm_transport_qos_step(bm_transport_qos_axis_t *axis) {
 
     cfg = &axis->config;
     st = &axis->state;
+
+    if (st->prev_tx_ms != 0u && axis->resources.now_ms != NULL) {
+        now_ms = axis->resources.now_ms(axis->resources.now_ms_user);
+        if ((uint32_t)((int32_t)(now_ms - st->prev_tx_ms)) >
+            cfg->latency_alarm_ms) {
+            st->prev_tx_ms = 0u;
+        }
+    }
 
     status = BM_TRANSPORT_QOS_TEL_VALID;
     if (st->latency_ema_ms > cfg->latency_alarm_ms ||

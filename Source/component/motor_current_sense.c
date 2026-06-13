@@ -59,9 +59,17 @@ void bm_motor_current_sense_reset(bm_motor_current_sense_axis_t *axis) {
 }
 
 int bm_motor_current_sense_init(bm_motor_current_sense_axis_t *axis) {
+    const bm_motor_current_sense_resources_t *res;
+
     if (axis == NULL ||
         bm_motor_current_sense_validate_config(&axis->config) != BM_OK) {
         return BM_ERR_INVALID;
+    }
+    res = &axis->resources;
+    if (res->sim_fb.ia_a == NULL && res->sim_fb.ib_a == NULL) {
+        if (res->adc == NULL || res->adc_scale <= 0.0f) {
+            return BM_ERR_INVALID;
+        }
     }
     bm_motor_current_sense_reset(axis);
     return BM_OK;

@@ -80,7 +80,12 @@ void bm_grid_control_step(bm_grid_control_axis_t *axis) {
         st->telemetry.omega_rad_s = st->omega_rad_s;
         st->telemetry.i_ref_a = i_ref;
         st->telemetry.i_meas_a = i_meas;
-        st->telemetry.v_cmd = st->v_cmd;
+        st->telemetry.v_cmd = 0.0f;
+        st->v_cmd = 0.0f;
+        if (axis->resources.write_output != NULL) {
+            (void)axis->resources.write_output(
+                axis->resources.write_output_user, 0.0f);
+        }
         if (axis->resources.publish_telemetry != NULL) {
             axis->resources.publish_telemetry(
                 axis->resources.publish_telemetry_user, &st->telemetry);

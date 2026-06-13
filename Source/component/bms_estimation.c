@@ -61,6 +61,13 @@ void bm_bms_estimation_step(bm_bms_estimation_axis_t *axis) {
     if (axis->resources.read_sample != NULL) {
         if (axis->resources.read_sample(axis->resources.read_sample_user,
                                       &current_a, &voltage_v, &temp_c) != 0) {
+            st->step_count++;
+            st->telemetry.sequence = st->step_count;
+            st->telemetry.status = BM_BMS_EST_TEL_STALE;
+            if (axis->resources.publish_telemetry != NULL) {
+                axis->resources.publish_telemetry(
+                    axis->resources.publish_telemetry_user, &st->telemetry);
+            }
             return;
         }
     }

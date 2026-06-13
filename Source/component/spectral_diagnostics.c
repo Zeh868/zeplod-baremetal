@@ -106,9 +106,11 @@ void bm_spectral_diagnostics_step(bm_spectral_diagnostics_axis_t *axis,
 
     st->step_count++;
     st->telemetry.sequence = st->step_count;
-    st->telemetry.status = goertzel_ready
-                               ? BM_SPECTRAL_DIAG_TEL_VALID
-                               : BM_SPECTRAL_DIAG_TEL_STALE;
+    if (goertzel_ready) {
+        st->telemetry.status = BM_SPECTRAL_DIAG_TEL_VALID;
+    } else {
+        st->telemetry.status = BM_SPECTRAL_DIAG_TEL_ACCUMULATING;
+    }
     st->telemetry.goertzel_mag = st->goertzel_mag;
     st->telemetry.order = st->order;
     st->telemetry.shaft_rpm = shaft_rpm;

@@ -127,3 +127,40 @@ int bm_daq_frontend_feed(bm_daq_frontend_axis_t *axis, float sample) {
     }
     return BM_OK;
 }
+
+uint32_t bm_daq_frontend_copy_pre_trigger(const bm_daq_frontend_axis_t *axis,
+                                          float *dst,
+                                          uint32_t dst_len) {
+    const bm_daq_frontend_state_t *st;
+    uint32_t cap;
+    uint32_t n;
+    uint32_t i;
+    uint32_t start;
+
+    if (axis == NULL || dst == NULL || dst_len == 0u) {
+        return 0u;
+    }
+
+    st = &axis->state;
+    if (st->pre_trigger_buffer == NULL || st->pre_trigger_cap == 0u ||
+        st->pre_trigger_count == 0u) {
+        return 0u;
+    }
+
+    cap = st->pre_trigger_cap;
+    n = st->pre_trigger_count;
+    if (n > dst_len) {
+        n = dst_len;
+    }
+    if (n < cap) {
+        for (i = 0u; i < n; i++) {
+            dst[i] = st->pre_trigger_buffer[i];
+        }
+    } else {
+        start = st->pre_trigger_head;
+        for (i = 0u; i < n; i++) {
+            dst[i] = st->pre_trigger_buffer[(start + i) % cap];
+        }
+    }
+    return n;
+}
