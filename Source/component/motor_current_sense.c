@@ -86,6 +86,8 @@ int bm_motor_current_sense_step(bm_motor_current_sense_axis_t *axis) {
         ib = *res->sim_fb.ib_a;
         if (res->sim_fb.ic_a != NULL) {
             ic = *res->sim_fb.ic_a;
+        } else {
+            ic = -(ia + ib);
         }
     } else if (read_adc_pair(axis, &ia, &ib) != 0) {
         axis->state.valid = 0;
@@ -100,10 +102,12 @@ int bm_motor_current_sense_step(bm_motor_current_sense_axis_t *axis) {
             uint16_t raw_ic = 0u;
             if (bm_hal_adc_read_injected(res->adc, res->rank_ic,
                                          &raw_ic) != BM_OK) {
-                axis->state.valid = 0;
-                return BM_ERR_INVALID;
+                ic = -(ia + ib);
+            } else {
+                ic = adc_to_current(res->adc_scale, raw_ic, axis->config.offset_a);
             }
-            ic = adc_to_current(res->adc_scale, raw_ic, axis->config.offset_a);
+        } else if (res->sim_fb.ic_a == NULL) {
+            ic = -(ia + ib);
         }
         abc->ia = ia;
         abc->ib = ib;

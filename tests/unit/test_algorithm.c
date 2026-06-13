@@ -507,6 +507,7 @@ static void test_review_fixes(void) {
     float out[4];
     float ref[64];
     float sig[64];
+    float gcc_work[512];
     bm_algo_smith_predictor_config_t smith_cfg = {
         .model_gain = 1.0f,
         .delay_steps = 2u
@@ -529,7 +530,12 @@ static void test_review_fixes(void) {
     }
     ref[10] = 1.0f;
     sig[13] = 1.0f;
-    TEST_ASSERT_EQUAL_INT32(3, bm_algo_gcc_phat_delay(ref, sig, 64u, 10));
+    TEST_ASSERT_EQUAL_UINT32(512u, bm_algo_gcc_phat_work_count(64u, 10));
+    TEST_ASSERT_EQUAL_INT32(3, bm_algo_gcc_phat_delay(ref, sig, 64u, 10,
+                                                      gcc_work, 512u));
+    TEST_ASSERT_EQUAL_INT32(BM_ALGO_GCC_PHAT_DELAY_INVALID,
+                            bm_algo_gcc_phat_delay(NULL, sig, 64u, 10,
+                                                   gcc_work, 512u));
 
     TEST_ASSERT_EQUAL(0, bm_algo_smith_predictor_init(&smith, &smith_cfg,
                                                       delay_line, 2u));

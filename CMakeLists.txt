@@ -322,6 +322,7 @@ if(BM_ENABLE_COMPONENT_DIAGNOSTICS)
         Source/component/fault_derating.c
         Source/component/sensor_quality.c
         Source/component/spectral_diagnostics.c
+        Source/component/daq_frontend.c
     )
     target_link_libraries(bm_component_diagnostics PUBLIC bm_algorithm bm_config)
     bm_target_internal_includes(bm_component_diagnostics)

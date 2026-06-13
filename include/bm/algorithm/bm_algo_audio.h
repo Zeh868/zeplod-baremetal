@@ -137,10 +137,18 @@ void bm_algo_noise_gate_process(bm_algo_noise_gate_state_t *state,
                                 uint32_t n);
 
 /* ---------- GCC-PHAT 时延估计 ---------- */
+/** 正滞后：sig 相对 ref 延迟的采样数；失败返回本常量 */
+#define BM_ALGO_GCC_PHAT_DELAY_INVALID  INT32_MIN
+
+/** 工作区 float 个数：2 路复数谱，长度 4 * fft_n */
+uint32_t bm_algo_gcc_phat_work_count(uint32_t n, int32_t max_lag);
+
 int32_t bm_algo_gcc_phat_delay(const float *ref,
                                const float *sig,
                                uint32_t n,
-                               int32_t max_lag);
+                               int32_t max_lag,
+                               float *work,
+                               uint32_t work_count);
 
 #ifdef __cplusplus
 }

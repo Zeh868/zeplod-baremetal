@@ -73,6 +73,16 @@ void bm_spectral_diagnostics_step(bm_spectral_diagnostics_axis_t *axis,
     if (axis->resources.feed_sample != NULL &&
         axis->resources.feed_sample(axis->resources.feed_sample_user,
                                     &sample) != 0) {
+        st->step_count++;
+        st->telemetry.sequence = st->step_count;
+        st->telemetry.status = BM_SPECTRAL_DIAG_TEL_STALE;
+        st->telemetry.goertzel_mag = st->goertzel_mag;
+        st->telemetry.order = st->order;
+        st->telemetry.shaft_rpm = shaft_rpm;
+        if (axis->resources.publish_telemetry != NULL) {
+            axis->resources.publish_telemetry(
+                axis->resources.publish_telemetry_user, &st->telemetry);
+        }
         return;
     }
 
@@ -96,7 +106,9 @@ void bm_spectral_diagnostics_step(bm_spectral_diagnostics_axis_t *axis,
 
     st->step_count++;
     st->telemetry.sequence = st->step_count;
-    st->telemetry.status = BM_SPECTRAL_DIAG_TEL_VALID;
+    st->telemetry.status = goertzel_ready
+                               ? BM_SPECTRAL_DIAG_TEL_VALID
+                               : BM_SPECTRAL_DIAG_TEL_STALE;
     st->telemetry.goertzel_mag = st->goertzel_mag;
     st->telemetry.order = st->order;
     st->telemetry.shaft_rpm = shaft_rpm;

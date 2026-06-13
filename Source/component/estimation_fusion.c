@@ -21,6 +21,9 @@ int bm_estimation_fusion_validate_config(
     if (config == NULL || config->dt_s <= 0.0f) {
         return BM_ERR_INVALID;
     }
+    if (config->mode == BM_EST_FUSION_EKF_CV) {
+        return BM_ERR_INVALID;
+    }
     return BM_OK;
 }
 
@@ -51,6 +54,8 @@ void bm_estimation_fusion_step(bm_estimation_fusion_axis_t *axis) {
     bm_estimation_fusion_state_t *st;
     float gx = 0.0f, gy = 0.0f, gz = 0.0f;
     float ax = 0.0f, ay = 0.0f, az = 1.0f;
+    uint32_t tel_status = 0u;
+    int have_imu = 0;
 
     if (axis == NULL) {
         return;
@@ -62,8 +67,21 @@ void bm_estimation_fusion_step(bm_estimation_fusion_axis_t *axis) {
     if (axis->resources.read_imu != NULL) {
         if (axis->resources.read_imu(axis->resources.read_imu_user,
                                      &gx, &gy, &gz, &ax, &ay, &az) != 0) {
+            st->step_count++;
+            st->telemetry.sequence = st->step_count;
+            st->telemetry.status = BM_EST_FUSION_TEL_STALE;
+            st->telemetry.roll_rad = st->euler.roll_rad;
+            st->telemetry.pitch_rad = st->euler.pitch_rad;
+            st->telemetry.yaw_rad = st->euler.yaw_rad;
+            if (axis->resources.publish_telemetry != NULL) {
+                axis->resources.publish_telemetry(
+                    axis->resources.publish_telemetry_user, &st->telemetry);
+            }
             return;
         }
+        have_imu = 1;
+    } else {
+        tel_status |= BM_EST_FUSION_TEL_NO_IMU;
     }
 
     switch (cfg->mode) {
@@ -79,20 +97,21 @@ void bm_estimation_fusion_step(bm_estimation_fusion_axis_t *axis) {
                             gx, gy, gz, ax, ay, az, cfg->dt_s);
         bm_algo_quat_to_euler(&st->mahony.q, &st->euler);
         break;
-    case BM_EST_FUSION_EKF_CV:
-        bm_algo_ekf_cv_predict(&st->ekf_cv, &cfg->ekf_cv, cfg->dt_s);
-        bm_algo_ekf_cv_update(&st->ekf_cv, &cfg->ekf_cv, ax);
-        st->euler.roll_rad = 0.0f;
-        st->euler.pitch_rad = 0.0f;
-        st->euler.yaw_rad = st->ekf_cv.pos;
-        break;
     default:
         break;
     }
 
     st->step_count++;
     st->telemetry.sequence = st->step_count;
-    st->telemetry.status = BM_EST_FUSION_TEL_VALID;
+    st->telemetry.status = BM_EST_FUSION_TEL_VALID | tel_status;
+    if (!have_imu) {
+        (void)gx;
+        (void)gy;
+        (void)gz;
+        (void)ax;
+        (void)ay;
+        (void)az;
+    }
     st->telemetry.roll_rad = st->euler.roll_rad;
     st->telemetry.pitch_rad = st->euler.pitch_rad;
     st->telemetry.yaw_rad = st->euler.yaw_rad;

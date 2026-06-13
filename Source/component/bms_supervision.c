@@ -17,9 +17,20 @@
 #include <math.h>
 #include <string.h>
 
+static void bms_supervision_sync_derating_config(
+    bm_bms_supervision_axis_t *axis) {
+    axis->state.derating.config.derate_ramp = axis->config.derate_ramp;
+    axis->state.derating.config.recovery_time_s = axis->config.recovery_time_s;
+    axis->state.derating.config.derate_target = axis->config.derate_target;
+    axis->state.derating.config.dt_s = axis->config.dt_s;
+}
+
 int bm_bms_supervision_validate_config(const bm_bms_supervision_config_t *config) {
     if (config == NULL || config->dt_s <= 0.0f ||
-        config->v_max_v <= config->v_min_v) {
+        config->v_max_v <= config->v_min_v || config->i_max_a <= 0.0f ||
+        config->derate_ramp.rate_per_s <= 0.0f ||
+        config->recovery_time_s < 0.0f ||
+        config->derate_target < 0.0f || config->derate_target > 1.0f) {
         return BM_ERR_INVALID;
     }
     return BM_OK;
@@ -44,7 +55,7 @@ int bm_bms_supervision_init(bm_bms_supervision_axis_t *axis) {
         bm_bms_supervision_validate_config(&axis->config) != BM_OK) {
         return BM_ERR_INVALID;
     }
-    axis->state.derating.config.dt_s = axis->config.dt_s;
+    bms_supervision_sync_derating_config(axis);
     if (bm_fault_derating_init(&axis->state.derating) != BM_OK) {
         return BM_ERR_INVALID;
     }
@@ -70,6 +81,18 @@ void bm_bms_supervision_step(bm_bms_supervision_axis_t *axis) {
     if (axis->resources.read_sample != NULL &&
         axis->resources.read_sample(axis->resources.read_sample_user,
                                   &voltage_v, &current_a, &temp_c) != 0) {
+        st->step_count++;
+        st->telemetry.sequence = st->step_count;
+        st->telemetry.status = BM_BMS_SUP_TEL_STALE;
+        st->telemetry.pack_voltage_v = st->pack_voltage_v;
+        st->telemetry.pack_current_a = st->pack_current_a;
+        st->telemetry.temp_c = st->temp_c;
+        st->telemetry.derate_factor = st->derating.state.derate_factor;
+        st->telemetry.limit_flags = st->limit_flags;
+        if (axis->resources.publish_telemetry != NULL) {
+            axis->resources.publish_telemetry(
+                axis->resources.publish_telemetry_user, &st->telemetry);
+        }
         return;
     }
 
@@ -97,7 +120,7 @@ void bm_bms_supervision_step(bm_bms_supervision_axis_t *axis) {
         bm_fault_derating_clear_request(&st->derating);
     }
 
-    st->derating.config.dt_s = cfg->dt_s;
+    bms_supervision_sync_derating_config(axis);
     bm_fault_derating_step(&st->derating);
 
     st->step_count++;

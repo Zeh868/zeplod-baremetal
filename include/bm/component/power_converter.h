@@ -97,6 +97,7 @@ typedef struct {
 int bm_power_converter_validate_config(const bm_power_converter_config_t *config);
 
 void bm_power_converter_reset(bm_power_converter_axis_t *axis);
+void bm_power_converter_clear_fault(bm_power_converter_axis_t *axis);
 
 void bm_power_converter_apply_command(bm_power_converter_axis_t *axis,
                                       const bm_pwr_conv_cmd_t *cmd);

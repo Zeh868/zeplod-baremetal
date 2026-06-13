@@ -75,7 +75,7 @@ void bm_transport_qos_on_rx(bm_transport_qos_axis_t *axis) {
         return;
     }
 
-    latency = (float)(now_ms - axis->state.prev_tx_ms);
+    latency = (float)(int32_t)(now_ms - axis->state.prev_tx_ms);
     if (axis->state.have_prev) {
         jitter = fabsf(latency - axis->state.latency_ms);
     } else {
@@ -89,6 +89,7 @@ void bm_transport_qos_on_rx(bm_transport_qos_axis_t *axis) {
         cfg->ema_alpha * latency +
         (1.0f - cfg->ema_alpha) * axis->state.latency_ema_ms;
     axis->state.prev_rx_ms = now_ms;
+    axis->state.prev_tx_ms = 0u;
 }
 
 void bm_transport_qos_step(bm_transport_qos_axis_t *axis) {

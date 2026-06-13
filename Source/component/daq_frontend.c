@@ -15,21 +15,55 @@
 
 #include <math.h>
 
+static void pre_trigger_push(bm_daq_frontend_axis_t *axis, float sample) {
+    bm_daq_frontend_state_t *st = &axis->state;
+    uint32_t cap;
+
+    if (st->pre_trigger_buffer == NULL || st->pre_trigger_cap == 0u) {
+        return;
+    }
+
+    cap = st->pre_trigger_cap;
+    st->pre_trigger_buffer[st->pre_trigger_head] = sample;
+    st->pre_trigger_head = (st->pre_trigger_head + 1u) % cap;
+    if (st->pre_trigger_count < cap) {
+        st->pre_trigger_count++;
+    }
+}
+
 int bm_daq_frontend_init(bm_daq_frontend_axis_t *axis,
                          float *rms_buffer,
-                         uint32_t rms_buflen) {
+                         uint32_t rms_buflen,
+                         float *pre_trigger_buffer,
+                         uint32_t pre_trigger_buflen) {
+    uint32_t cap;
+
     if (axis == NULL || rms_buffer == NULL || rms_buflen == 0u) {
-        return -1;
+        return BM_ERR_INVALID;
     }
+    if (axis->config.pre_trigger_samples > 0u &&
+        (pre_trigger_buffer == NULL || pre_trigger_buflen == 0u)) {
+        return BM_ERR_INVALID;
+    }
+
     axis->state.rms_buffer = rms_buffer;
     axis->state.rms_buflen = rms_buflen;
     axis->state.rms_cfg.window_samples = rms_buflen;
     if (bm_algo_rms_init(&axis->state.rms, &axis->state.rms_cfg,
                          rms_buffer, rms_buflen) != 0) {
-        return -1;
+        return BM_ERR_INVALID;
     }
+
+    cap = pre_trigger_buflen;
+    if (axis->config.pre_trigger_samples > 0u &&
+        axis->config.pre_trigger_samples < cap) {
+        cap = axis->config.pre_trigger_samples;
+    }
+    axis->state.pre_trigger_buffer = pre_trigger_buffer;
+    axis->state.pre_trigger_cap = cap;
+
     bm_daq_frontend_reset(axis);
-    return 0;
+    return BM_OK;
 }
 
 void bm_daq_frontend_reset(bm_daq_frontend_axis_t *axis) {
@@ -37,6 +71,8 @@ void bm_daq_frontend_reset(bm_daq_frontend_axis_t *axis) {
         return;
     }
     bm_algo_rms_reset(&axis->state.rms);
+    axis->state.pre_trigger_head = 0u;
+    axis->state.pre_trigger_count = 0u;
     axis->state.peak = 0.0f;
     axis->state.crest_factor = 0.0f;
     axis->state.captured = 0u;
@@ -49,6 +85,9 @@ void bm_daq_frontend_arm(bm_daq_frontend_axis_t *axis) {
         axis->state.armed = 1;
         axis->state.triggered = 0;
         axis->state.captured = 0u;
+        axis->state.pre_trigger_head = 0u;
+        axis->state.pre_trigger_count = 0u;
+        axis->state.peak = 0.0f;
     }
 }
 
@@ -56,9 +95,14 @@ int bm_daq_frontend_feed(bm_daq_frontend_axis_t *axis, float sample) {
     float rms;
     float ax;
 
-    if (axis == NULL || !axis->state.armed) {
-        return 0;
+    if (axis == NULL) {
+        return BM_ERR_INVALID;
     }
+    if (!axis->state.armed) {
+        return BM_ERR_INVALID;
+    }
+
+    pre_trigger_push(axis, sample);
 
     rms = bm_algo_rms_step(&axis->state.rms, &axis->state.rms_cfg, sample);
     ax = fabsf(sample);
@@ -78,8 +122,8 @@ int bm_daq_frontend_feed(bm_daq_frontend_axis_t *axis, float sample) {
         }
         if (axis->state.captured >= axis->config.capture_samples) {
             axis->state.armed = 0;
-            return 1;
+            return BM_DAQ_CAPTURE_DONE;
         }
     }
-    return 0;
+    return BM_OK;
 }

@@ -25,6 +25,7 @@ extern "C" {
 #endif
 
 #define BM_GRID_CTRL_TEL_VALID (1u << 0u)
+#define BM_GRID_CTRL_TEL_STALE (1u << 1u)
 
 typedef struct {
     uint32_t sequence;

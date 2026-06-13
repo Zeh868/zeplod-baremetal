@@ -66,6 +66,15 @@ void bm_sensor_quality_step(bm_sensor_quality_axis_t *axis) {
     if (axis->resources.read_sample != NULL &&
         axis->resources.read_sample(axis->resources.read_sample_user,
                                   &sample) != 0) {
+        st->step_count++;
+        st->telemetry.sequence = st->step_count;
+        st->telemetry.status = BM_SENSOR_QUALITY_TEL_STALE;
+        st->telemetry.value = st->last_value;
+        st->telemetry.fault_flags = st->fault_flags;
+        if (axis->resources.publish_telemetry != NULL) {
+            axis->resources.publish_telemetry(
+                axis->resources.publish_telemetry_user, &st->telemetry);
+        }
         return;
     }
 
@@ -73,8 +82,12 @@ void bm_sensor_quality_step(bm_sensor_quality_axis_t *axis) {
                                        sample, cfg->dt_s);
 
     if (fabsf(sample - st->frozen_prev) <= cfg->frozen_epsilon) {
-        st->frozen_count++;
-        if (st->frozen_count >= cfg->frozen_count_required) {
+        if (st->frozen_count < cfg->frozen_count_required) {
+            st->frozen_count++;
+        }
+        if (st->frozen_count >= cfg->frozen_count_required &&
+            cfg->frozen_count_required > 0u &&
+            st->step_count > 0u) {
             flags |= BM_ALGO_FAULT_FROZEN;
         }
     } else {

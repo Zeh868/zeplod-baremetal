@@ -140,5 +140,8 @@ int bm_algo_vision_block_flow_u8(const uint8_t *prev,
 
     *dx = best_dx;
     *dy = best_dy;
+    if (best_sad == UINT32_MAX) {
+        return -1;
+    }
     return 0;
 }
